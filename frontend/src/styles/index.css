@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-salmon: #e8846a;
+  --color-salmon-light: #f2b5a0;
+  --color-beige: #faf0e6;
+  --color-success: #4caf50;
+  --color-error: #e53935;
+}
+
+body {
+  @apply bg-beige font-sans text-neutral-800;
+}
+
+/* Ajustes de acessibilidade controlados por AccessibilityContext */
+body[data-font-size='alta'] {
+  font-size: 1.15rem;
+}
+
+body[data-high-contrast='true'] {
+  background-color: #000;
+  color: #fff;
+}
