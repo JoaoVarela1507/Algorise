@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
           cache: pip
@@ -77,7 +77,7 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - name: Build do backend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           push: false
@@ -89,7 +89,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build do frontend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./frontend
           target: runtime
