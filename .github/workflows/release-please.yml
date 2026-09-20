@@ -1,0 +1,29 @@
+name: release-please
+
+# A cada push na main, o release-please lê os commits convencionais desde a
+# última tag e mantém aberto um PR de release ("chore(release): X.Y.Z") com o
+# bump de versão e o CHANGELOG. Ao mergear esse PR, ele cria a tag vX.Y.Z e a
+# release no GitHub. Nenhuma versão é editada à mão.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Evita dois releases concorrentes em pushes seguidos.
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

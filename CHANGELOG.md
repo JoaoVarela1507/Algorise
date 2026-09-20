@@ -1,20 +1,20 @@
 # Changelog
 
-Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/)
-e versionamento [SemVer](https://semver.org/lang/pt-BR/).
+Este arquivo é gerado pelo [release-please](https://github.com/googleapis/release-please)
+a partir dos commits em `main`. Não edite à mão: escreva bons commits.
 
-Frontend e backend têm versões próprias (`frontend/package.json` e
-`backend/app/__init__.py`), mas são liberados juntos a cada tag `vX.Y.Z`.
+Front e back compartilham uma única versão ([SemVer](https://semver.org/lang/pt-BR/)),
+liberada a cada tag `vX.Y.Z`. A versão vive em `version.txt` e é propagada para
+`frontend/package.json` e `backend/app/__init__.py` pelo PR de release.
 
-## [Não lançado]
+O tipo do commit define o bump:
 
-### Adicionado
+- `fix: ...` — patch (0.1.**1**)
+- `feat: ...` — minor (0.**2**.0)
+- `feat!: ...` ou `BREAKING CHANGE:` no corpo — major (**1**.0.0)
+- `chore:`, `docs:`, `test:` — não geram release
 
-- Endpoint `GET /version` na API, com versão, commit, data de build e ambiente.
-- `version.json` publicado no build do frontend, com os mesmos dados.
-- Versão e commit exibidos no rodapé da navegação lateral.
-
-## [0.1.0] - 2026-09-19
+## 0.1.0 (2026-09-19)
 
 ### Adicionado
 
