@@ -5,7 +5,6 @@ on:
   push:
     branches: [main]
 
-# Um push novo no mesmo PR cancela a execução anterior.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -55,18 +54,16 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      # Sobe o servidor de verdade em vez de usar o TestClient, que exigiria
+      # httpx só para o CI.
       - name: Smoke da API
         run: |
-          python - <<'PY'
-          from fastapi.testclient import TestClient
-          from app.main import app
-
-          cliente = TestClient(app)
-          resposta = cliente.get("/health")
-          assert resposta.status_code == 200, resposta.text
-          assert resposta.json() == {"status": "ok"}
-          print("health ok")
-          PY
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          for _ in $(seq 1 20); do
+            curl -fsS http://127.0.0.1:8000/health > /dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/health | tee /dev/stderr | grep -q '"status":"ok"'
 
       # TODO(#13): rodar `ruff check .` quando o Ruff estiver configurado.
       # TODO(#14): rodar `pytest` quando a suíte existir.
