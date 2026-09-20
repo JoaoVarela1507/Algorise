@@ -14,6 +14,22 @@ O tipo do commit define o bump:
 - `feat!: ...` ou `BREAKING CHANGE:` no corpo — major (**1**.0.0)
 - `chore:`, `docs:`, `test:` — não geram release
 
+## [0.2.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.1.0...v0.2.0) (2026-09-20)
+
+
+### Adicionado
+
+* containerizar o stack e adicionar CI e Dependabot ([b67728b](https://github.com/JoaoVarela1507/Algorise/commit/b67728b69440b3ade2fd26082574bfb71c1b827e))
+* containerizar o stack e adicionar CI e Dependabot ([638e305](https://github.com/JoaoVarela1507/Algorise/commit/638e3056ac126dbe3a6173fbddc1b060a80332a6))
+* expor versão de front e back via endpoint ([aeeadd9](https://github.com/JoaoVarela1507/Algorise/commit/aeeadd946be87957b6c675228ed813db4723b762))
+* expor versão de front e back via endpoint ([885bd8d](https://github.com/JoaoVarela1507/Algorise/commit/885bd8d430faba6fd7262074f7a05e0ec7e5e050)), closes [#42](https://github.com/JoaoVarela1507/Algorise/issues/42)
+* versionar automaticamente com release-please ([4e45f78](https://github.com/JoaoVarela1507/Algorise/commit/4e45f7889e62c0548a79fcf9a8ea165bd9bc1886)), closes [#42](https://github.com/JoaoVarela1507/Algorise/issues/42)
+
+
+### Corrigido
+
+* trocar TestClient por uvicorn no smoke do CI ([91ef54e](https://github.com/JoaoVarela1507/Algorise/commit/91ef54eb4ee76b346b40a39f761cbb0a1fb92fd8))
+
 ## 0.1.0 (2026-09-19)
 
 ### Adicionado
