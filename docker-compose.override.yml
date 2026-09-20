@@ -1,0 +1,35 @@
+# Ajustes de desenvolvimento, carregados automaticamente pelo `docker compose up`:
+# hot reload nos dois lados e portas do banco e do Redis expostas no host.
+
+services:
+  db:
+    ports:
+      - '5432:5432'
+
+  redis:
+    ports:
+      - '6379:6379'
+
+  backend:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      ENVIRONMENT: development
+      FRONTEND_ORIGIN: http://localhost:5173
+    volumes:
+      - ./backend/app:/app/app
+
+  frontend:
+    build:
+      target: dev
+    ports: !override
+      - '5173:5173'
+    environment:
+      VITE_API_URL: http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      # O node_modules vem da imagem (o volume é populado no primeiro up) e não
+      # do host, que no Windows tem binários incompatíveis com o container.
+      - frontend_node_modules:/app/node_modules
+
+volumes:
+  frontend_node_modules:
