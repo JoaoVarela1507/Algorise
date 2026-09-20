@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Um push novo no mesmo PR cancela a execução anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          GIT_COMMIT: ${{ github.sha }}
+
+      # TODO(#14): rodar `npm run test` (Vitest) quando a suíte existir.
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - run: pip install -r requirements.txt
+
+      - name: Smoke da API
+        run: |
+          python - <<'PY'
+          from fastapi.testclient import TestClient
+          from app.main import app
+
+          cliente = TestClient(app)
+          resposta = cliente.get("/health")
+          assert resposta.status_code == 200, resposta.text
+          assert resposta.json() == {"status": "ok"}
+          print("health ok")
+          PY
+
+      # TODO(#13): rodar `ruff check .` quando o Ruff estiver configurado.
+      # TODO(#14): rodar `pytest` quando a suíte existir.
+
+  docker:
+    name: Imagens Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build do backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          load: true
+          tags: algorise-backend:ci
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build do frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          target: runtime
+          push: false
+          load: true
+          tags: algorise-frontend:ci
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Build que compila não garante imagem que sobe: as duas são executadas.
+      - name: Backend sobe e responde
+        run: |
+          docker run -d --name backend-ci -p 8000:8000 algorise-backend:ci
+          for _ in $(seq 1 30); do
+            curl -fsS http://localhost:8000/health && echo && exit 0
+            sleep 2
+          done
+          echo "backend não respondeu a tempo"
+          docker logs backend-ci
+          exit 1
+
+      - name: Frontend sobe e serve o index
+        run: |
+          docker run -d --name frontend-ci -p 8080:80 algorise-frontend:ci
+          for _ in $(seq 1 15); do
+            curl -fsS http://localhost:8080/ > /dev/null && echo "frontend ok" && exit 0
+            sleep 2
+          done
+          echo "frontend não respondeu a tempo"
+          docker logs frontend-ci
+          exit 1
+
+      - name: Validar os arquivos do compose
+        run: |
+          docker compose config --quiet
+          docker compose -f docker-compose.yml config --quiet
+
+  # TODO(#14): job de E2E com Playwright, depois que a suíte existir.

@@ -1,0 +1,72 @@
+# Definição base do stack (perfil de produção).
+#
+#   docker compose up            -> dev, com hot reload (aplica o override abaixo)
+#   docker compose -f docker-compose.yml up --build   -> produção, sem override
+#
+# O arquivo docker-compose.override.yml é carregado automaticamente e ajusta
+# estes serviços para desenvolvimento.
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-algorise}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-algorise}
+      POSTGRES_DB: ${POSTGRES_DB:-algorise}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-algorise}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        BUILD_TIME: ${BUILD_TIME:-}
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:8080}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-algorise}:${POSTGRES_PASSWORD:-algorise}@db:5432/${POSTGRES_DB:-algorise}
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - '8000:8000'
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      target: runtime
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        BUILD_TIME: ${BUILD_TIME:-}
+    ports:
+      - '8080:80'
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
