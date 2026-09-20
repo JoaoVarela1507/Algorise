@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { versaoCurta } from '@/lib/version'
 
 const links = [
   { to: '/', label: 'Home', end: true },
@@ -29,6 +30,9 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
+      <div className="mt-auto px-4 pt-4 text-xs text-neutral-500" title={`Build ${__APP_BUILD__}`}>
+        {versaoCurta}
+      </div>
     </aside>
   )
 }
