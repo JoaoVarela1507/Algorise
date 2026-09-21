@@ -29,6 +29,7 @@ export function AppRoutes() {
         <Route path="/perfil" element={<PerfilPage />} />
         <Route path="/certificados" element={<CertificadosPage />} />
         <Route path="/design-system" element={<DesignSystemPage />} />
+        <Route path="/design-system" element={<DesignSystemPage />} />
       </Route>
     </Routes>
   )
