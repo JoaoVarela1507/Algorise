@@ -14,6 +14,13 @@ O tipo do commit define o bump:
 - `feat!: ...` ou `BREAKING CHANGE:` no corpo — major (**1**.0.0)
 - `chore:`, `docs:`, `test:` — não geram release
 
+## [0.5.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.4.0...v0.5.0) (2026-09-21)
+
+
+### Adicionado
+
+* padronizar qualidade com Prettier, Ruff, Husky e lint-staged ([#76](https://github.com/JoaoVarela1507/Algorise/issues/76)) ([5effff1](https://github.com/JoaoVarela1507/Algorise/commit/5effff12936a13f46e34ba7f6c66a22b95981faa))
+
 ## [0.4.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.3.0...v0.4.0) (2026-09-21)
 
 
