@@ -1,0 +1,16 @@
+version: '1.0'
+
+# Linters da JetBrains sobre o monorepo. Roda em PR como análise extra, sem
+# bloquear o merge: o portão obrigatório continua sendo ESLint + Ruff no CI.
+linter: jetbrains/qodana-js:latest
+
+profile:
+  name: qodana.recommended
+
+exclude:
+  - name: All
+    paths:
+      - frontend/dist
+      - frontend/node_modules
+      - node_modules
+      - backend/alembic/versions
