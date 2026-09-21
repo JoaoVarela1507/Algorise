@@ -16,6 +16,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY alembic ./alembic
+COPY alembic.ini .
 
 # A API não precisa de root para servir HTTP.
 RUN useradd --create-home --uid 1000 algorise && chown -R algorise:algorise /app

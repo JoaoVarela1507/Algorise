@@ -43,6 +43,24 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      # Banco descartável: as migrações rodam contra um PostgreSQL de verdade,
+      # não contra SQLite, senão o CI não pega erro específico do Postgres.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: algorise
+          POSTGRES_PASSWORD: algorise
+          POSTGRES_DB: algorise
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U algorise"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+psycopg://algorise:algorise@localhost:5432/algorise
     steps:
       - uses: actions/checkout@v7
 
@@ -54,6 +72,18 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      # Ida e volta completa: se o downgrade estiver quebrado, o CI reprova.
+      - name: Migrações
+        run: |
+          alembic upgrade head
+          alembic downgrade base
+          alembic upgrade head
+
+      - name: Seed
+        run: |
+          python -m app.seeds
+          python -m app.seeds  # roda duas vezes: precisa ser idempotente
+
       # Sobe o servidor de verdade em vez de usar o TestClient, que exigiria
       # httpx só para o CI.
       - name: Smoke da API
@@ -64,6 +94,9 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:8000/health | tee /dev/stderr | grep -q '"status":"ok"'
+          curl -fsS http://127.0.0.1:8000/ready | tee /dev/stderr | grep -q '"banco":"ok"'
+          # A rota de trilhas precisa devolver o que o seed inseriu.
+          curl -fsS http://127.0.0.1:8000/trilhas | tee /dev/stderr | grep -q 'introducao-python'
 
       # TODO(#13): rodar `ruff check .` quando o Ruff estiver configurado.
       # TODO(#14): rodar `pytest` quando a suíte existir.
