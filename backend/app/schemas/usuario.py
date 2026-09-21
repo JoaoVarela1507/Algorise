@@ -1,18 +1,10 @@
-from enum import Enum
-
 from pydantic import BaseModel, EmailStr
 
+# Os enums vivem no domínio, não no schema: banco e API compartilham a mesma
+# definição.
+from app.models.enums import NivelExperiencia, TipoTrilha
 
-class NivelExperiencia(str, Enum):
-    baixo = "baixo"
-    medio = "medio"
-    alto = "alto"
-
-
-class TipoTrilha(str, Enum):
-    guiada = "guiada"
-    livre = "livre"
-    mista = "mista"
+__all__ = ["NivelExperiencia", "TipoTrilha", "Usuario"]
 
 
 class Usuario(BaseModel):
