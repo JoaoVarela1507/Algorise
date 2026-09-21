@@ -10,6 +10,7 @@ import { QuestaoPage } from '@/pages/Questao/QuestaoPage'
 import { ChatPage } from '@/pages/Chat/ChatPage'
 import { PerfilPage } from '@/pages/Perfil/PerfilPage'
 import { CertificadosPage } from '@/pages/Certificados/CertificadosPage'
+import { DesignSystemPage } from '@/pages/DesignSystem/DesignSystemPage'
 
 export function AppRoutes() {
   return (
@@ -27,6 +28,8 @@ export function AppRoutes() {
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/perfil" element={<PerfilPage />} />
         <Route path="/certificados" element={<CertificadosPage />} />
+        <Route path="/design-system" element={<DesignSystemPage />} />
+        <Route path="/design-system" element={<DesignSystemPage />} />
       </Route>
     </Routes>
   )

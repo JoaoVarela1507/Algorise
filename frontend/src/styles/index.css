@@ -1,25 +1,125 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --color-salmon: #e8846a;
-  --color-salmon-light: #f2b5a0;
-  --color-beige: #faf0e6;
-  --color-success: #4caf50;
-  --color-error: #e53935;
-}
+/*
+ * Tokens do Algorise.
+ *
+ * Os valores são canais HSL sem a função `hsl()` porque o Tailwind os compõe
+ * com opacidade (`bg-primary/60`). Nenhuma cor deve ser escrita direto nos
+ * componentes: sempre pelo token, senão o tema de alto contraste não pega.
+ */
+@layer base {
+  :root {
+    /* Marca */
+    --salmon: 13 72% 66%; /* #E8846A — coral do logo e dos botões */
+    --salmon-light: 16 74% 79%; /* #F2B5A0 */
+    --beige: 34 60% 94%; /* #FAF0E6 — fundo das telas */
 
-body {
-  @apply bg-beige font-sans text-neutral-800;
-}
+    /* Superfícies e texto */
+    --background: var(--beige);
+    --foreground: 24 10% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: var(--foreground);
+    --popover: 0 0% 100%;
+    --popover-foreground: var(--foreground);
+    --muted: 34 30% 90%;
+    --muted-foreground: 24 6% 45%;
+    --border: 24 20% 86%;
+    --input: 24 20% 86%;
+    --ring: var(--salmon);
 
-/* Ajustes de acessibilidade controlados por AccessibilityContext */
-body[data-font-size='alta'] {
-  font-size: 1.15rem;
-}
+    /* Ações */
+    --primary: var(--salmon);
+    --primary-foreground: 0 0% 100%;
+    --secondary: 34 40% 88%;
+    --secondary-foreground: var(--foreground);
+    --accent: var(--salmon-light);
+    --accent-foreground: var(--foreground);
+    --destructive: 2 78% 56%; /* #E53935 */
+    --destructive-foreground: 0 0% 100%;
 
-body[data-high-contrast='true'] {
-  background-color: #000;
-  color: #fff;
+    /* Estados da trilha */
+    --success: 122 39% 49%; /* #4CAF50 — progresso e check */
+    --success-foreground: 0 0% 100%;
+    --locked: 24 8% 65%; /* cadeado / passo bloqueado */
+    --streak: 22 90% 55%; /* chama do streak */
+    --xp: 45 93% 55%; /* estrelas e XP */
+
+    /* Períodos letivos (tela 25 do protótipo) */
+    --periodo-1: 145 45% 72%;
+    --periodo-2: 190 55% 70%;
+    --periodo-3: 262 45% 76%;
+    --periodo-4: 13 72% 72%;
+    --periodo-5: 210 60% 74%;
+    --periodo-6: 33 85% 70%;
+    --periodo-7: 320 50% 76%;
+    --periodo-8: 95 40% 68%;
+
+    --radius: 1rem;
+
+    /* Multiplicador do painel de acessibilidade (tela 19) */
+    --font-scale: 1;
+  }
+
+  /*
+   * Alto contraste: redefine os tokens em vez de sobrescrever componentes,
+   * então qualquer tela nova já nasce compatível.
+   */
+  :root[data-high-contrast='true'] {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 100%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 85%;
+    --border: 0 0% 70%;
+    --input: 0 0% 70%;
+    --ring: 50 100% 60%;
+
+    --primary: 16 100% 72%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 100%;
+    --accent: 0 0% 25%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 100% 70%;
+    --destructive-foreground: 0 0% 0%;
+
+    --success: 122 60% 62%;
+    --locked: 0 0% 60%;
+    --streak: 30 100% 65%;
+    --xp: 50 100% 65%;
+  }
+
+  :root[data-font-size='alta'] {
+    --font-scale: 1.15;
+  }
+
+  html {
+    font-size: calc(100% * var(--font-scale));
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+
+  /* O foco precisa aparecer também no alto contraste. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
