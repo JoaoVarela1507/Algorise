@@ -16,11 +16,12 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
   const [altoContraste, setAltoContraste] = useState(false)
 
   useEffect(() => {
-    document.body.setAttribute('data-font-size', tamanhoFonte)
+    // Os tokens de tema vivem em :root, então o atributo vai no <html>.
+    document.documentElement.setAttribute('data-font-size', tamanhoFonte)
   }, [tamanhoFonte])
 
   useEffect(() => {
-    document.body.setAttribute('data-high-contrast', String(altoContraste))
+    document.documentElement.setAttribute('data-high-contrast', String(altoContraste))
   }, [altoContraste])
 
   return (
