@@ -151,4 +151,4 @@ npm run lint:be         # Ruff no backend
 ```
 
 O mesmo é verificado no CI, então um commit com `--no-verify` ainda é barrado
-no pull request. O **Qodana** roda como análise extra, sem bloquear o merge.
+no pull request.
