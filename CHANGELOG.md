@@ -14,6 +14,14 @@ O tipo do commit define o bump:
 - `feat!: ...` ou `BREAKING CHANGE:` no corpo — major (**1**.0.0)
 - `chore:`, `docs:`, `test:` — não geram release
 
+## [0.3.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.2.0...v0.3.0) (2026-09-21)
+
+
+### Adicionado
+
+* adicionar shadcn/ui e design tokens do protótipo ([#58](https://github.com/JoaoVarela1507/Algorise/issues/58)) ([58fc8dc](https://github.com/JoaoVarela1507/Algorise/commit/58fc8dcc458aef238233cd50894e222a66c92f2e))
+* conectar o backend ao PostgreSQL com sessão por request ([#63](https://github.com/JoaoVarela1507/Algorise/issues/63)) ([eb78870](https://github.com/JoaoVarela1507/Algorise/commit/eb788703c59c02b0646481ec21da0e3185cc8be6))
+
 ## [0.2.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.1.0...v0.2.0) (2026-09-20)
 
 
