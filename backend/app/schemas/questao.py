@@ -1,17 +1,13 @@
-from enum import Enum
-
 from pydantic import BaseModel
 
+from app.models.enums import TipoAtividade
 
-class TipoQuestao(str, Enum):
-    multipla_escolha = "multipla-escolha"
-    ordenacao = "ordenacao"
-    preencher_lacuna = "preencher-lacuna"
+__all__ = ["Questao", "TipoAtividade"]
 
 
 class Questao(BaseModel):
     id: str
-    tipo: TipoQuestao
+    tipo: TipoAtividade
     enunciado: str
     codigo: str | None = None
     opcoes: list[str] | None = None

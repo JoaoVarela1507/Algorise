@@ -15,5 +15,12 @@ class Settings(BaseSettings):
     git_commit: str = "unknown"
     build_time: str | None = None
 
+    # O default serve para rodar fora do Docker; o compose injeta o host `db`.
+    database_url: str = "postgresql+psycopg://algorise:algorise@localhost:5432/algorise"
+
+    # Segundos de espera ao abrir conexão. Mantém o /ready respondendo rápido
+    # quando o banco está fora.
+    database_connect_timeout: int = 3
+
 
 settings = Settings()
