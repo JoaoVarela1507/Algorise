@@ -123,5 +123,32 @@ Duas armadilhas:
 
 ### Commits locais
 
-O squash descarta os commits da branch, então eles podem ser informais. Só o
-título do PR precisa seguir o formato acima.
+O squash descarta os commits da branch, então eles podem ser informais no
+conteúdo — mas o formato é verificado pelo `commitlint` no `commit-msg`, para
+que um commit fora do padrão não passe despercebido.
+
+### Ferramentas de qualidade
+
+Instale uma vez, na raiz do repositório:
+
+```bash
+npm install                                          # instala os hooks do Husky
+pip install -r backend/requirements-dev.txt          # Ruff
+```
+
+A partir daí, cada commit roda automaticamente, só sobre os arquivos no stage:
+
+- **Prettier** nos arquivos do `frontend/` e nos `.json`/`.md`/`.yml` da raiz
+- **ESLint** no `frontend/`
+- **Ruff** (lint e formatação) no `backend/`
+
+Para rodar na mão:
+
+```bash
+npm run format          # Prettier em tudo
+npm run lint:fe         # ESLint no frontend
+npm run lint:be         # Ruff no backend
+```
+
+O mesmo é verificado no CI, então um commit com `--no-verify` ainda é barrado
+no pull request.
