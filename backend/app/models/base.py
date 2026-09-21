@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum as EnumPython
+from typing import ClassVar
 
 from sqlalchemy import DateTime, Enum, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -31,7 +32,8 @@ class Base(DeclarativeBase):
     metadata = metadata
 
     # Mapeia cada enum de domínio uma vez só; os modelos apenas anotam o tipo.
-    type_annotation_map = {
+    # ClassVar deixa explícito que é configuração do declarativo, não coluna.
+    type_annotation_map: ClassVar[dict[type, Enum]] = {
         NivelExperiencia: _enum(NivelExperiencia),
         TipoTrilha: _enum(TipoTrilha),
         TipoAtividade: _enum(TipoAtividade),

@@ -1,0 +1,20 @@
+{
+  "name": "algorise-monorepo",
+  "private": true,
+  "type": "module",
+  "description": "Ferramentas de qualidade compartilhadas entre frontend e backend. O app fica em frontend/ e backend/.",
+  "scripts": {
+    "prepare": "husky",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint:fe": "npm --prefix frontend run lint",
+    "lint:be": "ruff check backend"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.1",
+    "prettier": "^3.9.8"
+  }
+}
