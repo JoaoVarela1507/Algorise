@@ -1,3 +1,3 @@
 # Ferramentas de desenvolvimento e CI. Instale junto com o requirements.txt:
 #   pip install -r requirements.txt -r requirements-dev.txt
-ruff==0.15.4
+ruff==0.16.8
