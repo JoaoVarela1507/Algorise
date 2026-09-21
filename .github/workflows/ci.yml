@@ -79,6 +79,11 @@ jobs:
           alembic downgrade base
           alembic upgrade head
 
+      - name: Seed
+        run: |
+          python -m app.seeds
+          python -m app.seeds  # roda duas vezes: precisa ser idempotente
+
       # Sobe o servidor de verdade em vez de usar o TestClient, que exigiria
       # httpx só para o CI.
       - name: Smoke da API
@@ -90,6 +95,8 @@ jobs:
           done
           curl -fsS http://127.0.0.1:8000/health | tee /dev/stderr | grep -q '"status":"ok"'
           curl -fsS http://127.0.0.1:8000/ready | tee /dev/stderr | grep -q '"banco":"ok"'
+          # A rota de trilhas precisa devolver o que o seed inseriu.
+          curl -fsS http://127.0.0.1:8000/trilhas | tee /dev/stderr | grep -q 'introducao-python'
 
       # TODO(#13): rodar `ruff check .` quando o Ruff estiver configurado.
       # TODO(#14): rodar `pytest` quando a suíte existir.
