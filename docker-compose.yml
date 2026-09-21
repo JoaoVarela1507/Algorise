@@ -40,6 +40,10 @@ services:
       args:
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
         BUILD_TIME: ${BUILD_TIME:-}
+    # Aplica as migrações pendentes antes de aceitar tráfego.
+    command: >-
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-production}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:8080}
