@@ -3,7 +3,7 @@
 #   build   -> gera o dist/
 #   runtime -> nginx servindo o dist/ (imagem final, padrão)
 
-FROM node:25-alpine AS dev
+FROM node:26-alpine AS dev
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ COPY . .
 EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
-FROM node:25-alpine AS build
+FROM node:26-alpine AS build
 
 ARG GIT_COMMIT=unknown
 ARG BUILD_TIME
