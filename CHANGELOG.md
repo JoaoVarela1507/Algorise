@@ -14,6 +14,13 @@ O tipo do commit define o bump:
 - `feat!: ...` ou `BREAKING CHANGE:` no corpo — major (**1**.0.0)
 - `chore:`, `docs:`, `test:` — não geram release
 
+## [0.4.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.3.0...v0.4.0) (2026-09-21)
+
+
+### Adicionado
+
+* persistir trilhas em PostgreSQL com SQLAlchemy e Alembic ([#73](https://github.com/JoaoVarela1507/Algorise/issues/73)) ([b17509e](https://github.com/JoaoVarela1507/Algorise/commit/b17509edfa54ae50ba17612b11e6a4fbbc7f25fa))
+
 ## [0.3.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.2.0...v0.3.0) (2026-09-21)
 
 
