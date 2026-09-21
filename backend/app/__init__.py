@@ -5,4 +5,4 @@ atualiza esta linha a partir dos commits convencionais (ver
 `release-please-config.json`). A anotação abaixo é o marcador que ele procura.
 """
 
-__version__ = "0.4.0"  # x-release-please-version
+__version__ = "0.5.0"  # x-release-please-version
