@@ -86,12 +86,69 @@ autenticação. No rate limit é o contrário, falha **aberta**: liberar a requi
 Quem concede XP deve chamar `app/services/xp.py`, não escrever em `xp_eventos` na
 mão — é ele que corrige o ranking em seguida.
 
+## Autenticação
+
+JWT para a sessão e OAuth2 para os botões de GitHub e Google da tela 5.
+
+| Rota                         | O que faz                                          |
+| ---------------------------- | -------------------------------------------------- |
+| `POST /auth/register`        | cria a conta e já devolve a sessão                 |
+| `POST /auth/login`           | e-mail e senha; `lembrar` alonga o refresh          |
+| `POST /auth/refresh`         | troca o par de tokens e revoga o anterior          |
+| `POST /auth/logout`          | revoga a sessão                                     |
+| `GET /auth/eu`               | rota protegida de referência                        |
+| `POST /auth/esqueci-senha`   | gera o link de recuperação (hoje vai para o log)   |
+| `POST /auth/redefinir-senha` | troca a senha e derruba as sessões abertas         |
+| `GET /auth/{provedor}/login` | começa o fluxo do GitHub ou do Google               |
+
+Para proteger uma rota, peça o aluno pela dependência:
+
+```python
+from app.api.deps import UsuarioAtual
+
+
+@router.get("/minha-rota")
+def minha_rota(usuario: UsuarioAtual) -> ...:
+    ...
+```
+
+**Dois tokens, dois prazos.** O access vale 15 minutos e é verificado só pela
+assinatura — nenhuma consulta ao Redis, senão o Redis fora derrubaria toda a API
+autenticada. O refresh vale uma semana (um mês com "manter-se conectado"), vive
+no Redis e é rotacionado: renovar revoga o anterior, então um refresh vazado para
+de servir assim que o dono usar o dele. O preço do access não ser consultado é
+que o logout leva até 15 minutos para valer; o refresh morre na hora.
+
+### Segredos
+
+`JWT_SECRET` e as credenciais do GitHub e do Google vêm do ambiente, e o
+`.env.example` traz as chaves em branco — **não commite secret nenhum**. Em
+desenvolvimento, em branco cai num segredo fixo conhecido; em produção a API se
+recusa a subir assim.
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Sem as credenciais do provedor, `/auth/github/login` responde 503 com a razão em
+vez de mandar o aluno para uma tela de erro do GitHub. Os callbacks a cadastrar
+no provedor são `http://localhost:8000/auth/github/callback` e o equivalente do
+Google.
+
+### Hash de senha
+
+Com `bcrypt` direto, e não com `passlib`, que a issue original pedia: o passlib
+1.7.4 é de 2020, não funciona com o bcrypt 5 e, mesmo com o bcrypt 4, imprime um
+traceback a cada boot ao tentar ler a versão. O limite de 72 bytes do algoritmo é
+recusado na validação em vez de truncado em silêncio.
+
 ## Estrutura de pastas
 
 ```
 main.py          ponto de entrada — roda o servidor (python main.py)
 app/
   api/routes/    endpoints da API, um arquivo por recurso
+  api/deps.py    dependências compartilhadas (ex.: usuário autenticado)
   core/          configuração, conexões (PostgreSQL, Redis) e cache
   models/        modelos SQLAlchemy (um arquivo por área do domínio)
   schemas/       schemas Pydantic (contrato da API, espelham os types do frontend)
