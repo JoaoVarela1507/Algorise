@@ -3,7 +3,27 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core import cache
 from app.models import Modulo, Trilha
+
+# Prefixo próprio para o catálogo poder ser invalidado inteiro de uma vez, sem
+# precisar saber que combinações de busca e período alguém consultou.
+PREFIXO_CATALOGO = cache.chave("trilhas", "catalogo")
+
+
+def chave_do_catalogo(*, busca: str | None, periodo: int | None) -> str:
+    """Chave de cache da listagem.
+
+    A busca entra normalizada para "Python" e "python " não virarem duas
+    entradas com o mesmo conteúdo.
+    """
+    termo = (busca or "").strip().lower()
+    return f"{PREFIXO_CATALOGO}:{termo}:{periodo or 'todos'}"
+
+
+def invalidar_catalogo() -> int:
+    """Descarta o catálogo em cache. Para quem publica ou edita trilha chamar."""
+    return cache.invalidar_prefixo(f"{PREFIXO_CATALOGO}:")
 
 
 def listar_trilhas(
