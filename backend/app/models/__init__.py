@@ -17,12 +17,13 @@ from app.models.enums import (
 from app.models.gamificacao import Certificado, Streak, XPEvento
 from app.models.progresso import ProgressoUsuario, RespostaUsuario
 from app.models.trilha import Atividade, Modulo, Trilha
-from app.models.usuario import Usuario
+from app.models.usuario import ContaOAuth, Usuario
 
 __all__ = [
     "Atividade",
     "Base",
     "Certificado",
+    "ContaOAuth",
     "Curso",
     "Ementa",
     "Instituicao",
