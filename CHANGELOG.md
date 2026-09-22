@@ -14,6 +14,13 @@ O tipo do commit define o bump:
 - `feat!: ...` ou `BREAKING CHANGE:` no corpo — major (**1**.0.0)
 - `chore:`, `docs:`, `test:` — não geram release
 
+## [0.6.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.5.0...v0.6.0) (2026-09-22)
+
+
+### Adicionado
+
+* adicionar Redis para cache, ranking e streak ([#85](https://github.com/JoaoVarela1507/Algorise/issues/85)) ([d50a2af](https://github.com/JoaoVarela1507/Algorise/commit/d50a2afbcfb4621af2173bea2de2647222947fce))
+
 ## [0.5.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.4.0...v0.5.0) (2026-09-21)
 
 
