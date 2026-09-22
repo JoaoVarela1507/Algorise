@@ -107,9 +107,9 @@ Para proteger uma rota, peça o aluno pela dependência:
 from app.api.deps import UsuarioAtual
 
 
-@router.get("/minha-rota")
-def minha_rota(usuario: UsuarioAtual) -> ...:
-    ...
+@router.get("/minhas-trilhas")
+def minhas_trilhas(usuario: UsuarioAtual) -> list[Trilha]:
+    return servico.trilhas_do_aluno(usuario.id)
 ```
 
 **Dois tokens, dois prazos.** O access vale 15 minutos e é verificado só pela
