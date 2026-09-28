@@ -1,3 +1,6 @@
+# dependências das ferramentas de qualidade da raiz
+node_modules
+
 # editor
 .vscode/*
 !.vscode/extensions.json

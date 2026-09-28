@@ -20,8 +20,7 @@ const badgeVariants = cva(
 )
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof badgeVariants> {
+  extends React.HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {
   /** De 1 a 8: pinta a badge com a cor daquele período letivo (tela 25). */
   periodo?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
 }

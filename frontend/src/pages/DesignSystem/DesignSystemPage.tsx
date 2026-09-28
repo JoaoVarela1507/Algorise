@@ -16,7 +16,13 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from '@/components/ui/toaster'
 
@@ -167,7 +173,10 @@ export function DesignSystemPage() {
             </DialogContent>
           </Dialog>
 
-          <Button variant="secondary" onClick={() => toast('Exatamente!', { description: '+40 XP' })}>
+          <Button
+            variant="secondary"
+            onClick={() => toast('Exatamente!', { description: '+40 XP' })}
+          >
             Disparar toast
           </Button>
         </div>

@@ -48,10 +48,7 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto flex flex-col gap-2">
-        <div
-          className="px-4 text-xs text-muted-foreground"
-          title={`Build ${__APP_BUILD__}`}
-        >
+        <div className="px-4 text-xs text-muted-foreground" title={`Build ${__APP_BUILD__}`}>
           {versaoCurta}
         </div>
 

@@ -1,0 +1,34 @@
+[tool.ruff]
+# Substitui black, isort e flake8: um só binário para lint e formatação.
+line-length = 100
+target-version = "py313"
+exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # bugbear
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "SIM", # simplificações
+    "RUF", # regras do próprio ruff
+]
+ignore = [
+    # O domínio é em português: nomes como `id_trilha` e siglas como XP não
+    # seguem as convenções que essas regras esperam.
+    "N999",
+    # `Depends()` em default de argumento é o idioma do FastAPI, não um bug.
+    "B008",
+    # `class X(str, Enum)` é intencional: Pydantic e SQLAlchemy lidam bem, e
+    # trocar por StrEnum mexeria no domínio sem ganho prático.
+    "UP042",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# O Alembic gera os arquivos de migração com um formato próprio.
+"alembic/env.py" = ["E402"]
+
+[tool.ruff.format]
+quote-style = "double"

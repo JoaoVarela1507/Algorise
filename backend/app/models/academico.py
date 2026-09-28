@@ -20,7 +20,9 @@ class Instituicao(Base, TimestampMixin):
 
 class Curso(Base, TimestampMixin):
     __tablename__ = "cursos"
-    __table_args__ = (UniqueConstraint("instituicao_id", "nome", name="uq_cursos_instituicao_nome"),)
+    __table_args__ = (
+        UniqueConstraint("instituicao_id", "nome", name="uq_cursos_instituicao_nome"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     instituicao_id: Mapped[int] = mapped_column(

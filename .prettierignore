@@ -1,0 +1,12 @@
+node_modules
+dist
+frontend/dist
+frontend/node_modules
+*.tsbuildinfo
+package-lock.json
+
+# Gerado pelo release-please
+CHANGELOG.md
+
+# Python fica com o Ruff
+backend/

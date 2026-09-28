@@ -32,13 +32,13 @@ src/
 
 ## Paleta de cores
 
-| Token         | Hex       | Uso                      |
-|---------------|-----------|--------------------------|
-| salmon        | `#E8846A` | Cor primária             |
-| salmon-light  | `#F2B5A0` | Destaques secundários    |
-| beige         | `#FAF0E6` | Fundo                    |
-| success       | `#4CAF50` | Acerto                   |
-| error         | `#E53935` | Erro                     |
+| Token        | Hex       | Uso                   |
+| ------------ | --------- | --------------------- |
+| salmon       | `#E8846A` | Cor primária          |
+| salmon-light | `#F2B5A0` | Destaques secundários |
+| beige        | `#FAF0E6` | Fundo                 |
+| success      | `#4CAF50` | Acerto                |
+| error        | `#E53935` | Erro                  |
 
 Fonte: **Baloo 2** (Google Fonts).
 
