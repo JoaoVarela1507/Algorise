@@ -5,6 +5,7 @@ import { BoasVindasPage } from '@/pages/Auth/BoasVindasPage'
 import { OnboardingPage } from '@/pages/Onboarding/OnboardingPage'
 import { LoginPage } from '@/pages/Auth/LoginPage'
 import { CadastroPage } from '@/pages/Auth/CadastroPage'
+import { EsqueciSenhaPage } from '@/pages/Auth/EsqueciSenhaPage'
 import { HomePage } from '@/pages/Home/HomePage'
 import { TrilhasPage } from '@/pages/Trilhas/TrilhasPage'
 import { QuestaoPage } from '@/pages/Questao/QuestaoPage'
@@ -24,6 +25,7 @@ export function AppRoutes() {
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/cadastro" element={<CadastroPage />} />
+        <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
       </Route>
 
       <Route element={<RequireAuth />}>
