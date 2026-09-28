@@ -65,6 +65,39 @@
   }
 
   /*
+   * Modo escuro: mesma ideia do alto contraste, redefine os tokens. Vem
+   * antes no arquivo de propósito — se as duas flags estiverem ligadas ao
+   * mesmo tempo, o alto contraste (mais crítico) deve vencer.
+   */
+  :root[data-theme='dark'] {
+    --background: 20 14% 10%;
+    --foreground: 30 20% 92%;
+    --card: 20 12% 14%;
+    --card-foreground: var(--foreground);
+    --popover: 20 12% 14%;
+    --popover-foreground: var(--foreground);
+    --muted: 20 10% 20%;
+    --muted-foreground: 24 10% 65%;
+    --border: 20 10% 26%;
+    --input: 20 10% 26%;
+    --ring: var(--salmon);
+
+    --primary: var(--salmon);
+    --primary-foreground: 0 0% 100%;
+    --secondary: 20 10% 22%;
+    --secondary-foreground: var(--foreground);
+    --accent: 16 35% 28%;
+    --accent-foreground: var(--foreground);
+    --destructive: 2 70% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 122 45% 52%;
+    --locked: 24 8% 45%;
+    --streak: 22 90% 58%;
+    --xp: 45 93% 58%;
+  }
+
+  /*
    * Alto contraste: redefine os tokens em vez de sobrescrever componentes,
    * então qualquer tela nova já nasce compatível.
    */
