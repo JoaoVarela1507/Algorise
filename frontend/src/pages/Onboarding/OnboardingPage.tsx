@@ -1,8 +1,8 @@
+import { useNavigate } from 'react-router-dom'
+import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard'
+
 export function OnboardingPage() {
-  return (
-    <div>
-      <h1 className="text-xl font-bold">Onboarding</h1>
-      <p className="text-neutral-600">Carrossel explicativo sobre o Algorise.</p>
-    </div>
-  )
+  const navigate = useNavigate()
+
+  return <OnboardingWizard onVoltarInicio={() => navigate('/cadastro')} />
 }

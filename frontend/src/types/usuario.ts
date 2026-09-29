@@ -11,4 +11,5 @@ export interface Usuario {
   streakDias: number
   instituicao?: string
   curso?: string
+  periodo?: number
 }

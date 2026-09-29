@@ -5,6 +5,7 @@ interface AuthContextValue {
   usuario: Usuario | null
   login: (usuario: Usuario) => void
   logout: () => void
+  atualizarUsuario: (dados: Partial<Usuario>) => void
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -20,7 +21,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(null)
   }
 
-  return <AuthContext.Provider value={{ usuario, login, logout }}>{children}</AuthContext.Provider>
+  function atualizarUsuario(dados: Partial<Usuario>) {
+    setUsuario((atual) => (atual ? { ...atual, ...dados } : atual))
+  }
+
+  return (
+    <AuthContext.Provider value={{ usuario, login, logout, atualizarUsuario }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {
