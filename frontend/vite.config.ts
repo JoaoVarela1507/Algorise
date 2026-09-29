@@ -51,4 +51,13 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    // No Docker com a pasta montada do Windows (ou do macOS), a mudança no
+    // arquivo não chega ao container como evento, e o Vite seguia servindo o
+    // código antigo. O compose de desenvolvimento liga o polling.
+    watch: {
+      usePolling: process.env.VITE_USE_POLLING === 'true',
+      interval: 300,
+    },
+  },
 })

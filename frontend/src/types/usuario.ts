@@ -4,7 +4,9 @@ export type TipoTrilha = 'guiada' | 'livre' | 'mista'
 export interface Usuario {
   id: string
   nome: string
+  username?: string
   email: string
+  avatarUrl?: string
   nivelExperiencia: NivelExperiencia
   tipoTrilha: TipoTrilha
   xp: number

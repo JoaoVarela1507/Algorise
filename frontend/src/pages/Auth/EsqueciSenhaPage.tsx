@@ -5,10 +5,13 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { mensagemDeErro } from '@/lib/erros'
 import { esqueciSenhaSchema, type EsqueciSenhaFormValues } from '@/lib/validation/auth'
+import { solicitarRedefinicao } from '@/services/auth'
 
 export function EsqueciSenhaPage() {
   const [enviado, setEnviado] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
 
   const {
     register,
@@ -19,9 +22,14 @@ export function EsqueciSenhaPage() {
     defaultValues: { email: '' },
   })
 
-  async function onSubmit() {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    setEnviado(true)
+  async function onSubmit(dados: EsqueciSenhaFormValues) {
+    setErro(null)
+    try {
+      await solicitarRedefinicao(dados.email)
+      setEnviado(true)
+    } catch (falha) {
+      setErro(mensagemDeErro(falha))
+    }
   }
 
   if (enviado) {
@@ -61,6 +69,12 @@ export function EsqueciSenhaPage() {
             </p>
           )}
         </div>
+
+        {erro && (
+          <p role="alert" className="text-sm font-semibold text-destructive">
+            {erro}
+          </p>
+        )}
 
         <Button type="submit" full size="lg" disabled={isSubmitting}>
           {isSubmitting ? 'Enviando…' : 'Enviar link'}

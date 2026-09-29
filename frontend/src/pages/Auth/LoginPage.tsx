@@ -6,17 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { GithubIcon, GoogleIcon } from '@/components/icons/OAuthIcons'
+import { BotoesLoginSocial } from '@/components/auth/BotoesLoginSocial'
 import { useAuth } from '@/contexts/AuthContext'
+import { mensagemDeErro } from '@/lib/erros'
+import { LOGIN_TESTE, loginTesteHabilitado } from '@/lib/loginTeste'
 import { loginSchema, type LoginFormValues } from '@/lib/validation/auth'
 
-// Login de teste enquanto a #10 (JWT/OAuth2 no backend) não é mergeada.
-const LOGIN_TESTE = { email: 'teste@email.com', senha: '12345678' }
-
 export function LoginPage() {
-  const { login } = useAuth()
+  const { entrar } = useAuth()
   const navigate = useNavigate()
-  const [erroCredenciais, setErroCredenciais] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
 
   const {
     register,
@@ -29,24 +28,13 @@ export function LoginPage() {
   })
 
   async function onSubmit(dados: LoginFormValues) {
-    setErroCredenciais(false)
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    if (dados.email !== LOGIN_TESTE.email || dados.senha !== LOGIN_TESTE.senha) {
-      setErroCredenciais(true)
-      return
+    setErro(null)
+    try {
+      await entrar(dados.email, dados.senha, dados.manterConectado)
+      navigate('/')
+    } catch (falha) {
+      setErro(mensagemDeErro(falha))
     }
-
-    login({
-      id: 'usuario-teste',
-      nome: 'Usuário Teste',
-      email: LOGIN_TESTE.email,
-      nivelExperiencia: 'medio',
-      tipoTrilha: 'guiada',
-      xp: 0,
-      streakDias: 0,
-    })
-    navigate('/')
   }
 
   return (
@@ -57,16 +45,7 @@ export function LoginPage() {
         <span className="font-bold">programação</span>.
       </p>
 
-      <div className="flex flex-col gap-3">
-        <Button type="button" variant="secondary" full size="lg">
-          <GithubIcon />
-          Continuar com GitHub
-        </Button>
-        <Button type="button" variant="secondary" full size="lg">
-          <GoogleIcon />
-          Continuar com Google
-        </Button>
-      </div>
+      <BotoesLoginSocial />
 
       <div className="my-6 flex items-center gap-3 text-sm text-muted-foreground">
         <span className="h-px flex-1 bg-border" />
@@ -129,9 +108,9 @@ export function LoginPage() {
           </Link>
         </div>
 
-        {erroCredenciais && (
+        {erro && (
           <p role="alert" className="text-sm font-semibold text-destructive">
-            Email ou senha incorretos.
+            {erro}
           </p>
         )}
 
@@ -140,10 +119,12 @@ export function LoginPage() {
         </Button>
       </form>
 
-      <p className="mt-4 rounded-lg border border-dashed border-border bg-muted/50 p-3 text-center text-xs text-muted-foreground">
-        Login de teste (dev): <span className="font-mono">{LOGIN_TESTE.email}</span> /{' '}
-        <span className="font-mono">{LOGIN_TESTE.senha}</span>
-      </p>
+      {loginTesteHabilitado && (
+        <p className="mt-4 rounded-lg border border-dashed border-border bg-muted/50 p-3 text-center text-xs text-muted-foreground">
+          Login de teste (sem API): <span className="font-mono">{LOGIN_TESTE.email}</span> /{' '}
+          <span className="font-mono">{LOGIN_TESTE.senha}</span>
+        </p>
+      )}
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Não tem uma conta?{' '}

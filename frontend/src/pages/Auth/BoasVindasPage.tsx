@@ -8,10 +8,13 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { GithubIcon, GoogleIcon } from '@/components/icons/OAuthIcons'
+import { BotoesLoginSocial } from '@/components/auth/BotoesLoginSocial'
 import { OnboardingWizard, type RascunhoOnboarding } from '@/components/onboarding/OnboardingWizard'
 import { useAuth } from '@/contexts/AuthContext'
+import { LOGIN_TESTE, loginTesteHabilitado } from '@/lib/loginTeste'
+import { mensagemDeErro } from '@/lib/erros'
 import { cn } from '@/lib/utils'
+import { solicitarRedefinicao } from '@/services/auth'
 import {
   cadastroSchema,
   esqueciSenhaSchema,
@@ -24,9 +27,6 @@ import logoAlgorise from '@/assets/images/logo-algorise.png'
 import carrosselDuvidasAcademicas from '@/assets/images/carrossel-duvidas-academicas.png'
 import carrosselPolvoBanheira from '@/assets/images/carrossel-polvo-banheira.png'
 import carrosselEmentasFaculdade from '@/assets/images/carrossel-ementas-faculdade.png'
-
-// Login de teste enquanto a #10 (JWT/OAuth2 no backend) não é mergeada.
-const LOGIN_TESTE = { email: 'teste@email.com', senha: '12345678' }
 
 const slides = [
   {
@@ -172,9 +172,9 @@ function EntrarView({
   rascunho: Partial<LoginFormValues>
   onRascunhoChange: (valores: Partial<LoginFormValues>) => void
 }) {
-  const { login } = useAuth()
+  const { entrar } = useAuth()
   const navigate = useNavigate()
-  const [erroCredenciais, setErroCredenciais] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
 
   const {
     register,
@@ -193,40 +193,20 @@ function EntrarView({
   }, [watch, onRascunhoChange])
 
   async function onSubmit(dados: LoginFormValues) {
-    setErroCredenciais(false)
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    if (dados.email !== LOGIN_TESTE.email || dados.senha !== LOGIN_TESTE.senha) {
-      setErroCredenciais(true)
-      return
+    setErro(null)
+    try {
+      await entrar(dados.email, dados.senha, dados.manterConectado)
+      navigate('/')
+    } catch (falha) {
+      setErro(mensagemDeErro(falha))
     }
-
-    login({
-      id: 'usuario-teste',
-      nome: 'Usuário Teste',
-      email: LOGIN_TESTE.email,
-      nivelExperiencia: 'medio',
-      tipoTrilha: 'guiada',
-      xp: 0,
-      streakDias: 0,
-    })
-    navigate('/')
   }
 
   return (
     <div>
       <VoltarButton onClick={onVoltar} />
 
-      <div className="flex flex-col gap-3">
-        <Button type="button" variant="secondary" full size="lg">
-          <GithubIcon />
-          Continuar com GitHub
-        </Button>
-        <Button type="button" variant="secondary" full size="lg">
-          <GoogleIcon />
-          Continuar com Google
-        </Button>
-      </div>
+      <BotoesLoginSocial />
 
       <div className="my-6 flex items-center gap-3 text-sm text-muted-foreground">
         <span className="h-px flex-1 bg-border" />
@@ -293,9 +273,9 @@ function EntrarView({
           </button>
         </div>
 
-        {erroCredenciais && (
+        {erro && (
           <p role="alert" className="text-sm font-semibold text-destructive">
-            Email ou senha incorretos.
+            {erro}
           </p>
         )}
 
@@ -304,10 +284,12 @@ function EntrarView({
         </Button>
       </form>
 
-      <p className="mt-4 rounded-lg border border-dashed border-border bg-muted/50 p-3 text-center text-xs text-muted-foreground">
-        Login de teste (dev): <span className="font-mono">{LOGIN_TESTE.email}</span> /{' '}
-        <span className="font-mono">{LOGIN_TESTE.senha}</span>
-      </p>
+      {loginTesteHabilitado && (
+        <p className="mt-4 rounded-lg border border-dashed border-border bg-muted/50 p-3 text-center text-xs text-muted-foreground">
+          Login de teste (sem API): <span className="font-mono">{LOGIN_TESTE.email}</span> /{' '}
+          <span className="font-mono">{LOGIN_TESTE.senha}</span>
+        </p>
+      )}
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Não tem uma conta?{' '}
@@ -334,7 +316,8 @@ function CadastroView({
   rascunho: Partial<CadastroFormValues>
   onRascunhoChange: (valores: Partial<CadastroFormValues>) => void
 }) {
-  const { login } = useAuth()
+  const { cadastrar } = useAuth()
+  const [erro, setErro] = useState<string | null>(null)
 
   const {
     register,
@@ -360,34 +343,20 @@ function CadastroView({
   }, [watch, onRascunhoChange])
 
   async function onSubmit(dados: CadastroFormValues) {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    login({
-      id: 'novo-usuario',
-      nome: dados.username,
-      email: dados.email,
-      nivelExperiencia: 'baixo',
-      tipoTrilha: 'guiada',
-      xp: 0,
-      streakDias: 0,
-    })
-    onIrPara('onboarding')
+    setErro(null)
+    try {
+      await cadastrar({ username: dados.username, email: dados.email, senha: dados.senha })
+      onIrPara('onboarding')
+    } catch (falha) {
+      setErro(mensagemDeErro(falha))
+    }
   }
 
   return (
     <div>
       <VoltarButton onClick={onVoltar} />
 
-      <div className="flex flex-col gap-3">
-        <Button type="button" variant="secondary" full size="lg">
-          <GithubIcon />
-          Continuar com GitHub
-        </Button>
-        <Button type="button" variant="secondary" full size="lg">
-          <GoogleIcon />
-          Continuar com Google
-        </Button>
-      </div>
+      <BotoesLoginSocial />
 
       <div className="my-6 flex items-center gap-3 text-sm text-muted-foreground">
         <span className="h-px flex-1 bg-border" />
@@ -484,6 +453,12 @@ function CadastroView({
           )}
         </div>
 
+        {erro && (
+          <p role="alert" className="text-sm font-semibold text-destructive">
+            {erro}
+          </p>
+        )}
+
         <Button type="submit" full size="lg" disabled={isSubmitting}>
           {isSubmitting ? 'Criando conta…' : 'Criar conta'}
         </Button>
@@ -513,6 +488,7 @@ function EsqueciSenhaView({
   onRascunhoChange: (valores: Partial<EsqueciSenhaFormValues>) => void
 }) {
   const [enviado, setEnviado] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
 
   const {
     register,
@@ -529,9 +505,14 @@ function EsqueciSenhaView({
     return () => subscription.unsubscribe()
   }, [watch, onRascunhoChange])
 
-  async function onSubmit() {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    setEnviado(true)
+  async function onSubmit(dados: EsqueciSenhaFormValues) {
+    setErro(null)
+    try {
+      await solicitarRedefinicao(dados.email)
+      setEnviado(true)
+    } catch (falha) {
+      setErro(mensagemDeErro(falha))
+    }
   }
 
   if (enviado) {
@@ -577,6 +558,12 @@ function EsqueciSenhaView({
             </p>
           )}
         </div>
+
+        {erro && (
+          <p role="alert" className="text-sm font-semibold text-destructive">
+            {erro}
+          </p>
+        )}
 
         <Button type="submit" full size="lg" disabled={isSubmitting}>
           {isSubmitting ? 'Enviando…' : 'Enviar link'}
