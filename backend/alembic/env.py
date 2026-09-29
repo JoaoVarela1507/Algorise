@@ -10,7 +10,10 @@ from app.core.config import settings
 from app.models import Base
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# O `%%`: o alembic.ini é lido pelo configparser, que trata `%` como interpolação.
+# Senha com caractere especial chega URL-encoded (`@` vira `%40`, comum na senha
+# gerada pelo Supabase) e quebraria aqui com "invalid interpolation syntax".
+config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
