@@ -70,6 +70,29 @@ class Settings(BaseSettings):
     # Validade do link de recuperação de senha.
     reset_senha_ttl: int = 30 * 60
 
+    # Rate limit por IP nas rotas de autenticação (#40): requisições por janela,
+    # em segundos, contadas por rota. Folgado para quem erra a senha; apertado
+    # para quem testa senhas em massa.
+    rate_limit_auth_requisicoes: int = 20
+    rate_limit_auth_janela: int = 60
+
+    # Bloqueio depois de tentativas seguidas de login erradas no mesmo e-mail.
+    # Complementa o limite por IP: pega quem troca de IP para atacar uma conta.
+    bloqueio_login_tentativas: int = 5
+    bloqueio_login_duracao: int = 15 * 60
+
+    # Teto do corpo de qualquer requisição, em bytes. O maior upload previsto é
+    # o PDF da ementa; cada rota de upload aplica o seu limite, menor que este.
+    tamanho_maximo_requisicao: int = 10 * 1024 * 1024
+
+    # Versão dos termos de uso e da política de privacidade. Mudar a versão é o
+    # que faz um consentimento antigo deixar de valer.
+    versao_termos: str = "2026-09-29"
+
+    # Dias entre o pedido de exclusão da conta e o expurgo dos dados. Entrar de
+    # novo nesse prazo cancela a exclusão.
+    prazo_exclusao_dias: int = 30
+
     @model_validator(mode="after")
     def _conferir_segredo(self) -> "Settings":
         """Impede subir em produção sem um segredo próprio.
@@ -93,6 +116,11 @@ class Settings(BaseSettings):
                 "Defina JWT_SECRET com pelo menos 32 caracteres: em produção o segredo de "
                 "desenvolvimento não é aceito"
             )
+
+        # O CORS libera credenciais (`allow_credentials`), e curinga com
+        # credenciais entrega a API para qualquer site que o aluno abrir.
+        if self.environment == "production" and "*" in self.frontend_origin:
+            raise ValueError("FRONTEND_ORIGIN não pode ter '*' em produção")
         return self
 
 

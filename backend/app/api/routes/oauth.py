@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.services import auth as servico_auth
+from app.services import conta
 from app.services import oauth as servico
 
 logger = logging.getLogger(__name__)
@@ -61,17 +62,22 @@ async def callback(
     except servico.PerfilIncompleto:
         return _voltar_com_erro("email_nao_verificado")
 
-    usuario = servico.vincular_ou_criar(db, perfil)
+    usuario = servico.vincular_ou_criar(
+        db, perfil, ip=request.client.host if request.client else None
+    )
+    cancelou = conta.cancelar_exclusao_se_agendada(db, usuario)
 
     try:
         sessao = servico_auth.abrir_sessao(usuario, lembrar=True)
     except servico_auth.SessaoIndisponivel:
         return _voltar_com_erro("sessao_indisponivel")
 
+    extras = {"aviso": "exclusao_cancelada"} if cancelou else {}
     return _voltar_para_o_frontend(
         access_token=sessao.access_token,
         refresh_token=sessao.refresh_token,
         expira_em=str(sessao.expira_em),
+        **extras,
     )
 
 

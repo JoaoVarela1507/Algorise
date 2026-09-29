@@ -12,6 +12,9 @@ Com o Redis fora, tudo cai em `_do_banco`: mesma resposta, paga em SQL.
 
 O recorte por trilha que as telas 16 e 17 pedem depende do XP por trilha, que vem
 com o progresso (#30). Por ora o ranking é geral.
+
+Conta com exclusão agendada (#40) não aparece: sai do sorted set no pedido e é
+filtrada nas consultas ao banco.
 """
 
 from redis import Redis
@@ -26,6 +29,9 @@ from app.schemas.ranking import EntradaRanking, Ranking
 
 CHAVE_RANKING = chave("ranking", "xp")
 
+# Só contas ativas entram no ranking.
+_ATIVAS = Usuario.exclusao_agendada_para.is_(None)
+
 # Quantos entram no pódio das telas 16 e 17.
 TAMANHO_PODIO = 3
 
@@ -39,7 +45,7 @@ def aquecer(db: Session) -> int:
     """
     scores = {
         str(usuario_id): float(xp)
-        for usuario_id, xp in db.execute(select(Usuario.id, Usuario.xp_total)).all()
+        for usuario_id, xp in db.execute(select(Usuario.id, Usuario.xp_total).where(_ATIVAS)).all()
     }
     if not scores:
         return 0
@@ -69,6 +75,11 @@ def registrar_xp(usuario_id: int, delta: int) -> None:
             r.zincrby(CHAVE_RANKING, float(delta), str(usuario_id))
 
     executar(incrementar)
+
+
+def remover(usuario_id: int) -> None:
+    """Tira o aluno do ranking: conta com exclusão agendada ou expurgada."""
+    executar(lambda r: r.zrem(CHAVE_RANKING, str(usuario_id)))
 
 
 def invalidar() -> None:
@@ -151,7 +162,9 @@ def _perfis(db: Session, ids: set[int]) -> dict[int, Usuario]:
     if not ids:
         return {}
 
-    consulta = select(Usuario).where(Usuario.id.in_(ids))
+    # `_ATIVAS` também aqui: o sorted set pode ter ficado com o aluno se o Redis
+    # estava fora na hora do pedido de exclusão.
+    consulta = select(Usuario).where(Usuario.id.in_(ids), _ATIVAS)
     return {usuario.id: usuario for usuario in db.execute(consulta).scalars()}
 
 
@@ -175,7 +188,7 @@ def _entrada(
 
 def _do_banco(db: Session, *, limite: int, deslocamento: int, usuario_id: int | None) -> Ranking:
     """Caminho sem Redis. `xp_total` é indexado, então é uma ordenação por índice."""
-    ordenada = select(Usuario).order_by(Usuario.xp_total.desc(), Usuario.id)
+    ordenada = select(Usuario).where(_ATIVAS).order_by(Usuario.xp_total.desc(), Usuario.id)
     pagina = list(db.execute(ordenada.offset(deslocamento).limit(limite)).scalars())
     podio = list(db.execute(ordenada.limit(TAMANHO_PODIO)).scalars())
 
@@ -184,16 +197,20 @@ def _do_banco(db: Session, *, limite: int, deslocamento: int, usuario_id: int | 
         lista=[
             _do_modelo(usuario, deslocamento + indice + 1) for indice, usuario in enumerate(pagina)
         ],
-        total=db.execute(select(func.count(Usuario.id))).scalar_one(),
+        total=db.execute(select(func.count(Usuario.id)).where(_ATIVAS)).scalar_one(),
         usuario=None if usuario_id is None else _posicao_no_banco(db, usuario_id),
     )
 
 
 def _posicao_no_banco(db: Session, usuario_id: int) -> EntradaRanking | None:
-    posicoes = select(
-        Usuario.id.label("usuario_id"),
-        func.row_number().over(order_by=(Usuario.xp_total.desc(), Usuario.id)).label("posicao"),
-    ).subquery()
+    posicoes = (
+        select(
+            Usuario.id.label("usuario_id"),
+            func.row_number().over(order_by=(Usuario.xp_total.desc(), Usuario.id)).label("posicao"),
+        )
+        .where(_ATIVAS)
+        .subquery()
+    )
 
     posicao = db.execute(
         select(posicoes.c.posicao).where(posicoes.c.usuario_id == usuario_id)
