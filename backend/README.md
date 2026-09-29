@@ -64,6 +64,8 @@ Cache e dados voláteis. O que está lá:
 | `algorise:streak:visto:<id>:<dia>` | string     | acesso do dia já contabilizado            |
 | `algorise:sessao:refresh:<jti>`    | string     | refresh token válido e seu dono            |
 | `algorise:sessao:revogada:<jti>`   | string     | sessão revogada até o fim do prazo        |
+| `algorise:sessao:usuario:<id>`     | set        | `jti` do aluno, para derrubar todas       |
+| `algorise:senha:redefinir:<hash>`  | string     | link de "Esqueceu a senha?" (uso único)   |
 | `algorise:ratelimit:<chave>`       | contador   | janela do rate limit                      |
 
 **A API funciona sem ele.** Todo acesso passa por `executar()`, em
@@ -86,13 +88,61 @@ autenticação. No rate limit é o contrário, falha **aberta**: liberar a requi
 Quem concede XP deve chamar `app/services/xp.py`, não escrever em `xp_eventos` na
 mão — é ele que corrige o ranking em seguida.
 
+## Autenticação
+
+JWT com par de tokens, mais login social com GitHub e Google.
+
+| Rota                         | O que faz                                                        |
+| ---------------------------- | ---------------------------------------------------------------- |
+| `POST /auth/register`        | cria a conta (tela 6) e já devolve a sessão                      |
+| `POST /auth/login`           | e-mail e senha (tela 5); `manter_conectado` alonga a sessão      |
+| `POST /auth/refresh`         | troca o refresh por um par novo; o usado deixa de valer          |
+| `POST /auth/logout`          | revoga o refresh                                                 |
+| `GET /auth/eu`               | rota protegida de referência: quem é o dono do token             |
+| `GET /auth/{github,google}/login` | manda para o consentimento do provedor                      |
+| `POST /auth/esqueci-senha`   | sempre 202; o link vai para o log enquanto não há e-mail         |
+| `POST /auth/redefinir-senha` | troca a senha e derruba todas as sessões                         |
+
+Para proteger uma rota, receba o aluno pela dependência:
+
+```python
+from app.api.deps import UsuarioAtual
+
+
+@router.get("/minhas-trilhas")
+def minhas_trilhas(usuario: UsuarioAtual): ...
+```
+
+Como a sessão funciona:
+
+- **access token** de 15 minutos, validado só pela assinatura — não consulta o
+  Redis, então o Redis fora não derruba a API autenticada;
+- **refresh token** de 1 dia (30 com "manter-se conectado"), registrado no Redis.
+  Cada refresh gasta o token (`GETDEL`) e emite outro; o logout e a troca de
+  senha o revogam na hora;
+- depois do login social, o backend volta para `FRONTEND_ORIGIN/auth/callback`
+  com os tokens no fragmento (`#access_token=...&refresh_token=...`), ou com
+  `#erro=<motivo>` se algo falhar.
+
+**Em produção a API não sobe sem `JWT_SECRET`** (ou com um de menos de 32
+caracteres). É de propósito: o segredo padrão de desenvolvimento é público. Gere
+um com:
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Os botões do GitHub e do Google respondem 503 até as credenciais do app OAuth
+estarem no `.env` (ver `.env.example`, que tem a URL de callback de cada um).
+
 ## Estrutura de pastas
 
 ```
 main.py          ponto de entrada — roda o servidor (python main.py)
 app/
   api/routes/    endpoints da API, um arquivo por recurso
-  core/          configuração, conexões (PostgreSQL, Redis) e cache
+  api/deps.py    dependências compartilhadas (ex.: aluno autenticado)
+  core/          configuração, conexões (PostgreSQL, Redis), cache e segurança
   models/        modelos SQLAlchemy (um arquivo por área do domínio)
   schemas/       schemas Pydantic (contrato da API, espelham os types do frontend)
   services/      regras de negócio (ex.: geração de trilhas, integração com IA)

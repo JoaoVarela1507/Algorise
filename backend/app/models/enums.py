@@ -54,3 +54,10 @@ class OrigemXP(str, Enum):
     modulo = "modulo"
     trilha = "trilha"
     desafio = "desafio"
+
+
+class ProvedorOAuth(str, Enum):
+    """Login social da tela 5."""
+
+    github = "github"
+    google = "google"

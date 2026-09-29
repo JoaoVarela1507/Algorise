@@ -1,8 +1,9 @@
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.models.academico import Curso, Instituicao
 from app.models.base import Base, TimestampMixin
-from app.models.enums import NivelExperiencia, TipoTrilha
+from app.models.enums import NivelExperiencia, ProvedorOAuth, TipoTrilha
 
 
 class Usuario(Base, TimestampMixin):
@@ -32,3 +33,33 @@ class Usuario(Base, TimestampMixin):
     streak: Mapped["Streak | None"] = relationship(  # noqa: F821
         back_populates="usuario", uselist=False
     )
+    instituicao: Mapped[Instituicao | None] = relationship()
+    curso: Mapped[Curso | None] = relationship()
+    identidades: Mapped[list["IdentidadeOAuth"]] = relationship(
+        back_populates="usuario", cascade="all, delete-orphan"
+    )
+
+
+class IdentidadeOAuth(Base, TimestampMixin):
+    """Conta do GitHub ou do Google vinculada a um aluno.
+
+    O vínculo é pelo id do provedor, não pelo e-mail: o aluno pode trocar o e-mail
+    no GitHub, e o id continua o mesmo. O e-mail só entra na primeira vez, para
+    decidir entre criar a conta ou vincular a uma que já existe.
+    """
+
+    __tablename__ = "identidades_oauth"
+    __table_args__ = (
+        UniqueConstraint("provedor", "id_externo", name="uq_identidades_oauth_provedor_externo"),
+        # Uma conta de cada provedor por aluno.
+        UniqueConstraint("usuario_id", "provedor", name="uq_identidades_oauth_usuario_provedor"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="CASCADE"), index=True
+    )
+    provedor: Mapped[ProvedorOAuth]
+    id_externo: Mapped[str] = mapped_column(String(255))
+
+    usuario: Mapped[Usuario] = relationship(back_populates="identidades")

@@ -7,3 +7,11 @@ sqlalchemy==2.0.54
 psycopg[binary]==3.3.6
 alembic==1.20.0
 redis[hiredis]==8.1.0
+python-jose[cryptography]==3.5.0
+bcrypt==5.0.0
+email-validator==2.3.0
+# OAuth2 (GitHub e Google). A integração do Authlib com o Starlette faz as
+# chamadas com httpx2 e guarda o `state` na sessão, que precisa do itsdangerous.
+authlib==1.8.0
+httpx2==2.13.1
+itsdangerous==2.2.0

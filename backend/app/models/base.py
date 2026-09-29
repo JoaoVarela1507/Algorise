@@ -9,6 +9,7 @@ from app.core.database import metadata
 from app.models.enums import (
     NivelExperiencia,
     OrigemXP,
+    ProvedorOAuth,
     StatusEmenta,
     StatusProgresso,
     TipoAtividade,
@@ -40,6 +41,7 @@ class Base(DeclarativeBase):
         StatusProgresso: _enum(StatusProgresso),
         StatusEmenta: _enum(StatusEmenta),
         OrigemXP: _enum(OrigemXP),
+        ProvedorOAuth: _enum(ProvedorOAuth),
     }
 
 

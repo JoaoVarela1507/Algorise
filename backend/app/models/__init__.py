@@ -9,6 +9,7 @@ from app.models.base import Base, TimestampMixin
 from app.models.enums import (
     NivelExperiencia,
     OrigemXP,
+    ProvedorOAuth,
     StatusEmenta,
     StatusProgresso,
     TipoAtividade,
@@ -17,7 +18,7 @@ from app.models.enums import (
 from app.models.gamificacao import Certificado, Streak, XPEvento
 from app.models.progresso import ProgressoUsuario, RespostaUsuario
 from app.models.trilha import Atividade, Modulo, Trilha
-from app.models.usuario import Usuario
+from app.models.usuario import IdentidadeOAuth, Usuario
 
 __all__ = [
     "Atividade",
@@ -25,11 +26,13 @@ __all__ = [
     "Certificado",
     "Curso",
     "Ementa",
+    "IdentidadeOAuth",
     "Instituicao",
     "Modulo",
     "NivelExperiencia",
     "OrigemXP",
     "ProgressoUsuario",
+    "ProvedorOAuth",
     "RespostaUsuario",
     "StatusEmenta",
     "StatusProgresso",
