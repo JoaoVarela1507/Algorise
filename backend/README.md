@@ -27,6 +27,29 @@ os dois pelo compose, da raiz do repositório:
 docker compose up -d db redis
 ```
 
+### Banco no Supabase
+
+Em vez do PostgreSQL do Docker, dá para apontar para o projeto no Supabase. No
+`.env`, `DATABASE_URL` usa o **Session pooler** (em _Connect_ no painel):
+
+```
+DATABASE_URL=postgresql+psycopg://postgres.<id-do-projeto>:<senha>@aws-0-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require
+```
+
+- não use o host direto `db.<id>.supabase.co`: ele só tem IPv6, e a maioria das
+  redes domésticas não alcança;
+- nem o Transaction pooler (porta 6543): ele não suporta os prepared statements
+  do psycopg;
+- senha com caractere especial vai URL-encoded (`@` vira `%40`).
+
+Depois, `alembic upgrade head` e `python -m app.seeds` criam o schema e o
+conteúdo lá. O Redis continua local (`docker compose up -d redis`).
+
+**Todas as tabelas têm RLS ligado e nenhuma policy.** O Supabase expõe o schema
+`public` pela Data API a quem tiver a chave `anon`, que é pública; sem RLS a
+tabela `usuarios` ficaria legível por ela. O backend conecta como dono das
+tabelas e não é afetado. Tabela nova precisa ligar o RLS na própria migração.
+
 ## Migrações (Alembic)
 
 O schema é versionado: nunca crie tabela na mão nem use `create_all` fora de

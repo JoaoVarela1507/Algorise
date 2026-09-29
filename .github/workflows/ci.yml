@@ -101,6 +101,26 @@ jobs:
           alembic downgrade base
           alembic upgrade head
 
+      # No Supabase, tabela sem RLS fica legível pela Data API com a chave anon,
+      # que é pública. Toda migração que cria tabela precisa ligar o RLS nela.
+      - name: RLS em todas as tabelas
+        run: |
+          python - <<'PY'
+          import sys
+          import psycopg
+          from app.core.config import settings
+
+          url = settings.database_url.replace("postgresql+psycopg://", "postgresql://")
+          with psycopg.connect(url) as conexao:
+              sem_rls = [linha[0] for linha in conexao.execute(
+                  "SELECT relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
+                  " WHERE n.nspname = 'public' AND c.relkind = 'r' AND NOT c.relrowsecurity"
+              )]
+          if sem_rls:
+              sys.exit(f"Tabelas sem RLS: {', '.join(sem_rls)}")
+          print("RLS ligado em todas as tabelas")
+          PY
+
       - name: Seed
         run: |
           python -m app.seeds
