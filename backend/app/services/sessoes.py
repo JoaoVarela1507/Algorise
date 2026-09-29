@@ -74,6 +74,36 @@ def usuario_do_refresh_token(jti: str) -> int | None:
     return executar(ler, padrao=None)
 
 
+def consumir_refresh_token(jti: str, *, ttl: int | None = None) -> int | None:
+    """Gasta o token na rotação: devolve o dono e invalida o token na mesma ida.
+
+    O `GETDEL` é o que torna a rotação segura. Com uma leitura seguida de uma
+    revogação, dois refresh simultâneos com o mesmo token passavam os dois pela
+    leitura e cada um saía com um par novo.
+
+    None quando o token não vale (vencido, revogado, já usado) e quando o Redis
+    está fora — falha fechada, como no resto deste módulo.
+    """
+    ttl = ttl or settings.refresh_token_ttl
+
+    def consumir(r: Redis) -> int | None:
+        with r.pipeline() as pipe:
+            pipe.getdel(_chave_token(jti))
+            pipe.exists(_chave_revogada(jti))
+            dono, revogada = pipe.execute()
+
+        if dono is None or revogada:
+            return None
+
+        with r.pipeline() as pipe:
+            pipe.setex(_chave_revogada(jti), ttl, "1")
+            pipe.srem(_chave_do_usuario(int(dono)), jti)
+            pipe.execute()
+        return int(dono)
+
+    return executar(consumir, padrao=None)
+
+
 def revogar_refresh_token(jti: str, *, ttl: int | None = None) -> None:
     """Invalida o token na hora (logout) e guarda a revogação.
 

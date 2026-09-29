@@ -84,9 +84,14 @@ class Settings(BaseSettings):
         if not self.jwt_secret.strip():
             self.jwt_secret = SEGREDO_DE_DESENVOLVIMENTO
 
-        if self.environment == "production" and self.jwt_secret == SEGREDO_DE_DESENVOLVIMENTO:
+        # Curto também não serve: HS256 com segredo pequeno cai em força bruta
+        # offline a partir de um único token capturado.
+        if self.environment == "production" and (
+            self.jwt_secret == SEGREDO_DE_DESENVOLVIMENTO or len(self.jwt_secret) < 32
+        ):
             raise ValueError(
-                "Defina JWT_SECRET: em produção o segredo de desenvolvimento não é aceito"
+                "Defina JWT_SECRET com pelo menos 32 caracteres: em produção o segredo de "
+                "desenvolvimento não é aceito"
             )
         return self
 

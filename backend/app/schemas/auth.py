@@ -33,9 +33,13 @@ class _ComSenhaNova(BaseModel):
 
 class Registro(_ComSenhaNova):
     email: EmailStr
-    nome_exibicao: str = Field(min_length=2, max_length=120)
-    # Opcional: sem ele, sai do e-mail.
-    username: str | None = Field(default=None, min_length=3, max_length=50)
+    # Opcional: o formulário da tela 6 não pede. Sem ele, vale o username.
+    nome_exibicao: str | None = Field(default=None, min_length=2, max_length=120)
+    # Opcional: sem ele, sai do e-mail. Mesmos caracteres que o username gerado
+    # a partir do e-mail pode ter.
+    username: str | None = Field(
+        default=None, min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9._-]+$"
+    )
 
 
 class Login(BaseModel):

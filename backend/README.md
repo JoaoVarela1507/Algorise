@@ -138,8 +138,9 @@ def minhas_trilhas(usuario: UsuarioAtual) -> list[Trilha]:
 **Dois tokens, dois prazos.** O access vale 15 minutos e é verificado só pela
 assinatura — nenhuma consulta ao Redis, senão o Redis fora derrubaria toda a API
 autenticada. O refresh vale uma semana (um mês com "manter-se conectado"), vive
-no Redis e é rotacionado: renovar revoga o anterior, então um refresh vazado para
-de servir assim que o dono usar o dele. O preço do access não ser consultado é
+no Redis e é rotacionado: renovar gasta o anterior (`GETDEL`, então dois refresh
+simultâneos com o mesmo token não rendem dois pares) e mantém o "manter-se
+conectado" do login. Um refresh vazado para de servir assim que o dono usar o dele. O preço do access não ser consultado é
 que o logout leva até 15 minutos para valer; o refresh morre na hora.
 
 ### Segredos
@@ -147,7 +148,7 @@ que o logout leva até 15 minutos para valer; o refresh morre na hora.
 `JWT_SECRET` e as credenciais do GitHub e do Google vêm do ambiente, e o
 `.env.example` traz as chaves em branco — **não commite secret nenhum**. Em
 desenvolvimento, em branco cai num segredo fixo conhecido; em produção a API se
-recusa a subir assim.
+recusa a subir assim, ou com um segredo de menos de 32 caracteres.
 
 ```powershell
 python -c "import secrets; print(secrets.token_urlsafe(48))"

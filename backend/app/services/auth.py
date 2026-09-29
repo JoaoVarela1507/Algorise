@@ -15,7 +15,8 @@ import unicodedata
 from hashlib import sha256
 
 from redis import Redis
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.cache import chave
@@ -40,6 +41,10 @@ class EmailEmUso(Exception):
     """Já existe conta com esse e-mail."""
 
 
+class UsernameEmUso(Exception):
+    """O aluno escolheu um username que já é de outra conta."""
+
+
 class CredenciaisInvalidas(Exception):
     """E-mail sem conta ou senha errada. A mensagem é a mesma para os dois casos."""
 
@@ -48,25 +53,54 @@ class SessaoExpirada(Exception):
     """Refresh token vencido, revogado, já usado ou impossível de verificar."""
 
 
+class SessaoIndisponivel(Exception):
+    """O Redis não gravou a sessão. Não é culpa do aluno: vira 503, não 401."""
+
+
 class TokenDeSenhaInvalido(Exception):
     """Link de recuperação vencido, já usado ou inventado."""
 
 
 def registrar(
-    db: Session, *, email: str, senha: str, nome_exibicao: str, username: str | None = None
+    db: Session,
+    *,
+    email: str,
+    senha: str,
+    nome_exibicao: str | None = None,
+    username: str | None = None,
 ) -> Usuario:
+    """Cria a conta.
+
+    Username escolhido pelo aluno (tela 6) que já exista é recusado: trocar por
+    `ana2` em silêncio deixaria o aluno sem saber com que nome entrou. Só quando
+    ele não escolhe nenhum é que o username sai do e-mail, com sufixo se preciso.
+    """
     email = email.strip().lower()
     if _por_email(db, email) is not None:
         raise EmailEmUso(email)
 
+    if username is not None:
+        if _username_em_uso(db, username):
+            raise UsernameEmUso(username)
+    else:
+        username = username_livre(db, email.split("@")[0])
+
     usuario = Usuario(
         email=email,
-        username=username_livre(db, username or email.split("@")[0]),
-        nome_exibicao=nome_exibicao.strip(),
+        username=username,
+        nome_exibicao=(nome_exibicao or username).strip(),
         senha_hash=gerar_hash_senha(senha),
     )
     db.add(usuario)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as erro:
+        # Dois cadastros simultâneos passam juntos pelas checagens acima; o
+        # segundo esbarra na constraint do banco e vira 409 em vez de 500.
+        db.rollback()
+        if "username" in str(erro.orig):
+            raise UsernameEmUso(username) from erro
+        raise EmailEmUso(email) from erro
     return usuario
 
 
@@ -94,7 +128,7 @@ def abrir_sessao(usuario: Usuario, *, lembrar: bool = False) -> Sessao:
     if not sessoes.registrar_refresh_token(jti, usuario.id, ttl=ttl):
         # Sem o registro, o refresh não funcionaria depois: melhor falhar no
         # login do que entregar um token que já nasce inválido.
-        raise SessaoExpirada("Não foi possível registrar a sessão")
+        raise SessaoIndisponivel("Não foi possível registrar a sessão")
 
     return Sessao(
         access_token=criar_access_token(usuario.id),
@@ -115,7 +149,9 @@ def renovar_sessao(db: Session, refresh_token: str) -> Sessao:
     if not jti:
         raise SessaoExpirada("Refresh token sem jti")
 
-    dono = sessoes.usuario_do_refresh_token(jti)
+    # Consome antes de emitir, na mesma operação que confere: se a emissão
+    # falhar, o aluno refaz o login — bem melhor do que dois refresh válidos.
+    dono = sessoes.consumir_refresh_token(jti)
     if dono is None or dono != int(conteudo["sub"]):
         raise SessaoExpirada("Sessão não registrada")
 
@@ -123,10 +159,10 @@ def renovar_sessao(db: Session, refresh_token: str) -> Sessao:
     if usuario is None:
         raise SessaoExpirada("Conta removida")
 
-    # Revoga antes de emitir: se a emissão falhar, o aluno refaz o login — bem
-    # melhor do que ficar com dois refresh válidos ao mesmo tempo.
-    sessoes.revogar_refresh_token(jti)
-    return abrir_sessao(usuario)
+    # A sessão renovada mantém o "manter-se conectado" do login. O prazo do
+    # token usado diz qual foi a escolha, sem precisar de claim nova.
+    lembrar = conteudo["exp"] - conteudo["iat"] > settings.refresh_token_ttl
+    return abrir_sessao(usuario, lembrar=lembrar)
 
 
 def encerrar_sessao(refresh_token: str) -> None:
@@ -193,6 +229,13 @@ def redefinir_senha(db: Session, *, token: str, senha: str) -> Usuario:
 
 def _chave_reset(token: str) -> str:
     return chave("senha", "reset", sha256(token.encode("utf-8")).hexdigest())
+
+
+def _username_em_uso(db: Session, username: str) -> bool:
+    encontrado = db.execute(
+        select(Usuario.id).where(func.lower(Usuario.username) == username.lower())
+    ).first()
+    return encontrado is not None
 
 
 def _por_email(db: Session, email: str) -> Usuario | None:
