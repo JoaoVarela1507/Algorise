@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { toast } from '@/components/ui/toaster'
 import { useAuth } from '@/contexts/AuthContext'
 import { mensagemDeErro } from '@/lib/erros'
 
@@ -31,6 +32,7 @@ export function OAuthCallbackPage() {
     const codigoErro = new URLSearchParams(window.location.search).get('erro')
     const access_token = fragmento.get('access_token')
     const refresh_token = fragmento.get('refresh_token')
+    const aviso = fragmento.get('aviso')
 
     // Tira os tokens da barra de endereço e do histórico do navegador.
     window.history.replaceState(null, '', window.location.pathname)
@@ -41,7 +43,12 @@ export function OAuthCallbackPage() {
     }
 
     concluirLoginSocial({ access_token, refresh_token })
-      .then(() => navigate('/', { replace: true }))
+      .then(() => {
+        if (aviso === 'exclusao_cancelada') {
+          toast('A exclusão da sua conta foi cancelada porque você entrou de novo.')
+        }
+        navigate('/', { replace: true })
+      })
       .catch((falha: unknown) => setErro(mensagemDeErro(falha)))
   }, [concluirLoginSocial, navigate])
 
