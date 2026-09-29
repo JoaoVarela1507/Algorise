@@ -6,7 +6,7 @@
  * - refresh token: no `localStorage` com "manter-se conectado" (sobrevive a
  *   fechar o navegador) e no `sessionStorage` sem (morre com a aba).
  */
-import { API_URL, ApiError, apiGet, apiPost } from '@/services/api'
+import { API_URL, ApiError, apiGet, apiPost, definirAccessToken } from '@/services/api'
 import type { NivelExperiencia, TipoTrilha, Usuario } from '@/types/usuario'
 
 export type Provedor = 'github' | 'google'
@@ -29,17 +29,11 @@ interface SessaoApi {
 
 const CHAVE_REFRESH = 'algorise:refresh'
 
-let accessToken: string | null = null
-
-export function obterAccessToken() {
-  return accessToken
-}
-
 function guardarSessao(
   sessao: Pick<SessaoApi, 'access_token' | 'refresh_token'>,
   lembrar: boolean,
 ) {
-  accessToken = sessao.access_token
+  definirAccessToken(sessao.access_token)
   const destino = lembrar ? localStorage : sessionStorage
   const outro = lembrar ? sessionStorage : localStorage
   destino.setItem(CHAVE_REFRESH, sessao.refresh_token)
@@ -58,7 +52,7 @@ export function temSessaoGuardada() {
 }
 
 export function limparSessao() {
-  accessToken = null
+  definirAccessToken(null)
   localStorage.removeItem(CHAVE_REFRESH)
   sessionStorage.removeItem(CHAVE_REFRESH)
 }

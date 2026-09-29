@@ -33,11 +33,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => !sessaoTesteGuardada() && auth.temSessaoGuardada(),
   )
 
-  // A camada de API pede o token e a renovação por aqui. Se a renovação
-  // falhar, a sessão acabou de verdade e o aluno volta para o login.
+  // A camada de API pede a renovação por aqui num 401. Se ela falhar, a
+  // sessão acabou de verdade e o aluno volta para o login.
   useEffect(() => {
     configurarAutenticacao({
-      accessToken: auth.obterAccessToken,
       renovar: async () => {
         const renovado = await auth.renovarSessao()
         if (renovado) {

@@ -11,12 +11,21 @@ export class ApiError extends Error {
   }
 }
 
+// O access token mora aqui, e não no `AuthContext`: o React roda os efeitos
+// dos filhos antes dos do pai, então uma tela que chamasse a API ao montar (como
+// o `/auth/callback`) sairia sem token se ele dependesse de um efeito do
+// provider para ser registrado.
+let accessToken: string | null = null
+
+export function definirAccessToken(token: string | null) {
+  accessToken = token
+}
+
 /**
- * Quem cuida da sessão (o `AuthContext`) se registra aqui. Fica desacoplado
- * assim para `api.ts` não importar React nem saber onde o token mora.
+ * Quem cuida da sessão (o `AuthContext`) registra aqui como renová-la, para
+ * `api.ts` não importar React. Sem registro, um 401 só sobe para quem chamou.
  */
 interface Autenticador {
-  accessToken: () => string | null
   /** Tenta renovar a sessão; `true` se deu certo e vale repetir a chamada. */
   renovar: () => Promise<boolean>
 }
@@ -72,7 +81,7 @@ export function apiPost<T>(path: string, body: unknown, opcoes?: Opcoes): Promis
 
 async function enviar(path: string, init: RequestInit, autenticar: boolean): Promise<Response> {
   const headers = new Headers(init.headers)
-  const token = autenticar ? autenticador?.accessToken() : null
+  const token = autenticar ? accessToken : null
   if (token) {
     headers.set('Authorization', `Bearer ${token}`)
   }
