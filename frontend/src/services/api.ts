@@ -39,18 +39,29 @@ export function configurarAutenticacao(novo: Autenticador | null) {
 interface Opcoes {
   /** Manda o access token e renova a sessão num 401. Padrão: `true`. */
   autenticar?: boolean
+  /**
+   * `false` manda o token mas não tenta renovar num 401. Para chamadas feitas
+   * de dentro da própria renovação, que senão esperariam por si mesmas.
+   */
+  renovar?: boolean
 }
 
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
-  { autenticar = true }: Opcoes = {},
+  { autenticar = true, renovar = true }: Opcoes = {},
 ): Promise<T> {
   let resposta = await enviar(path, init, autenticar)
 
   // Access token vencido (vale 15 minutos): renova uma vez e repete. Se a
   // renovação também falhar, o 401 sobe e quem chamou decide o que mostrar.
-  if (resposta.status === 401 && autenticar && autenticador && (await autenticador.renovar())) {
+  if (
+    resposta.status === 401 &&
+    autenticar &&
+    renovar &&
+    autenticador &&
+    (await autenticador.renovar())
+  ) {
     resposta = await enviar(path, init, autenticar)
   }
 
@@ -72,6 +83,18 @@ export function apiPost<T>(path: string, body: unknown, opcoes?: Opcoes): Promis
     path,
     {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+    opcoes,
+  )
+}
+
+export function apiPatch<T>(path: string, body: unknown, opcoes?: Opcoes): Promise<T> {
+  return apiFetch<T>(
+    path,
+    {
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     },

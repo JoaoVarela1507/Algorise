@@ -443,7 +443,16 @@ function CadastroView({
               )}
             />
             <Label htmlFor="cadastro-termos" className="font-normal">
-              Aceito os termos de uso e a política de privacidade.
+              Aceito os{' '}
+              <a
+                href="/privacidade"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-primary hover:underline"
+              >
+                termos de uso e a política de privacidade
+              </a>
+              .
             </Label>
           </div>
           {errors.termos && (

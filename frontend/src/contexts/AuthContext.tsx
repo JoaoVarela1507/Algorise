@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { toast } from '@/components/ui/toaster'
 import { ehLoginTeste, loginTesteHabilitado, USUARIO_TESTE } from '@/lib/loginTeste'
 import { configurarAutenticacao } from '@/services/api'
 import * as auth from '@/services/auth'
-import type { Usuario } from '@/types/usuario'
+import type { AtualizacaoPerfil, Usuario } from '@/types/usuario'
 
 interface AuthContextValue {
   usuario: Usuario | null
@@ -14,6 +15,8 @@ interface AuthContextValue {
   concluirLoginSocial: (tokens: { access_token: string; refresh_token: string }) => Promise<void>
   logout: () => void
   atualizarUsuario: (dados: Partial<Usuario>) => void
+  /** Salva nível, trilha, instituição etc. na API (`PATCH /usuarios/me`). */
+  atualizarPerfil: (dados: AtualizacaoPerfil) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -68,7 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     sessionStorage.removeItem(CHAVE_SESSAO_TESTE)
-    setUsuario(await auth.entrar(email, senha, manterConectado))
+    const { usuario: logado, aviso } = await auth.entrar(email, senha, manterConectado)
+    setUsuario(logado)
+    if (aviso) toast(aviso)
   }, [])
 
   const cadastrar = useCallback(
@@ -102,6 +107,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const atualizarPerfil = useCallback(
+    async (dados: AtualizacaoPerfil) => {
+      // O login de teste não tem token: o perfil fica só neste navegador.
+      if (sessaoTesteGuardada()) {
+        atualizarUsuario(dados)
+        return
+      }
+      setUsuario(await auth.atualizarPerfil(dados))
+    },
+    [atualizarUsuario],
+  )
+
   return (
     <AuthContext.Provider
       value={{
@@ -112,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         concluirLoginSocial,
         logout,
         atualizarUsuario,
+        atualizarPerfil,
       }}
     >
       {children}

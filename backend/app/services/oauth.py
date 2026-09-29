@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models import ContaOAuth, Usuario
+from app.models import Consentimento, ContaOAuth, Usuario
 from app.services.auth import username_livre
 
 logger = logging.getLogger(__name__)
@@ -141,7 +141,7 @@ def perfil_do_google(token: dict) -> Perfil:
     )
 
 
-def vincular_ou_criar(db: Session, perfil: Perfil) -> Usuario:
+def vincular_ou_criar(db: Session, perfil: Perfil, *, ip: str | None = None) -> Usuario:
     """Resolve o perfil do provedor numa conta do Algorise.
 
     Três caminhos: já existe o vínculo, existe conta com o mesmo e-mail (aí o
@@ -167,6 +167,11 @@ def vincular_ou_criar(db: Session, perfil: Perfil) -> Usuario:
             nome_exibicao=perfil.nome,
             avatar_url=perfil.avatar_url,
             senha_hash=None,
+        )
+        # Os botões do GitHub e do Google avisam que continuar é aceitar os
+        # termos (#40); a conta nova nasce com esse aceite registrado.
+        usuario.consentimentos.append(
+            Consentimento(versao_termos=settings.versao_termos, origem="oauth", ip=ip)
         )
         db.add(usuario)
         db.flush()

@@ -1,4 +1,6 @@
-from sqlalchemy import ForeignKey, String, UniqueConstraint
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -29,12 +31,27 @@ class Usuario(Base, TimestampMixin):
     # para o ranking não somar a tabela inteira a cada consulta.
     xp_total: Mapped[int] = mapped_column(default=0, index=True)
 
+    # Pedido de exclusão da conta (#40): a conta fica desativada até esta data e
+    # depois é expurgada. Nulo é conta ativa; entrar de novo antes do prazo
+    # volta para nulo.
+    exclusao_agendada_para: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), index=True
+    )
+
     streak: Mapped["Streak | None"] = relationship(  # noqa: F821
         back_populates="usuario", uselist=False
     )
     contas_oauth: Mapped[list["ContaOAuth"]] = relationship(
         back_populates="usuario", cascade="all, delete-orphan"
     )
+    consentimentos: Mapped[list["Consentimento"]] = relationship(
+        back_populates="usuario", cascade="all, delete-orphan"
+    )
+
+    @property
+    def tem_senha(self) -> bool:
+        """Se a conta entra por senha. Conta só de GitHub/Google não tem."""
+        return self.senha_hash is not None
 
 
 class ContaOAuth(Base, TimestampMixin):
@@ -60,3 +77,30 @@ class ContaOAuth(Base, TimestampMixin):
     email: Mapped[str | None] = mapped_column(String(255))
 
     usuario: Mapped["Usuario"] = relationship(back_populates="contas_oauth")
+
+
+class Consentimento(Base):
+    """Aceite dos termos de uso e da política de privacidade (LGPD, #40).
+
+    Um registro por aceite, nunca atualizado: é a prova de que o aluno concordou
+    com aquela versão, naquela data, daquele IP. Nova versão dos termos pede
+    novo aceite, e o antigo fica como histórico.
+    """
+
+    __tablename__ = "consentimentos"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="CASCADE"), index=True
+    )
+    versao_termos: Mapped[str] = mapped_column(String(20))
+    # Onde o aceite aconteceu: `cadastro` (checkbox da tela 6) ou `oauth` ("ao
+    # continuar, você concorda" dos botões do GitHub e do Google).
+    origem: Mapped[str] = mapped_column(String(20))
+    # IPv6 cabe em 45 caracteres. Nulo quando não deu para saber.
+    ip: Mapped[str | None] = mapped_column(String(45))
+    aceito_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    usuario: Mapped["Usuario"] = relationship(back_populates="consentimentos")

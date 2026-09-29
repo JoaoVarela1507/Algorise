@@ -1,17 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import {
-  Blend,
-  CircleCheck,
-  Compass,
-  Rocket,
-  Shuffle,
-  Sprout,
-  Upload,
-  Zap,
-  type LucideIcon,
-} from 'lucide-react'
+import { CircleCheck, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,57 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { niveis, trilhas, type OpcaoPerfil } from '@/components/onboarding/opcoes'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import type { NivelExperiencia, TipoTrilha } from '@/types/usuario'
-
-const niveis: { valor: NivelExperiencia; titulo: string; descricao: string; icone: LucideIcon }[] =
-  [
-    {
-      valor: 'baixo',
-      titulo: 'Baixo',
-      descricao:
-        'Nunca programei antes, comecei do zero. Prefiro me sentir guiado(a) até saber mais.',
-      icone: Sprout,
-    },
-    {
-      valor: 'medio',
-      titulo: 'Médio',
-      descricao:
-        'Conheço a lógica básica mas quero evoluir. Já consigo me virar em desafios mais simples.',
-      icone: Zap,
-    },
-    {
-      valor: 'alto',
-      titulo: 'Alto',
-      descricao:
-        'Já programo há algum tempo e sei a lógica muito bem. Busco aperfeiçoar algoritmos, estruturas de dados e projetos.',
-      icone: Rocket,
-    },
-  ]
-
-const trilhas: { valor: TipoTrilha; titulo: string; descricao: string; icone: LucideIcon }[] = [
-  {
-    valor: 'guiada',
-    titulo: 'Guiada',
-    descricao: 'Seu plano de estudos é criado automaticamente com base na ementa da sua faculdade.',
-    icone: Compass,
-  },
-  {
-    valor: 'livre',
-    titulo: 'Livre',
-    descricao:
-      'Você escolhe e monta o seu próprio caminho de estudos, explorando os módulos na ordem que quiser.',
-    icone: Shuffle,
-  },
-  {
-    valor: 'mista',
-    titulo: 'Mista',
-    descricao:
-      'Você escolhe o que quer estudar, combinando a ordem da sua faculdade com a liberdade de explorar outros módulos.',
-    icone: Blend,
-  },
-]
 
 const periodos = [1, 2, 3, 4, 5, 6, 7, 8] as const
 
@@ -81,7 +24,7 @@ function EtapaSelecao<T extends string>({
   selecionado,
   onSelecionar,
 }: {
-  opcoes: { valor: T; titulo: string; descricao: string; icone: LucideIcon }[]
+  opcoes: OpcaoPerfil<T>[]
   selecionado: T | null
   onSelecionar: (valor: T) => void
 }) {
@@ -149,7 +92,9 @@ export function OnboardingWizard({
   rascunho?: RascunhoOnboarding
   onRascunhoChange?: (rascunho: RascunhoOnboarding) => void
 }) {
-  const { usuario, atualizarUsuario } = useAuth()
+  const { usuario, atualizarPerfil } = useAuth()
+  const [salvando, setSalvando] = useState(false)
+  const [erroApi, setErroApi] = useState<string | null>(null)
   const navigate = useNavigate()
 
   const [passo, setPasso] = useState(rascunho?.passo ?? 1)
@@ -172,14 +117,24 @@ export function OnboardingWizard({
   // obrigatório; nas outras duas (livre e mista) é só um extra opcional.
   const ementaObrigatoria = trilha === 'guiada'
 
-  function finalizar() {
-    atualizarUsuario({
-      nivelExperiencia: nivel ?? undefined,
-      tipoTrilha: trilha ?? undefined,
-      instituicao: instituicao || undefined,
-      curso: curso || undefined,
-      periodo: periodo ? Number(periodo) : undefined,
-    })
+  async function finalizar() {
+    setSalvando(true)
+    setErroApi(null)
+    try {
+      // A ementa ainda não sobe: o upload entra junto com a extração (#38).
+      await atualizarPerfil({
+        nivelExperiencia: nivel ?? undefined,
+        tipoTrilha: trilha ?? undefined,
+        instituicao: instituicao.trim() || undefined,
+        curso: curso.trim() || undefined,
+        periodo: periodo ? Number(periodo) : undefined,
+      })
+    } catch (erro) {
+      setErroApi(erro instanceof Error ? erro.message : 'Não foi possível salvar.')
+      return
+    } finally {
+      setSalvando(false)
+    }
     if (onConcluir) {
       onConcluir()
     } else {
@@ -323,6 +278,12 @@ export function OnboardingWizard({
                 </Select>
               </div>
 
+              {erroApi && (
+                <p role="alert" className="text-sm font-semibold text-destructive">
+                  {erroApi}
+                </p>
+              )}
+
               <div className="mt-auto flex gap-3">
                 <Button variant="ghost" size="lg" onClick={() => setPasso(2)}>
                   Voltar
@@ -330,10 +291,10 @@ export function OnboardingWizard({
                 <Button
                   className="flex-1"
                   size="lg"
-                  disabled={!instituicao || (ementaObrigatoria && !ementa)}
+                  disabled={!instituicao.trim() || (ementaObrigatoria && !ementa) || salvando}
                   onClick={finalizar}
                 >
-                  Continuar
+                  {salvando ? 'Salvando…' : 'Continuar'}
                 </Button>
               </div>
             </div>
