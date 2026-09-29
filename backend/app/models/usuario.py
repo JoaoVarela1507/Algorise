@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -32,3 +32,31 @@ class Usuario(Base, TimestampMixin):
     streak: Mapped["Streak | None"] = relationship(  # noqa: F821
         back_populates="usuario", uselist=False
     )
+    contas_oauth: Mapped[list["ContaOAuth"]] = relationship(
+        back_populates="usuario", cascade="all, delete-orphan"
+    )
+
+
+class ContaOAuth(Base, TimestampMixin):
+    """Vínculo entre a conta do Algorise e um login social (#10).
+
+    Existe como tabela à parte, e não como colunas em `usuarios`, porque o mesmo
+    aluno pode entrar pelo GitHub e pelo Google — e porque o par
+    (provedor, id no provedor) é o que precisa ser único, não o e-mail: e-mail
+    do GitHub muda, o id não.
+    """
+
+    __tablename__ = "contas_oauth"
+    __table_args__ = (UniqueConstraint("provedor", "provedor_id", name="uq_contas_oauth_provedor"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="CASCADE"), index=True
+    )
+    provedor: Mapped[str] = mapped_column(String(20))
+    provedor_id: Mapped[str] = mapped_column(String(100))
+    # Guardado para diagnóstico: é o e-mail que o provedor informou na hora do
+    # vínculo, que pode não ser mais o do `usuarios`.
+    email: Mapped[str | None] = mapped_column(String(255))
+
+    usuario: Mapped["Usuario"] = relationship(back_populates="contas_oauth")
