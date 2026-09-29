@@ -15,3 +15,8 @@ export interface Usuario {
   curso?: string
   periodo?: number
 }
+
+/** Campos que o aluno pode alterar (perfil e fim do onboarding). */
+export type AtualizacaoPerfil = Partial<
+  Pick<Usuario, 'nome' | 'nivelExperiencia' | 'tipoTrilha' | 'instituicao' | 'curso' | 'periodo'>
+>

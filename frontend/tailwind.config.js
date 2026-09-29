@@ -1,6 +1,23 @@
 import tailwindcssAnimate from 'tailwindcss-animate'
 
 /**
+ * Tamanho de texto que acompanha o "Tamanho da fonte" da acessibilidade.
+ * Mesmos valores do Tailwind, multiplicados por --font-scale; a altura de linha
+ * escala junto (ou é proporcional, quando é um número puro).
+ */
+function textoEscalavel(tamanho, alturaLinha) {
+  return [
+    `calc(${tamanho}rem * var(--font-scale))`,
+    {
+      lineHeight:
+        typeof alturaLinha === 'number'
+          ? String(alturaLinha)
+          : `calc(${alturaLinha}rem * var(--font-scale))`,
+    },
+  ]
+}
+
+/**
  * Todas as cores vêm dos tokens definidos em `src/styles/index.css`. Não
  * adicione hex aqui: o tema de alto contraste redefine os tokens, e uma cor
  * fixa passaria batido por ele.
@@ -68,7 +85,20 @@ export default {
           6: 'hsl(var(--periodo-6))',
           7: 'hsl(var(--periodo-7))',
           8: 'hsl(var(--periodo-8))',
+          foreground: 'hsl(var(--periodo-foreground))',
         },
+      },
+      fontSize: {
+        xs: textoEscalavel(0.75, '1'),
+        sm: textoEscalavel(0.875, '1.25'),
+        base: textoEscalavel(1, '1.5'),
+        lg: textoEscalavel(1.125, '1.75'),
+        xl: textoEscalavel(1.25, '1.75'),
+        '2xl': textoEscalavel(1.5, '2'),
+        '3xl': textoEscalavel(1.875, '2.25'),
+        '4xl': textoEscalavel(2.25, '2.5'),
+        '5xl': textoEscalavel(3, 1),
+        '6xl': textoEscalavel(3.75, 1),
       },
       borderRadius: {
         lg: 'var(--radius)',

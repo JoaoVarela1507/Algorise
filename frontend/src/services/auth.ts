@@ -6,8 +6,8 @@
  * - refresh token: no `localStorage` com "manter-se conectado" (sobrevive a
  *   fechar o navegador) e no `sessionStorage` sem (morre com a aba).
  */
-import { API_URL, ApiError, apiGet, apiPost, definirAccessToken } from '@/services/api'
-import type { NivelExperiencia, TipoTrilha, Usuario } from '@/types/usuario'
+import { API_URL, ApiError, apiGet, apiPatch, apiPost, definirAccessToken } from '@/services/api'
+import type { AtualizacaoPerfil, NivelExperiencia, TipoTrilha, Usuario } from '@/types/usuario'
 
 export type Provedor = 'github' | 'google'
 
@@ -66,7 +66,7 @@ export async function entrar(email: string, senha: string, lembrar: boolean): Pr
     { autenticar: false },
   )
   guardarSessao(sessao, lembrar)
-  return paraUsuario(sessao.usuario)
+  return completarPerfil(sessao.usuario)
 }
 
 export async function cadastrar(dados: {
@@ -81,7 +81,7 @@ export async function cadastrar(dados: {
     { autenticar: false },
   )
   guardarSessao(sessao, false)
-  return paraUsuario(sessao.usuario)
+  return completarPerfil(sessao.usuario)
 }
 
 let renovacaoEmAndamento: Promise<Usuario | null> | null = null
@@ -113,7 +113,7 @@ async function renovar(): Promise<Usuario | null> {
       { autenticar: false },
     )
     guardarSessao(sessao, guardado.lembrar)
-    return paraUsuario(sessao.usuario)
+    return completarPerfil(sessao.usuario)
   } catch (erro) {
     // Outra aba pode ter renovado primeiro e gastado este token. Se o
     // guardado mudou nesse meio-tempo, vale tentar com o novo.
@@ -154,7 +154,7 @@ export async function concluirLoginSocial(tokens: {
   // O backend abre a sessão do login social sempre como "manter-se conectado".
   guardarSessao(tokens, true)
   const usuario = await apiGet<UsuarioApi>('/auth/eu')
-  return paraUsuario(usuario)
+  return completarPerfil(usuario)
 }
 
 /**
@@ -191,12 +191,65 @@ export async function redefinirSenha(token: string, senha: string) {
   await apiPost('/auth/redefinir-senha', { token, senha }, { autenticar: false })
 }
 
-// --- perfil do onboarding ---------------------------------------------------
+// --- perfil -----------------------------------------------------------------
+
+/** Formato do `/usuarios/eu`: o `UsuarioApi` mais o que o onboarding coleta. */
+interface PerfilApi extends UsuarioApi {
+  streak_dias: number
+  nivel_experiencia: NivelExperiencia
+  tipo_trilha: TipoTrilha
+  instituicao: string | null
+  curso: string | null
+  periodo: number | null
+}
+
+function perfilParaUsuario(api: PerfilApi): Usuario {
+  return {
+    id: String(api.id),
+    nome: api.nome_exibicao,
+    username: api.username,
+    email: api.email,
+    avatarUrl: api.avatar_url ?? undefined,
+    xp: api.xp_total,
+    streakDias: api.streak_dias,
+    nivelExperiencia: api.nivel_experiencia,
+    tipoTrilha: api.tipo_trilha,
+    instituicao: api.instituicao ?? undefined,
+    curso: api.curso ?? undefined,
+    periodo: api.periodo ?? undefined,
+  }
+}
 
 /**
- * Nível, trilha, instituição, curso e período ainda não têm rota no backend.
- * Até terem, ficam guardados neste navegador, por aluno, para o onboarding não
- * se perder a cada recarga.
+ * O login devolve só o básico do aluno; o perfil completo (onboarding e
+ * streak) vem do `/usuarios/eu`. Se essa rota falhar, segue com o básico e o
+ * perfil guardado no navegador, para o login não depender dela.
+ */
+async function completarPerfil(basico: UsuarioApi): Promise<Usuario> {
+  try {
+    // Sem renovar: esta chamada também roda de dentro da renovação da sessão.
+    return perfilParaUsuario(await apiGet<PerfilApi>('/usuarios/eu', { renovar: false }))
+  } catch {
+    return paraUsuario(basico)
+  }
+}
+
+export async function atualizarPerfil(dados: AtualizacaoPerfil): Promise<Usuario> {
+  const perfil = await apiPatch<PerfilApi>('/usuarios/eu', {
+    nome_exibicao: dados.nome,
+    nivel_experiencia: dados.nivelExperiencia,
+    tipo_trilha: dados.tipoTrilha,
+    instituicao: dados.instituicao,
+    curso: dados.curso,
+    periodo: dados.periodo,
+  })
+  return perfilParaUsuario(perfil)
+}
+
+/**
+ * Reserva para quando o `/usuarios/eu` não responde (e para o login de teste,
+ * que não tem token): o que o onboarding coletou fica neste navegador, por
+ * aluno, para não se perder a cada recarga.
  */
 type PerfilLocal = Pick<
   Usuario,

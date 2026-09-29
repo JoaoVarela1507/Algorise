@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api.routes import auth, health, oauth, ranking, trilhas, versao
+from app.api.routes import auth, health, oauth, ranking, trilhas, usuarios, versao
 from app.core.config import settings
 
 app = FastAPI(title=settings.app_name, version=settings.app_version)
@@ -35,3 +35,4 @@ app.include_router(trilhas.router)
 app.include_router(ranking.router)
 app.include_router(auth.router)
 app.include_router(oauth.router)
+app.include_router(usuarios.router)
