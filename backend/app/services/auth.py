@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.core.cache import chave
 from app.core.config import settings
+from app.core.politica_senha import problema_da_senha
 from app.core.redis import executar
 from app.core.seguranca import (
     TokenInvalido,
@@ -30,7 +31,7 @@ from app.core.seguranca import (
     decodificar,
     gerar_hash_senha,
 )
-from app.models import Usuario
+from app.models import Consentimento, Usuario
 from app.schemas.auth import Sessao, UsuarioAutenticado
 from app.services import sessoes
 
@@ -61,6 +62,18 @@ class TokenDeSenhaInvalido(Exception):
     """Link de recuperação vencido, já usado ou inventado."""
 
 
+class SenhaFraca(Exception):
+    """Senha nova fora da política (ver `app/core/politica_senha.py`)."""
+
+
+class LoginBloqueado(Exception):
+    """Tentativas erradas demais no mesmo e-mail. `segundos` até liberar."""
+
+    def __init__(self, segundos: int) -> None:
+        super().__init__(segundos)
+        self.segundos = segundos
+
+
 def registrar(
     db: Session,
     *,
@@ -68,6 +81,7 @@ def registrar(
     senha: str,
     nome_exibicao: str | None = None,
     username: str | None = None,
+    ip: str | None = None,
 ) -> Usuario:
     """Cria a conta.
 
@@ -85,11 +99,19 @@ def registrar(
     else:
         username = username_livre(db, email.split("@")[0])
 
+    if motivo := problema_da_senha(senha, email=email, username=username):
+        raise SenhaFraca(motivo)
+
     usuario = Usuario(
         email=email,
         username=username,
         nome_exibicao=(nome_exibicao or username).strip(),
         senha_hash=gerar_hash_senha(senha),
+    )
+    # O schema só deixa chegar aqui com o checkbox dos termos marcado; o
+    # registro guarda a prova (versão, data e IP) que a LGPD pede.
+    usuario.consentimentos.append(
+        Consentimento(versao_termos=settings.versao_termos, origem="cadastro", ip=ip)
     )
     db.add(usuario)
     try:
@@ -110,13 +132,23 @@ def autenticar(db: Session, *, email: str, senha: str) -> Usuario:
     Erro único de propósito: dizer "esse e-mail não existe" entregaria quem tem
     conta para quem está tentando adivinhar. `conferir_senha` também gasta o
     mesmo tempo nos dois casos.
+
+    Tentativas erradas seguidas no mesmo e-mail bloqueiam o login por um tempo,
+    com ou sem conta por trás — bloquear só quem tem conta também entregaria
+    quem tem conta. Com o bloqueio ativo, nem a senha certa passa.
     """
-    usuario = _por_email(db, email.strip().lower())
+    email = email.strip().lower()
+    if restante := _bloqueio_restante(email):
+        raise LoginBloqueado(restante)
+
+    usuario = _por_email(db, email)
     hash_atual = usuario.senha_hash if usuario is not None else None
 
     if not conferir_senha(senha, hash_atual) or usuario is None:
+        _registrar_falha(email)
         raise CredenciaisInvalidas(email)
 
+    _limpar_falhas(email)
     return usuario
 
 
@@ -156,8 +188,9 @@ def renovar_sessao(db: Session, refresh_token: str) -> Sessao:
         raise SessaoExpirada("Sessão não registrada")
 
     usuario = db.get(Usuario, dono)
-    if usuario is None:
-        raise SessaoExpirada("Conta removida")
+    if usuario is None or usuario.exclusao_agendada_para is not None:
+        # Conta apagada, ou com exclusão pedida: só um login novo reativa.
+        raise SessaoExpirada("Conta removida ou desativada")
 
     # A sessão renovada mantém o "manter-se conectado" do login. O prazo do
     # token usado diz qual foi a escolha, sem precisar de claim nova.
@@ -204,27 +237,76 @@ def redefinir_senha(db: Session, *, token: str, senha: str) -> Usuario:
     """Troca a senha e derruba as sessões abertas.
 
     O token é de uso único: some do Redis antes da troca, para dois cliques no
-    mesmo link não valerem duas vezes.
+    mesmo link não valerem duas vezes. Mas só depois de a senha nova passar na
+    política — senão uma senha recusada queimaria o link.
     """
+    dono = executar(lambda r: r.get(_chave_reset(token)), padrao=None)
+    usuario = db.get(Usuario, int(dono)) if dono is not None else None
+    if usuario is None:
+        raise TokenDeSenhaInvalido(token[:8])
+
+    if motivo := problema_da_senha(senha, email=usuario.email, username=usuario.username):
+        raise SenhaFraca(motivo)
 
     def consumir(r: Redis) -> str | None:
         return r.getdel(_chave_reset(token))
 
-    dono = executar(consumir, padrao=None)
-    if dono is None:
-        raise TokenDeSenhaInvalido(token[:8])
-
-    usuario = db.get(Usuario, int(dono))
-    if usuario is None:
+    # O `GETDEL` é quem decide: entre a leitura acima e aqui, outro clique no
+    # mesmo link pode ter chegado antes.
+    if executar(consumir, padrao=None) != dono:
         raise TokenDeSenhaInvalido(token[:8])
 
     usuario.senha_hash = gerar_hash_senha(senha)
     db.commit()
+    # Provou ser dono do e-mail: o bloqueio por tentativas não vale mais.
+    _limpar_falhas(usuario.email)
 
     # Quem trocou a senha provavelmente trocou por suspeitar de invasão; as
     # sessões que já estavam abertas não podem sobreviver a isso.
     sessoes.revogar_sessoes_do_usuario(usuario.id)
     return usuario
+
+
+def _chave_falhas(email: str) -> str:
+    # Hash, não o e-mail: a chave aparece em `SCAN` e em dump do Redis.
+    return chave("login", "falhas", sha256(email.encode("utf-8")).hexdigest())
+
+
+def _bloqueio_restante(email: str) -> int:
+    """Segundos até liberar o login desse e-mail, ou 0 se não está bloqueado.
+
+    Com o Redis fora não há como contar, e o login segue: o limite por IP das
+    rotas continua valendo, e travar o login de todo mundo seria pior.
+    """
+
+    def ler(r: Redis) -> int:
+        with r.pipeline() as pipe:
+            pipe.get(_chave_falhas(email))
+            pipe.ttl(_chave_falhas(email))
+            falhas, ttl = pipe.execute()
+        if falhas is None or int(falhas) < settings.bloqueio_login_tentativas:
+            return 0
+        return max(int(ttl), 1)
+
+    return executar(ler, padrao=0) or 0
+
+
+def _registrar_falha(email: str) -> None:
+    def contar(r: Redis) -> None:
+        with r.pipeline() as pipe:
+            pipe.incr(_chave_falhas(email))
+            # A contagem zera sozinha depois do prazo; e a falha que completa o
+            # limite reinicia o relógio, para o bloqueio durar o prazo inteiro.
+            pipe.expire(_chave_falhas(email), settings.bloqueio_login_duracao, nx=True)
+            falhas, _ = pipe.execute()
+        if int(falhas) == settings.bloqueio_login_tentativas:
+            r.expire(_chave_falhas(email), settings.bloqueio_login_duracao)
+
+    executar(contar)
+
+
+def _limpar_falhas(email: str) -> None:
+    executar(lambda r: r.delete(_chave_falhas(email)))
 
 
 def _chave_reset(token: str) -> str:

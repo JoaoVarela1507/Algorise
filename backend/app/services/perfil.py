@@ -24,6 +24,7 @@ def montar_perfil(db: Session, usuario: Usuario) -> Perfil:
         username=usuario.username,
         nome_exibicao=usuario.nome_exibicao,
         avatar_url=usuario.avatar_url,
+        tem_senha=usuario.tem_senha,
         xp_total=usuario.xp_total,
         streak_dias=streak.dias_consecutivos,
         nivel_experiencia=usuario.nivel_experiencia,

@@ -43,6 +43,20 @@ export function BotoesLoginSocial() {
         <GoogleIcon />
         {indo === 'google' ? 'Redirecionando…' : 'Continuar com Google'}
       </Button>
+      {/* A conta criada pelo provedor não passa pelo checkbox do cadastro: o
+          aceite é este aviso, e o backend o registra (LGPD). */}
+      <p className="text-center text-xs text-muted-foreground">
+        Ao continuar com GitHub ou Google, você aceita os{' '}
+        <a
+          href="/privacidade"
+          target="_blank"
+          rel="noreferrer"
+          className="font-semibold text-primary hover:underline"
+        >
+          termos de uso e a política de privacidade
+        </a>
+        .
+      </p>
     </div>
   )
 }

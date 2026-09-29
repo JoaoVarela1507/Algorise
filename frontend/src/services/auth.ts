@@ -6,7 +6,15 @@
  * - refresh token: no `localStorage` com "manter-se conectado" (sobrevive a
  *   fechar o navegador) e no `sessionStorage` sem (morre com a aba).
  */
-import { API_URL, ApiError, apiGet, apiPatch, apiPost, definirAccessToken } from '@/services/api'
+import {
+  API_URL,
+  ApiError,
+  apiFetch,
+  apiGet,
+  apiPatch,
+  apiPost,
+  definirAccessToken,
+} from '@/services/api'
 import type { AtualizacaoPerfil, NivelExperiencia, TipoTrilha, Usuario } from '@/types/usuario'
 
 export type Provedor = 'github' | 'google'
@@ -18,6 +26,7 @@ interface UsuarioApi {
   nome_exibicao: string
   avatar_url: string | null
   xp_total: number
+  tem_senha: boolean
 }
 
 interface SessaoApi {
@@ -25,6 +34,8 @@ interface SessaoApi {
   refresh_token: string
   expira_em: number
   usuario: UsuarioApi
+  /** Recado do backend, como "a exclusão da sua conta foi cancelada". */
+  aviso?: string | null
 }
 
 const CHAVE_REFRESH = 'algorise:refresh'
@@ -59,14 +70,18 @@ export function limparSessao() {
 
 // --- chamadas ---------------------------------------------------------------
 
-export async function entrar(email: string, senha: string, lembrar: boolean): Promise<Usuario> {
+export async function entrar(
+  email: string,
+  senha: string,
+  lembrar: boolean,
+): Promise<{ usuario: Usuario; aviso?: string }> {
   const sessao = await apiPost<SessaoApi>(
     '/auth/login',
     { email, senha, lembrar },
     { autenticar: false },
   )
   guardarSessao(sessao, lembrar)
-  return completarPerfil(sessao.usuario)
+  return { usuario: await completarPerfil(sessao.usuario), aviso: sessao.aviso ?? undefined }
 }
 
 export async function cadastrar(dados: {
@@ -77,7 +92,9 @@ export async function cadastrar(dados: {
   const sessao = await apiPost<SessaoApi>(
     '/auth/register',
     // O formulário da tela 6 não pede nome de exibição: começa como o username.
-    { ...dados, nome_exibicao: dados.username },
+    // `aceite_termos`: o checkbox é obrigatório no formulário, e o backend
+    // registra o aceite (LGPD).
+    { ...dados, nome_exibicao: dados.username, aceite_termos: true },
     { autenticar: false },
   )
   guardarSessao(sessao, false)
@@ -191,9 +208,35 @@ export async function redefinirSenha(token: string, senha: string) {
   await apiPost('/auth/redefinir-senha', { token, senha }, { autenticar: false })
 }
 
+// --- dados da conta (LGPD) -------------------------------------------------
+
+/** Baixa o JSON com tudo o que o Algorise guarda sobre o aluno. */
+export async function baixarMeusDados() {
+  const dados = await apiGet<unknown>('/usuarios/me/dados')
+  const arquivo = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(arquivo)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'algorise-meus-dados.json'
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+/** Pede a exclusão da conta. Devolve a data em que os dados serão apagados. */
+export async function excluirConta(dados: { confirmacao: string; senha?: string }) {
+  const resposta = await apiFetch<{ exclusao_agendada_para: string }>('/usuarios/me', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ confirmacao: dados.confirmacao, senha: dados.senha || null }),
+  })
+  // O backend já derrubou as sessões; aqui só some o que ficou no navegador.
+  limparSessao()
+  return new Date(resposta.exclusao_agendada_para)
+}
+
 // --- perfil -----------------------------------------------------------------
 
-/** Formato do `/usuarios/eu`: o `UsuarioApi` mais o que o onboarding coleta. */
+/** Formato do `/usuarios/me`: o `UsuarioApi` mais o que o onboarding coleta. */
 interface PerfilApi extends UsuarioApi {
   streak_dias: number
   nivel_experiencia: NivelExperiencia
@@ -210,6 +253,7 @@ function perfilParaUsuario(api: PerfilApi): Usuario {
     username: api.username,
     email: api.email,
     avatarUrl: api.avatar_url ?? undefined,
+    temSenha: api.tem_senha,
     xp: api.xp_total,
     streakDias: api.streak_dias,
     nivelExperiencia: api.nivel_experiencia,
@@ -222,20 +266,20 @@ function perfilParaUsuario(api: PerfilApi): Usuario {
 
 /**
  * O login devolve só o básico do aluno; o perfil completo (onboarding e
- * streak) vem do `/usuarios/eu`. Se essa rota falhar, segue com o básico e o
+ * streak) vem do `/usuarios/me`. Se essa rota falhar, segue com o básico e o
  * perfil guardado no navegador, para o login não depender dela.
  */
 async function completarPerfil(basico: UsuarioApi): Promise<Usuario> {
   try {
     // Sem renovar: esta chamada também roda de dentro da renovação da sessão.
-    return perfilParaUsuario(await apiGet<PerfilApi>('/usuarios/eu', { renovar: false }))
+    return perfilParaUsuario(await apiGet<PerfilApi>('/usuarios/me', { renovar: false }))
   } catch {
     return paraUsuario(basico)
   }
 }
 
 export async function atualizarPerfil(dados: AtualizacaoPerfil): Promise<Usuario> {
-  const perfil = await apiPatch<PerfilApi>('/usuarios/eu', {
+  const perfil = await apiPatch<PerfilApi>('/usuarios/me', {
     nome_exibicao: dados.nome,
     nivel_experiencia: dados.nivelExperiencia,
     tipo_trilha: dados.tipoTrilha,
@@ -247,7 +291,7 @@ export async function atualizarPerfil(dados: AtualizacaoPerfil): Promise<Usuario
 }
 
 /**
- * Reserva para quando o `/usuarios/eu` não responde (e para o login de teste,
+ * Reserva para quando o `/usuarios/me` não responde (e para o login de teste,
  * que não tem token): o que o onboarding coletou fica neste navegador, por
  * aluno, para não se perder a cada recarga.
  */
@@ -286,6 +330,7 @@ function paraUsuario(api: UsuarioApi): Usuario {
     username: api.username,
     email: api.email,
     avatarUrl: api.avatar_url ?? undefined,
+    temSenha: api.tem_senha,
     xp: api.xp_total,
     // O streak entra quando a API passar a devolvê-lo.
     streakDias: 0,

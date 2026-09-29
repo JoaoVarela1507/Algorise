@@ -42,8 +42,10 @@ def get_current_user(
         raise NAO_AUTORIZADO from erro
 
     usuario = db.get(Usuario, int(conteudo["sub"]))
-    if usuario is None:
-        # Token válido de uma conta que não existe mais.
+    if usuario is None or usuario.exclusao_agendada_para is not None:
+        # Token válido de uma conta que não existe mais, ou que pediu exclusão
+        # (#40): o access emitido antes do pedido não pode seguir valendo pelos
+        # minutos que ainda tem.
         raise NAO_AUTORIZADO
 
     return usuario

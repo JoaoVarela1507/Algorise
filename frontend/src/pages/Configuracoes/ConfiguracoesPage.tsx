@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { OpcoesAcessibilidade } from '@/components/configuracoes/OpcoesAcessibilidade'
 import { Opcao, Secao } from '@/components/configuracoes/Secao'
+import { SecaoPrivacidade } from '@/components/configuracoes/SecaoPrivacidade'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -267,7 +268,7 @@ export function ConfiguracoesPage() {
 
       {/*
         Três colunas no desktop para caber sem rolar:
-        conta + chat | aparência + sobre | acessibilidade.
+        conta + chat | aparência + sobre | acessibilidade + seus dados.
       */}
       <div className="grid items-start gap-6 lg:grid-cols-2 xl:grid-cols-3">
         <div className="flex flex-col gap-6">
@@ -286,11 +287,16 @@ export function ConfiguracoesPage() {
             <SecaoSobre />
           </motion.div>
         </div>
-        <motion.div variants={item} className="lg:col-span-2 xl:col-span-1">
-          <Secao icone={Accessibility} titulo="Acessibilidade">
-            <OpcoesAcessibilidade />
-          </Secao>
-        </motion.div>
+        <div className="flex flex-col gap-6 lg:col-span-2 xl:col-span-1">
+          <motion.div variants={item}>
+            <Secao icone={Accessibility} titulo="Acessibilidade">
+              <OpcoesAcessibilidade />
+            </Secao>
+          </motion.div>
+          <motion.div variants={item}>
+            <SecaoPrivacidade />
+          </motion.div>
+        </div>
       </div>
     </motion.div>
   )

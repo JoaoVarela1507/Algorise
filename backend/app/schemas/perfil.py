@@ -21,6 +21,9 @@ class Perfil(BaseModel):
     username: str
     nome_exibicao: str
     avatar_url: str | None = None
+    # Conta entra por senha (e não só por GitHub/Google): decide se a exclusão
+    # da conta e a troca de senha pedem a senha atual.
+    tem_senha: bool = False
     xp_total: int = 0
     streak_dias: int = 0
     nivel_experiencia: NivelExperiencia
