@@ -65,7 +65,7 @@ async def callback(
 
     try:
         sessao = servico_auth.abrir_sessao(usuario, lembrar=True)
-    except servico_auth.SessaoExpirada:
+    except servico_auth.SessaoIndisponivel:
         return _voltar_com_erro("sessao_indisponivel")
 
     return _voltar_para_o_frontend(
