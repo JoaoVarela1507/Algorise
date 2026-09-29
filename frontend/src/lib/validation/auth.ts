@@ -34,3 +34,15 @@ export const esqueciSenhaSchema = z.object({
 })
 
 export type EsqueciSenhaFormValues = z.infer<typeof esqueciSenhaSchema>
+
+export const redefinirSenhaSchema = z
+  .object({
+    senha: senhaSchema,
+    confirmarSenha: z.string(),
+  })
+  .refine((data) => data.senha === data.confirmarSenha, {
+    message: 'As senhas não coincidem.',
+    path: ['confirmarSenha'],
+  })
+
+export type RedefinirSenhaFormValues = z.infer<typeof redefinirSenhaSchema>

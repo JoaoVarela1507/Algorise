@@ -6,6 +6,8 @@ import { OnboardingPage } from '@/pages/Onboarding/OnboardingPage'
 import { LoginPage } from '@/pages/Auth/LoginPage'
 import { CadastroPage } from '@/pages/Auth/CadastroPage'
 import { EsqueciSenhaPage } from '@/pages/Auth/EsqueciSenhaPage'
+import { OAuthCallbackPage } from '@/pages/Auth/OAuthCallbackPage'
+import { RedefinirSenhaPage } from '@/pages/Auth/RedefinirSenhaPage'
 import { HomePage } from '@/pages/Home/HomePage'
 import { TrilhasPage } from '@/pages/Trilhas/TrilhasPage'
 import { QuestaoPage } from '@/pages/Questao/QuestaoPage'
@@ -26,6 +28,8 @@ export function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/cadastro" element={<CadastroPage />} />
         <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
+        <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
+        <Route path="/auth/callback" element={<OAuthCallbackPage />} />
       </Route>
 
       <Route element={<RequireAuth />}>
