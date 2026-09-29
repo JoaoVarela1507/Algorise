@@ -8,6 +8,8 @@
 export default {
   'frontend/**/*.{ts,tsx,js,jsx,css,json,md}': ['prettier --write'],
   'frontend/**/*.{ts,tsx}': () => 'npm --prefix frontend run lint',
-  'backend/**/*.py': ['ruff check --fix', 'ruff format'],
+  // `--force-exclude`: com os arquivos passados pelo nome, o Ruff ignoraria o
+  // `exclude` do pyproject e reprovaria as migrações geradas pelo Alembic.
+  'backend/**/*.py': ['ruff check --fix --force-exclude', 'ruff format --force-exclude'],
   '*.{json,md,yml,yaml}': ['prettier --write'],
 }

@@ -62,8 +62,20 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      # A sessão (refresh token) vive no Redis: sem ele o smoke de auth não abre
+      # sessão nenhuma.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 5
     env:
       DATABASE_URL: postgresql+psycopg://algorise:algorise@localhost:5432/algorise
+      REDIS_URL: redis://localhost:6379/0
     steps:
       - uses: actions/checkout@v7
 
@@ -107,6 +119,17 @@ jobs:
           curl -fsS http://127.0.0.1:8000/ready | tee /dev/stderr | grep -q '"banco":"ok"'
           # A rota de trilhas precisa devolver o que o seed inseriu.
           curl -fsS http://127.0.0.1:8000/trilhas | tee /dev/stderr | grep -q 'introducao-python'
+          # Autenticação: registrar, entrar e usar o token numa rota protegida,
+          # o caminho que a #10 pede. Sem token, a mesma rota precisa recusar.
+          json='Content-Type: application/json'
+          curl -fsS -X POST http://127.0.0.1:8000/auth/register -H "$json" \
+            -d '{"username":"ci_smoke","email":"ci@algorise.dev","senha":"senha-do-ci"}' > /dev/null
+          token=$(curl -fsS -X POST http://127.0.0.1:8000/auth/login -H "$json" \
+            -d '{"email":"ci@algorise.dev","senha":"senha-do-ci"}' \
+            | python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')
+          curl -fsS http://127.0.0.1:8000/auth/eu -H "Authorization: Bearer $token" \
+            | tee /dev/stderr | grep -q '"username":"ci_smoke"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/auth/eu)" = 401
 
       # TODO(#14): rodar `pytest` quando a suíte existir.
 

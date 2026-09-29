@@ -34,6 +34,13 @@ CREDENCIAIS_INVALIDAS = HTTPException(
     detail="E-mail ou senha incorretos",
 )
 
+SESSAO_INDISPONIVEL = HTTPException(
+    # O Redis não gravou a sessão. 503 e não 401: a senha estava certa, e o
+    # aluno só precisa tentar de novo.
+    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+    detail="Não foi possível abrir a sessão agora, tente de novo em instantes",
+)
+
 
 @router.post("/register", response_model=Sessao, status_code=status.HTTP_201_CREATED)
 def registrar(dados: Registro, db: Session = Depends(get_db)) -> Sessao:
@@ -49,8 +56,16 @@ def registrar(dados: Registro, db: Session = Depends(get_db)) -> Sessao:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Já existe uma conta com esse e-mail"
         ) from erro
+    except servico.UsernameEmUso as erro:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Esse nome de usuário já está em uso"
+        ) from erro
 
-    return servico.abrir_sessao(usuario)
+    try:
+        return servico.abrir_sessao(usuario)
+    except servico.SessaoIndisponivel as erro:
+        # A conta foi criada; só a sessão falhou. O aluno entra pelo login.
+        raise SESSAO_INDISPONIVEL from erro
 
 
 @router.post("/login", response_model=Sessao)
@@ -60,7 +75,10 @@ def entrar(dados: Login, db: Session = Depends(get_db)) -> Sessao:
     except servico.CredenciaisInvalidas as erro:
         raise CREDENCIAIS_INVALIDAS from erro
 
-    return servico.abrir_sessao(usuario, lembrar=dados.lembrar)
+    try:
+        return servico.abrir_sessao(usuario, lembrar=dados.lembrar)
+    except servico.SessaoIndisponivel as erro:
+        raise SESSAO_INDISPONIVEL from erro
 
 
 @router.post("/refresh", response_model=Sessao)
@@ -71,6 +89,8 @@ def renovar(dados: Renovacao, db: Session = Depends(get_db)) -> Sessao:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão expirada, entre de novo"
         ) from erro
+    except servico.SessaoIndisponivel as erro:
+        raise SESSAO_INDISPONIVEL from erro
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -94,7 +114,10 @@ def esqueci_senha(dados: EsqueciSenha, db: Session = Depends(get_db)) -> dict[st
     if token is not None:
         # Enquanto não existe serviço de e-mail, o link vai para o log. Trocar
         # isso pelo envio é a única mudança que essa rota ainda precisa.
-        logger.info(
+        #
+        # WARNING e não INFO: o uvicorn só configura os loggers dele, e o INFO
+        # de um logger da aplicação não aparece em lugar nenhum.
+        logger.warning(
             "Link de recuperação de senha: %s/redefinir-senha?token=%s",
             settings.frontend_origin,
             token,
