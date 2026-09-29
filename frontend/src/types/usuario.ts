@@ -7,6 +7,8 @@ export interface Usuario {
   username?: string
   email: string
   avatarUrl?: string
+  /** Conta entra por senha (e não só por GitHub/Google). */
+  temSenha?: boolean
   nivelExperiencia: NivelExperiencia
   tipoTrilha: TipoTrilha
   xp: number

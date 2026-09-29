@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { toast } from '@/components/ui/toaster'
 import { ehLoginTeste, loginTesteHabilitado, USUARIO_TESTE } from '@/lib/loginTeste'
 import { configurarAutenticacao } from '@/services/api'
 import * as auth from '@/services/auth'
@@ -68,7 +69,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     sessionStorage.removeItem(CHAVE_SESSAO_TESTE)
-    setUsuario(await auth.entrar(email, senha, manterConectado))
+    const { usuario: logado, aviso } = await auth.entrar(email, senha, manterConectado)
+    setUsuario(logado)
+    if (aviso) toast(aviso)
   }, [])
 
   const cadastrar = useCallback(

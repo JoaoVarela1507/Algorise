@@ -7,6 +7,7 @@ import { LoginPage } from '@/pages/Auth/LoginPage'
 import { CadastroPage } from '@/pages/Auth/CadastroPage'
 import { EsqueciSenhaPage } from '@/pages/Auth/EsqueciSenhaPage'
 import { OAuthCallbackPage } from '@/pages/Auth/OAuthCallbackPage'
+import { PrivacidadePage } from '@/pages/Legal/PrivacidadePage'
 import { RedefinirSenhaPage } from '@/pages/Auth/RedefinirSenhaPage'
 import { HomePage } from '@/pages/Home/HomePage'
 import { TrilhasPage } from '@/pages/Trilhas/TrilhasPage'
@@ -22,6 +23,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/boas-vindas" element={<BoasVindasPage />} />
+      <Route path="/privacidade" element={<PrivacidadePage />} />
 
       <Route element={<AuthLayout />}>
         <Route path="/onboarding" element={<OnboardingPage />} />

@@ -88,6 +88,7 @@ Cache e dados voláteis. O que está lá:
 | `algorise:sessao:refresh:<jti>`    | string     | refresh token válido e seu dono            |
 | `algorise:sessao:revogada:<jti>`   | string     | sessão revogada até o fim do prazo        |
 | `algorise:ratelimit:<chave>`       | contador   | janela do rate limit                      |
+| `algorise:login:falhas:<hash>`     | contador   | tentativas de login erradas por e-mail    |
 
 **A API funciona sem ele.** Todo acesso passa por `executar()`, em
 `app/core/redis.py`, que engole erro de conexão e devolve um padrão — a rota então
@@ -166,6 +167,55 @@ Com `bcrypt` direto, e não com `passlib`, que a issue original pedia: o passlib
 traceback a cada boot ao tentar ler a versão. O limite de 72 bytes do algoritmo é
 recusado na validação em vez de truncado em silêncio.
 
+## Segurança e LGPD
+
+O que vale para toda a API (#40):
+
+- **Headers de segurança** em toda resposta (`app/core/protecao_http.py`):
+  `nosniff`, `X-Frame-Options`, `Referrer-Policy` e uma CSP que não deixa nada
+  executar. O `/docs` fica sem a CSP, porque o Swagger carrega script de CDN. O
+  HSTS só é enviado em produção.
+- **Teto de 10 MB** no corpo de qualquer requisição: acima disso, 413, antes de a
+  rota ler o corpo. Cada rota de upload (ementa, avatar) ainda aplica o seu
+  limite e confere o tipo do arquivo.
+- **CORS** só para `FRONTEND_ORIGIN` e só com os métodos e headers que o
+  frontend usa. Em produção a API não sobe com `*`.
+- **Rate limit por IP** nas rotas de `/auth` (20 por minuto por rota), e por aluno
+  no chat. Atrás de proxy, o uvicorn precisa de `--proxy-headers` e do IP do proxy
+  em `--forwarded-allow-ips`, senão todo mundo divide o limite do IP do proxy.
+- **Bloqueio de login:** 5 senhas erradas seguidas no mesmo e-mail bloqueiam
+  aquele e-mail por 15 minutos, com ou sem conta por trás (senão o bloqueio
+  entregaria quem tem conta). Redefinir a senha libera.
+- **Política de senha** no cadastro e na redefinição (`app/core/politica_senha.py`),
+  no estilo do NIST: mínimo de 8, sem senha comum, sequência ou senha com o e-mail
+  ou o username. Sem regra de composição, de propósito.
+
+Direitos do titular:
+
+| Rota                     | O que faz                                                      |
+| ------------------------ | -------------------------------------------------------------- |
+| `GET /usuarios/me/dados` | baixa, em JSON, tudo o que o Algorise guarda sobre o aluno     |
+| `DELETE /usuarios/me`    | desativa a conta agora e marca o expurgo para daqui a 30 dias |
+
+O cadastro exige `aceite_termos: true` e grava o aceite em `consentimentos`
+(versão dos termos, data e IP). A conta criada pelo GitHub ou pelo Google grava o
+mesmo registro, com origem `oauth`. Mudar `VERSAO_TERMOS` é o que torna um aceite
+antigo desatualizado.
+
+A exclusão pede a palavra `EXCLUIR` e, se a conta tiver senha, a senha. Durante o
+prazo a conta some do ranking, as sessões caem e o access token para de valer;
+entrar de novo cancela a exclusão. O expurgo roda fora da API, uma vez por dia:
+
+```powershell
+python -m app.tarefas.expurgo
+```
+
+Ele é idempotente, e atrasar um dia só adia o expurgo. Não há nada para
+anonimizar hoje: todas as tabelas com dado do aluno apagam em cascata. **Toda
+tabela nova com `usuario_id` entra na exportação sozinha** (ela é descoberta pelo
+mapeamento), mas precisa de `ondelete="CASCADE"` para sair no expurgo, e de RLS
+na migração.
+
 ## Estrutura de pastas
 
 ```
@@ -177,5 +227,6 @@ app/
   models/        modelos SQLAlchemy (um arquivo por área do domínio)
   schemas/       schemas Pydantic (contrato da API, espelham os types do frontend)
   services/      regras de negócio (ex.: geração de trilhas, integração com IA)
+  tarefas/       rotinas de manutenção rodadas fora da API (ex.: expurgo)
   main.py        cria a instância do FastAPI (app) e registra as rotas
 ```
