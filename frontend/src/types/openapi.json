@@ -347,6 +347,10 @@
             "title": "Ordem",
             "type": "integer"
           },
+          "status": {
+            "$ref": "#/components/schemas/StatusProgresso",
+            "default": "bloqueado"
+          },
           "titulo": {
             "title": "Titulo",
             "type": "string"
@@ -423,6 +427,100 @@
           "total_paginas"
         ],
         "title": "Pagina[Trilha]",
+        "type": "object"
+      },
+      "PassoDetalhe": {
+        "description": "Conteúdo de um passo, com o bastante para a tela 26 se situar.",
+        "properties": {
+          "atividades": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AtividadeResumo"
+            },
+            "title": "Atividades",
+            "type": "array"
+          },
+          "bloqueado": {
+            "default": true,
+            "title": "Bloqueado",
+            "type": "boolean"
+          },
+          "concluido": {
+            "default": false,
+            "title": "Concluido",
+            "type": "boolean"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "ordem": {
+            "title": "Ordem",
+            "type": "integer"
+          },
+          "proximo": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proximo"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusProgresso",
+            "default": "bloqueado"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "total_passos": {
+            "title": "Total Passos",
+            "type": "integer"
+          },
+          "trilha_nome": {
+            "title": "Trilha Nome",
+            "type": "string"
+          },
+          "trilha_slug": {
+            "title": "Trilha Slug",
+            "type": "string"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          }
+        },
+        "required": [
+          "id",
+          "ordem",
+          "titulo",
+          "trilha_slug",
+          "trilha_nome",
+          "total_passos"
+        ],
+        "title": "PassoDetalhe",
         "type": "object"
       },
       "Perfil": {
@@ -704,6 +802,15 @@
         "title": "Sessao",
         "type": "object"
       },
+      "StatusProgresso": {
+        "enum": [
+          "bloqueado",
+          "em-andamento",
+          "concluido"
+        ],
+        "title": "StatusProgresso",
+        "type": "string"
+      },
       "TipoAtividade": {
         "description": "Formato da atividade dentro de um módulo (telas 28 a 34).",
         "enum": [
@@ -864,6 +971,72 @@
           "disciplina"
         ],
         "title": "TrilhaDetalhe",
+        "type": "object"
+      },
+      "TrilhaRecomendada": {
+        "description": "Card da seção de sugestões da tela 24.",
+        "properties": {
+          "categoria": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categoria"
+          },
+          "disciplina": {
+            "title": "Disciplina",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "motivo": {
+            "title": "Motivo",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "periodo": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo"
+          },
+          "progresso": {
+            "default": 0,
+            "title": "Progresso",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "total_modulos": {
+            "default": 0,
+            "title": "Total Modulos",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "nome",
+          "disciplina",
+          "motivo"
+        ],
+        "title": "TrilhaRecomendada",
         "type": "object"
       },
       "UsuarioAutenticado": {
@@ -1509,7 +1682,7 @@
     },
     "/api/v1/trilhas": {
       "get": {
-        "description": "Trilhas publicadas, paginadas. Aceita `ordenar_por` em `periodo`, `nome` ou `disciplina`.",
+        "description": "Trilhas publicadas, paginadas. Com token, cada card vem com o progresso do aluno. Aceita `ordenar_por` em `periodo`, `nome` ou `disciplina`.",
         "operationId": "listarTrilhas",
         "parameters": [
           {
@@ -1548,6 +1721,24 @@
               ],
               "description": "Período letivo",
               "title": "Periodo"
+            }
+          },
+          {
+            "description": "Categoria do card (tela 24)",
+            "in": "query",
+            "name": "categoria",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Categoria do card (tela 24)",
+              "title": "Categoria"
             }
           },
           {
@@ -1640,7 +1831,63 @@
             "description": "Erro inesperado"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Catálogo de trilhas",
+        "tags": [
+          "trilhas"
+        ]
+      }
+    },
+    "/api/v1/trilhas/recomendadas": {
+      "get": {
+        "description": "Sugestões conforme o período e o nível informados no onboarding.\n\nFica antes de `/{slug}` de propósito: declarada depois, a rota de detalhe\nengoliria \"recomendadas\" como se fosse um slug.",
+        "operationId": "listarRecomendadas",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TrilhaRecomendada"
+                  },
+                  "title": "Response Listarrecomendadas",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Trilhas sugeridas para o aluno",
         "tags": [
           "trilhas"
         ]
@@ -1692,7 +1939,137 @@
             "description": "Erro inesperado"
           }
         },
-        "summary": "Trilha com módulos e atividades",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Trilha com os passos e seus estados",
+        "tags": [
+          "trilhas"
+        ]
+      }
+    },
+    "/api/v1/trilhas/{slug}/iniciar": {
+      "post": {
+        "description": "Idempotente: quem já começou continua de onde parou.",
+        "operationId": "iniciarTrilha",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrilhaDetalhe"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Começa a trilha para o aluno",
+        "tags": [
+          "trilhas"
+        ]
+      }
+    },
+    "/api/v1/trilhas/{slug}/passos/{ordem}": {
+      "get": {
+        "description": "Recusa com 403 o passo que o aluno ainda não desbloqueou.",
+        "operationId": "obterPasso",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ordem",
+            "required": true,
+            "schema": {
+              "title": "Ordem",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassoDetalhe"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Conteúdo de um passo",
         "tags": [
           "trilhas"
         ]
