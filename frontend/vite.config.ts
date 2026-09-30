@@ -58,6 +58,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/setupTests.ts',
+    // O padrão do Vitest também casa com `e2e/*.spec.ts`, que é do Playwright
+    // e não roda aqui: sem isto, `npm run test` tenta executá-los e falha.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     css: false,
     coverage: {
       provider: 'v8',
