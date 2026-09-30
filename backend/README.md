@@ -157,7 +157,7 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 
 Sem as credenciais do provedor, `/auth/github/login` responde 503 com a razão em
 vez de mandar o aluno para uma tela de erro do GitHub. Os callbacks a cadastrar
-no provedor são `http://localhost:8000/auth/github/callback` e o equivalente do
+no provedor são `http://localhost:8000/api/v1/auth/github/callback` e o equivalente do
 Google.
 
 ### Hash de senha

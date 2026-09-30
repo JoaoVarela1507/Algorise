@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api.routes import auth, health, oauth, ranking, trilhas, usuarios, versao
+from app.api import infra, v1
 from app.core.config import settings
 from app.core.protecao_http import ProtecaoHTTP
 
@@ -39,10 +39,5 @@ app.add_middleware(
 # respostas de erro do CORS, e o teto de tamanho barra o corpo antes de tudo.
 app.add_middleware(ProtecaoHTTP)
 
-app.include_router(health.router)
-app.include_router(versao.router)
-app.include_router(trilhas.router)
-app.include_router(ranking.router)
-app.include_router(auth.router)
-app.include_router(oauth.router)
-app.include_router(usuarios.router)
+app.include_router(infra.router)
+app.include_router(v1.router)

@@ -1,5 +1,14 @@
 export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
+/**
+ * Prefixo das rotas de negócio. Fica num lugar só: quando a API subir para a
+ * v2, é esta linha que muda.
+ *
+ * `/health` e `/version` ficam fora dele de propósito — são de operação, e o
+ * frontend não os consome.
+ */
+export const API_V1 = `${API_URL}/api/v1`
+
 /** Erro de uma resposta da API, com a mensagem que o backend mandou em `detail`. */
 export class ApiError extends Error {
   constructor(
@@ -110,7 +119,7 @@ async function enviar(path: string, init: RequestInit, autenticar: boolean): Pro
   }
 
   try {
-    return await fetch(`${API_URL}${path}`, { ...init, headers })
+    return await fetch(`${API_V1}${path}`, { ...init, headers })
   } catch {
     // `fetch` só rejeita quando nem houve resposta: API fora ou sem rede.
     throw new ApiError(0, 'Não foi possível falar com o servidor. Tente de novo em instantes.')
