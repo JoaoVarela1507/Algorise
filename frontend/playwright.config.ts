@@ -56,7 +56,9 @@ export default defineConfig({
       },
     },
     {
-      command: `npm run preview -- --port ${PORTA_WEB} --strictPort`,
+      // `--host` explícito: sem ele o `vite preview` escuta só em `localhost`,
+      // e a espera do Playwright, que bate em 127.0.0.1, estoura o tempo.
+      command: `npm run preview -- --port ${PORTA_WEB} --strictPort --host 127.0.0.1`,
       url: `http://127.0.0.1:${PORTA_WEB}`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
