@@ -24,3 +24,12 @@ Thumbs.db
 
 *.local
 *.tsbuildinfo
+
+# Playwright: navegadores, relatórios e rastros do que falhou
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Cobertura do Vitest
+coverage
