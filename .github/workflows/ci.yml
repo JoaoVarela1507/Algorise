@@ -151,28 +151,18 @@ jobs:
           curl -fsS http://127.0.0.1:8000/health | tee /dev/stderr | grep -q '"status":"ok"'
           curl -fsS http://127.0.0.1:8000/ready | tee /dev/stderr | grep -q '"banco":"ok"'
           # A rota de trilhas precisa devolver o que o seed inseriu.
-          curl -fsS http://127.0.0.1:8000/api/v1/trilhas | tee /dev/stderr | grep -q 'introducao-python'
+          curl -fsS http://127.0.0.1:8000/trilhas | tee /dev/stderr | grep -q 'introducao-python'
           # Autenticação: registrar, entrar e usar o token numa rota protegida,
           # o caminho que a #10 pede. Sem token, a mesma rota precisa recusar.
           json='Content-Type: application/json'
-          curl -fsS -X POST http://127.0.0.1:8000/api/v1/auth/register -H "$json" \
+          curl -fsS -X POST http://127.0.0.1:8000/auth/register -H "$json" \
             -d '{"username":"ci_smoke","email":"ci@algorise.dev","senha":"senha-do-ci","aceite_termos":true}' > /dev/null
-          token=$(curl -fsS -X POST http://127.0.0.1:8000/api/v1/auth/login -H "$json" \
+          token=$(curl -fsS -X POST http://127.0.0.1:8000/auth/login -H "$json" \
             -d '{"email":"ci@algorise.dev","senha":"senha-do-ci"}' \
             | python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')
-          curl -fsS http://127.0.0.1:8000/api/v1/auth/eu -H "Authorization: Bearer $token" \
+          curl -fsS http://127.0.0.1:8000/auth/eu -H "Authorization: Bearer $token" \
             | tee /dev/stderr | grep -q '"username":"ci_smoke"'
-          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/v1/auth/eu)" = 401
-
-      # O `frontend/src/types/api.d.ts` é gerado do OpenAPI e commitado, para o
-      # frontend compilar sem Python. Se alguém mexe numa rota e esquece de
-      # rodar `npm run gen:api`, o tipo no frontend passa a mentir — e é só no
-      # runtime que aparece. Aqui isso reprova o PR.
-      - name: OpenAPI commitado está atualizado
-        working-directory: .
-        run: |
-          python backend/scripts/exportar_openapi.py
-          git diff --exit-code frontend/src/types/openapi.json             || { echo "::error::Rode 'npm run gen:api' e commite o resultado"; exit 1; }
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/auth/eu)" = 401
 
       # TODO(#14): rodar `pytest` quando a suíte existir.
 

@@ -8,8 +8,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint:fe": "npm --prefix frontend run lint",
-    "lint:be": "ruff check backend",
-    "gen:api": "python backend/scripts/exportar_openapi.py && npm --prefix frontend run gen:types"
+    "lint:be": "ruff check backend"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",

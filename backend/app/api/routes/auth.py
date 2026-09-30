@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from app.api.deps import UsuarioAtual
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.erros import ErroDeNegocio
 from app.core.rate_limit import limite_por_ip
 from app.schemas.auth import (
     EsqueciSenha,
@@ -30,20 +29,18 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-CREDENCIAIS_INVALIDAS = ErroDeNegocio(
+CREDENCIAIS_INVALIDAS = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
-    code="credenciais_invalidas",
     # Mesma mensagem para e-mail sem conta e senha errada: a resposta não pode
     # servir para descobrir quem tem cadastro.
-    message="E-mail ou senha incorretos",
+    detail="E-mail ou senha incorretos",
 )
 
-SESSAO_INDISPONIVEL = ErroDeNegocio(
+SESSAO_INDISPONIVEL = HTTPException(
     # O Redis não gravou a sessão. 503 e não 401: a senha estava certa, e o
     # aluno só precisa tentar de novo.
     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-    code="sessao_indisponivel",
-    message="Não foi possível abrir a sessão agora, tente de novo em instantes",
+    detail="Não foi possível abrir a sessão agora, tente de novo em instantes",
 )
 
 AVISO_EXCLUSAO_CANCELADA = "A exclusão da sua conta foi cancelada porque você entrou de novo."
@@ -59,11 +56,7 @@ def _limite(nome: str):
 
 
 def _senha_fraca(erro: servico.SenhaFraca) -> HTTPException:
-    return ErroDeNegocio(
-        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-        code="senha_fraca",
-        message=str(erro),
-    )
+    return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(erro))
 
 
 @router.post(
@@ -72,7 +65,7 @@ def _senha_fraca(erro: servico.SenhaFraca) -> HTTPException:
     status_code=status.HTTP_201_CREATED,
     dependencies=[_limite("register")],
 )
-def registrar_conta(dados: Registro, request: Request, db: Session = Depends(get_db)) -> Sessao:
+def registrar(dados: Registro, request: Request, db: Session = Depends(get_db)) -> Sessao:
     try:
         usuario = servico.registrar(
             db,
@@ -85,20 +78,12 @@ def registrar_conta(dados: Registro, request: Request, db: Session = Depends(get
     except servico.SenhaFraca as erro:
         raise _senha_fraca(erro) from erro
     except servico.EmailEmUso as erro:
-        raise ErroDeNegocio(
-            status_code=status.HTTP_409_CONFLICT,
-            # `code` separado do username para o formulário da tela 6 marcar o
-            # campo certo sem ler a mensagem.
-            code="email_em_uso",
-            message="Já existe uma conta com esse e-mail",
-            details={"campo": "email"},
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Já existe uma conta com esse e-mail"
         ) from erro
     except servico.UsernameEmUso as erro:
-        raise ErroDeNegocio(
-            status_code=status.HTTP_409_CONFLICT,
-            code="username_em_uso",
-            message="Esse nome de usuário já está em uso",
-            details={"campo": "username"},
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Esse nome de usuário já está em uso"
         ) from erro
 
     try:
@@ -116,12 +101,10 @@ def entrar(dados: Login, db: Session = Depends(get_db)) -> Sessao:
         raise CREDENCIAIS_INVALIDAS from erro
     except servico.LoginBloqueado as erro:
         minutos = max(erro.segundos // 60, 1)
-        raise ErroDeNegocio(
+        raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            code="login_bloqueado",
-            message=f"Muitas tentativas erradas. Tente de novo em {minutos} min "
+            detail=f"Muitas tentativas erradas. Tente de novo em {minutos} min "
             "ou redefina a senha.",
-            details={"segundos": erro.segundos},
             headers={"Retry-After": str(erro.segundos)},
         ) from erro
 
@@ -136,28 +119,26 @@ def entrar(dados: Login, db: Session = Depends(get_db)) -> Sessao:
 
 
 @router.post("/refresh", response_model=Sessao, dependencies=[_limite("refresh")])
-def renovar_sessao(dados: Renovacao, db: Session = Depends(get_db)) -> Sessao:
+def renovar(dados: Renovacao, db: Session = Depends(get_db)) -> Sessao:
     try:
         return servico.renovar_sessao(db, dados.refresh_token)
     except servico.SessaoExpirada as erro:
-        raise ErroDeNegocio(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            code="sessao_expirada",
-            message="Sessão expirada, entre de novo",
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão expirada, entre de novo"
         ) from erro
     except servico.SessaoIndisponivel as erro:
         raise SESSAO_INDISPONIVEL from erro
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-def encerrar_sessao(dados: Renovacao) -> Response:
+def sair(dados: Renovacao) -> Response:
     """Encerra a sessão. Responde 204 mesmo com token já inválido: o fim é o mesmo."""
     servico.encerrar_sessao(dados.refresh_token)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/eu", response_model=UsuarioAutenticado)
-def obter_usuario_atual(usuario: UsuarioAtual) -> UsuarioAutenticado:
+def eu(usuario: UsuarioAtual) -> UsuarioAutenticado:
     """Rota protegida de referência: é o que o frontend chama ao abrir o app."""
     return UsuarioAutenticado.model_validate(usuario)
 
@@ -197,10 +178,9 @@ def redefinir_senha(dados: RedefinirSenha, db: Session = Depends(get_db)) -> Res
     except servico.SenhaFraca as erro:
         raise _senha_fraca(erro) from erro
     except servico.TokenDeSenhaInvalido as erro:
-        raise ErroDeNegocio(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            code="link_invalido",
-            message="Link de recuperação inválido ou expirado",
+            detail="Link de recuperação inválido ou expirado",
         ) from erro
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)

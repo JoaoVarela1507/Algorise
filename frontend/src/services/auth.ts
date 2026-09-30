@@ -7,7 +7,7 @@
  *   fechar o navegador) e no `sessionStorage` sem (morre com a aba).
  */
 import {
-  API_V1,
+  API_URL,
   ApiError,
   apiFetch,
   apiGet,
@@ -183,7 +183,7 @@ export async function concluirLoginSocial(tokens: {
  * só aparece como `opaqueredirect`, que é o sinal de que está tudo certo.
  */
 export async function iniciarLoginSocial(provedor: Provedor) {
-  const url = `${API_V1}/auth/${provedor}/login`
+  const url = `${API_URL}/auth/${provedor}/login`
 
   let resposta: Response
   try {

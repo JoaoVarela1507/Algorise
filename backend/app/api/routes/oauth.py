@@ -31,7 +31,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.get("/{provedor}/login")
-async def iniciar_login_social(provedor: str, request: Request) -> RedirectResponse:
+async def iniciar(provedor: str, request: Request) -> RedirectResponse:
     """Manda o aluno para o provedor."""
     cliente = _cliente(provedor)
     retorno = request.url_for("callback_oauth", provedor=provedor)
@@ -39,7 +39,7 @@ async def iniciar_login_social(provedor: str, request: Request) -> RedirectRespo
 
 
 @router.get("/{provedor}/callback", name="callback_oauth")
-async def concluir_login_social(
+async def callback(
     provedor: str, request: Request, db: Session = Depends(get_db)
 ) -> RedirectResponse:
     """Recebe o provedor de volta, resolve a conta e devolve o aluno ao frontend."""
