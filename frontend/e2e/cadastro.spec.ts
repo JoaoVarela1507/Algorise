@@ -12,7 +12,7 @@ import { expect, test } from '@playwright/test'
 function aluno() {
   // Cada execução cria uma conta nova: o banco do E2E é recriado, mas rodar
   // duas vezes contra um servidor já de pé esbarraria no e-mail repetido.
-  const id = Date.now().toString(36)
+  const id = crypto.randomUUID().slice(0, 8)
   return {
     username: `aluno_${id}`,
     email: `aluno_${id}@ufrpe.br`,

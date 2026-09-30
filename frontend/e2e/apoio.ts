@@ -17,7 +17,9 @@ export interface Conta {
  * dele em `cadastro.spec.ts`.
  */
 export async function criarConta(request: APIRequestContext): Promise<Conta> {
-  const id = `${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`
+  // `randomUUID` e não `Math.random`: além de não repetir entre execuções
+  // paralelas, evita o alerta de aleatoriedade fraca do CodeQL.
+  const id = crypto.randomUUID().slice(0, 8)
   const conta: Conta = {
     username: `aluno_${id}`,
     email: `aluno_${id}@ufrpe.br`,
