@@ -14,6 +14,23 @@ O tipo do commit define o bump:
 - `feat!: ...` ou `BREAKING CHANGE:` no corpo — major (**1**.0.0)
 - `chore:`, `docs:`, `test:` — não geram release
 
+## [0.7.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.6.0...v0.7.0) (2026-09-29)
+
+
+### Adicionado
+
+* adicionar autenticacao JWT e login com GitHub e Google ([#94](https://github.com/JoaoVarela1507/Algorise/issues/94)) ([b75cccc](https://github.com/JoaoVarela1507/Algorise/commit/b75cccc47e972c2e03d76a33470c6dbb32b94074))
+* ligar a autenticação do frontend à API e o docker compose ao Supabase ([#108](https://github.com/JoaoVarela1507/Algorise/issues/108)) ([10c7a5a](https://github.com/JoaoVarela1507/Algorise/commit/10c7a5ae6b5e5ad0cea54f3a529225b25455dc7c))
+* preparar o backend para usar o Supabase como PostgreSQL ([#107](https://github.com/JoaoVarela1507/Algorise/issues/107)) ([7a6c766](https://github.com/JoaoVarela1507/Algorise/commit/7a6c766429092bcb23aae8a1a0f580f33a6c4e6b))
+* telas 1, 2 e 4 (cold start e onboarding) adaptadas para web ([#102](https://github.com/JoaoVarela1507/Algorise/issues/102)) ([06ef1c0](https://github.com/JoaoVarela1507/Algorise/commit/06ef1c0ebaac95737751957692e86ab078ad156e))
+* telas 5 e 6 (login e cadastro) adaptadas para web ([#104](https://github.com/JoaoVarela1507/Algorise/issues/104)) ([8f3b95d](https://github.com/JoaoVarela1507/Algorise/commit/8f3b95d54133e737da3ddaa7732cb0c9eb97649e))
+* telas de home, trilhas, chat, perfil, configurações e certificados para web ([#110](https://github.com/JoaoVarela1507/Algorise/issues/110)) ([19de001](https://github.com/JoaoVarela1507/Algorise/commit/19de001f586d27d637d0c72fe78110bbe5427306))
+
+
+### Corrigido
+
+* corrigir rotação de sessão, cadastro e falhas do Redis na autenticação ([#106](https://github.com/JoaoVarela1507/Algorise/issues/106)) ([ba137e8](https://github.com/JoaoVarela1507/Algorise/commit/ba137e848ccbdeb09f693d93cd5e6093fd58b714))
+
 ## [0.6.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.5.0...v0.6.0) (2026-09-22)
 
 
