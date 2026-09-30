@@ -4,3 +4,12 @@ __pycache__/
 venv/
 .env
 .pytest_cache/
+.ruff_cache/
+
+# Banco descartável do E2E (ver scripts/preparar_e2e.py)
+e2e.db
+
+# Cobertura do pytest
+.coverage
+coverage.xml
+htmlcov/

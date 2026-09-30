@@ -134,7 +134,7 @@ def problema_da_senha(senha: str, *, email: str = "", username: str = "") -> str
 
 
 def _sem_enfeite_no_fim(texto: str) -> str:
-    """Tira do fim tudo que não for letra: `flamengo2024!` -> `flamengo`.
+    r"""Tira do fim tudo que não for letra: `flamengo2024!` -> `flamengo`.
 
     `isalpha()` é unicode como o `\w` do `re`, então acento continua contando
     como letra e `coração` não vira `cora`.

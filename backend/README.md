@@ -216,6 +216,31 @@ tabela nova com `usuario_id` entra na exportação sozinha** (ela é descoberta 
 mapeamento), mas precisa de `ondelete="CASCADE"` para sair no expurgo, e de RLS
 na migração.
 
+## Testes
+
+```powershell
+pytest                      # a suíte inteira
+pytest tests/test_auth.py   # um arquivo
+pytest -k refresh           # por nome
+pytest --cov=app            # com cobertura
+```
+
+Roda em máquina sem Docker: o banco é SQLite na memória, recriado a cada teste,
+e o Redis é o `fakeredis`. As fixtures estão em `tests/conftest.py` — `cliente`
+(HTTP da aplicação), `usuario`, `autenticado`, `trilha`, `redis_falso` e
+`redis_fora`, essa última para os testes de degradação.
+
+O que fica de fora daqui, de propósito: migração é verificada pelo CI contra um
+PostgreSQL de verdade (`upgrade`, `downgrade`, `upgrade`), porque a migração de
+RLS é PostgreSQL puro.
+
+A suíte roda com **aviso virando erro** (`filterwarnings = ["error"]` no
+`pyproject.toml`). É como um `setex` obsoleto aparece antes de virar quebra numa
+atualização de biblioteca. Se um aviso de dependência sem solução aparecer,
+acrescente a exceção na lista, com o motivo.
+
+O CI reprova abaixo de **80% de cobertura**.
+
 ## Contrato da API
 
 Tudo que é contrato com o frontend vive sob **`/api/v1`**. Fora do prefixo ficam

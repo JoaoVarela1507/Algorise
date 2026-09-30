@@ -26,10 +26,19 @@ metadata = MetaData(naming_convention=NAMING_CONVENTION)
 # `connect_timeout` existe para o /ready: sem ele, com o banco fora, a tentativa
 # de conexão fica pendurada no timeout de TCP do sistema e o endpoint nunca
 # responde — que é justamente quando ele mais importa.
+# `connect_timeout` é argumento do driver do PostgreSQL. O SQLite — que o E2E
+# usa para não precisar de container — recusa o que não conhece, e a aplicação
+# subiria sem conseguir abrir uma conexão sequer.
+_argumentos_de_conexao = (
+    {"connect_timeout": settings.database_connect_timeout}
+    if settings.database_url.startswith("postgresql")
+    else {}
+)
+
 engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
-    connect_args={"connect_timeout": settings.database_connect_timeout},
+    connect_args=_argumentos_de_conexao,
 )
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)

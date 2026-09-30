@@ -8,7 +8,9 @@ import prettier from 'eslint-config-prettier'
 export default tseslint.config(
   // `src/types/api.d.ts` sai do `npm run gen:api`; corrigir lint nele seria
   // perdido na próxima geração.
-  { ignores: ['dist', 'src/types/api.d.ts'] },
+  // `coverage/` e `playwright-report/` são saída de ferramenta; `api.d.ts` sai
+  // do `npm run gen:api`, e corrigir lint nele seria perdido na próxima geração.
+  { ignores: ['dist', 'coverage', 'playwright-report', 'test-results', 'src/types/api.d.ts'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

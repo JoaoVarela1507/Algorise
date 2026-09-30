@@ -35,7 +35,7 @@ def registrar_acesso(db: Session, usuario_id: int, *, hoje: date | None = None) 
         return _obter_ou_criar(db, usuario_id, hoje)
 
     streak = _atualizar(db, usuario_id, hoje)
-    executar(lambda r: r.setex(marcador, _segundos_ate_amanha(hoje), "1"))
+    executar(lambda r: r.set(marcador, "1", ex=_segundos_ate_amanha(hoje)))
     return streak
 
 

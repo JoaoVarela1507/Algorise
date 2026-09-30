@@ -35,3 +35,19 @@ ignore = [
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# `-q` porque a saída longa esconde o que falhou; `--strict-markers` para um
+# marcador com erro de digitação falhar em vez de ser ignorado.
+addopts = "-q --strict-markers"
+filterwarnings = [
+    # Aviso vira erro: é assim que um `datetime.utcnow()` novo aparece antes de
+    # virar problema. As exceções abaixo são de dependência, fora do nosso
+    # controle.
+    "error",
+    "ignore::DeprecationWarning:starlette.*",
+    "ignore::DeprecationWarning:fastapi.*",
+    "ignore:.*httpx.*:UserWarning",
+    "ignore::DeprecationWarning:authlib.*",
+]

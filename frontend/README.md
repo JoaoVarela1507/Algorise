@@ -52,6 +52,37 @@ npm run dev
 
 Sobe em `http://localhost:5173`. Espera o backend rodando em `http://localhost:8000` (configurável via `VITE_API_URL`).
 
+## Testes
+
+```bash
+npm run test          # Vitest, uma vez
+npm run test:watch    # durante o desenvolvimento
+npm run test:cov      # com cobertura
+npm run test:e2e      # Playwright, ponta a ponta
+```
+
+O Vitest roda em `jsdom`, sem rede e sem backend no ar: o `fetch` é dublado nos
+testes da camada de API, e as telas montam com Testing Library. O que o jsdom
+não implementa (`matchMedia`, `ResizeObserver`) está em `src/setupTests.ts`.
+
+A cobertura tem **limiar por arquivo**, não global (ver `vite.config.ts`): a
+maior parte das telas chegou antes da suíte, então um número global só poderia
+ser baixo demais para significar algo. Tela nova entra na lista junto com o
+teste dela.
+
+### E2E
+
+O Playwright sobe backend e frontend sozinho. Antes da primeira vez:
+
+```bash
+npx playwright install chromium
+docker compose up -d redis     # a sessão vive no Redis
+```
+
+O banco do E2E é um SQLite descartável, montado a partir dos modelos
+(`backend/scripts/preparar_e2e.py`). Depois de uma falha,
+`npx playwright show-report` abre o rastro do que aconteceu.
+
 ## Autenticação
 
 O login, o cadastro, a recuperação de senha e o login social falam com a API
