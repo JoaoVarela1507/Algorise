@@ -11,7 +11,6 @@ O que o NIST recomenda, e o que fica de fora de propósito:
 Vale só para senha nova: no login, senha fora da política é só senha errada.
 """
 
-import re
 from itertools import pairwise
 
 # Senhas que aparecem no topo dos vazamentos, em português e em inglês, e as
@@ -113,7 +112,11 @@ def problema_da_senha(senha: str, *, email: str = "", username: str = "") -> str
 
     # `Flamengo2024!` é `flamengo` com enfeite: compara também sem o que vem
     # depois do trecho alfabético.
-    raiz = re.sub(r"[\d\W_]+$", "", normalizada)
+    #
+    # Sem regex de propósito: `[\d\W_]+$` sobre entrada do usuário é ReDoS
+    # polinomial — numa senha de muitos dígitos, o motor tenta casar a partir de
+    # cada posição. O corte abaixo é linear e a senha vem do cadastro.
+    raiz = _sem_enfeite_no_fim(normalizada)
     if normalizada in SENHAS_COMUNS or raiz in SENHAS_COMUNS:
         return "Essa senha é muito comum. Escolha uma mais difícil de adivinhar."
 
@@ -128,6 +131,18 @@ def problema_da_senha(senha: str, *, email: str = "", username: str = "") -> str
         return "A senha não pode conter o seu e-mail ou nome de usuário."
 
     return None
+
+
+def _sem_enfeite_no_fim(texto: str) -> str:
+    """Tira do fim tudo que não for letra: `flamengo2024!` -> `flamengo`.
+
+    `isalpha()` é unicode como o `\w` do `re`, então acento continua contando
+    como letra e `coração` não vira `cora`.
+    """
+    fim = len(texto)
+    while fim and not texto[fim - 1].isalpha():
+        fim -= 1
+    return texto[:fim]
 
 
 def _sequencia(texto: str) -> bool:
