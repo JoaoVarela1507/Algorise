@@ -56,9 +56,16 @@ export default defineConfig({
       },
     },
     {
-      // `--host` explícito: sem ele o `vite preview` escuta só em `localhost`,
-      // e a espera do Playwright, que bate em 127.0.0.1, estoura o tempo.
-      command: `npm run preview -- --port ${PORTA_WEB} --strictPort --host 127.0.0.1`,
+      // O build entra no comando de propósito: o `VITE_API_URL` é embutido no
+      // bundle na hora de compilar, não de servir. Construir antes, sem ele,
+      // gera um frontend que chama a API errada — e o sintoma aparece longe
+      // daqui, num login que não sai do lugar.
+      //
+      // `--host` explícito porque, sem ele, o `vite preview` escuta só em
+      // `localhost` e a espera do Playwright, que bate em 127.0.0.1, estoura.
+      command:
+        `npm run build && ` +
+        `npm run preview -- --port ${PORTA_WEB} --strictPort --host 127.0.0.1`,
       url: `http://127.0.0.1:${PORTA_WEB}`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,

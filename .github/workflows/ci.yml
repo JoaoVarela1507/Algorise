@@ -215,12 +215,6 @@ jobs:
       - run: npm ci
         working-directory: frontend
 
-      # O `webServer` do Playwright sobe o `vite preview`, que serve o build.
-      - run: npm run build
-        working-directory: frontend
-        env:
-          GIT_COMMIT: ${{ github.sha }}
-
       # Só o Chromium: três navegadores triplicariam o tempo sem mudar o que
       # este E2E verifica, que é a conversa entre frontend e API.
       - run: npx playwright install --with-deps chromium

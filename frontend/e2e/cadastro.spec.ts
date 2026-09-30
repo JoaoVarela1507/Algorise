@@ -32,18 +32,26 @@ test('cadastro, onboarding e chegada na home', async ({ page }) => {
   await page.getByLabel(/termos/i).check()
   await page.getByRole('button', { name: /criar conta/i }).click()
 
-  // Passo 1: nível de experiência.
+  // Passo 1: nível de experiência. Cada opção é um botão com `aria-pressed`,
+  // e é ele que precisa ser clicado — o texto solto dentro dele não seleciona.
   await expect(page.getByText('Passo 1 de 3')).toBeVisible()
-  await page.getByText('Baixo', { exact: true }).click()
+  await page.getByRole('button', { name: /^Baixo/ }).click()
   await page.getByRole('button', { name: 'Continuar' }).click()
 
   // Passo 2: tipo de trilha.
   await expect(page.getByText('Passo 2 de 3')).toBeVisible()
-  await page.getByText('Guiada', { exact: true }).click()
+  await page.getByRole('button', { name: /^Guiada/ }).click()
   await page.getByRole('button', { name: 'Continuar' }).click()
 
-  // Passo 3: dados acadêmicos.
+  // Passo 3: dados acadêmicos. Na trilha guiada a grade curricular é
+  // obrigatória — sem ela o "Continuar" fica desabilitado. O arquivo vai em
+  // memória para não precisar de fixture no repositório.
   await expect(page.getByText('Passo 3 de 3')).toBeVisible()
+  await page.locator('#grade-curricular').setInputFiles({
+    name: 'grade.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4 grade de teste'),
+  })
   await page.getByLabel(/universidade\/faculdade/i).fill('UFRPE')
   await page.getByLabel(/curso de graduação/i).fill('Ciência da Computação')
   await page.getByRole('button', { name: 'Continuar' }).click()
