@@ -198,9 +198,32 @@ export interface paths {
         };
         /**
          * Catálogo de trilhas
-         * @description Trilhas publicadas, paginadas. Aceita `ordenar_por` em `periodo`, `nome` ou `disciplina`.
+         * @description Trilhas publicadas, paginadas. Com token, cada card vem com o progresso do aluno. Aceita `ordenar_por` em `periodo`, `nome` ou `disciplina`.
          */
         get: operations["listarTrilhas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trilhas/recomendadas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Trilhas sugeridas para o aluno
+         * @description Sugestões conforme o período e o nível informados no onboarding.
+         *
+         *     Fica antes de `/{slug}` de propósito: declarada depois, a rota de detalhe
+         *     engoliria "recomendadas" como se fosse um slug.
+         */
+        get: operations["listarRecomendadas"];
         put?: never;
         post?: never;
         delete?: never;
@@ -216,8 +239,48 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Trilha com módulos e atividades */
+        /** Trilha com os passos e seus estados */
         get: operations["obterTrilha"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trilhas/{slug}/iniciar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Começa a trilha para o aluno
+         * @description Idempotente: quem já começou continua de onde parou.
+         */
+        post: operations["iniciarTrilha"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trilhas/{slug}/passos/{ordem}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Conteúdo de um passo
+         * @description Recusa com 403 o passo que o aluno ainda não desbloqueou.
+         */
+        get: operations["obterPasso"];
         put?: never;
         post?: never;
         delete?: never;
@@ -487,6 +550,8 @@ export interface components {
             id: number;
             /** Ordem */
             ordem: number;
+            /** @default bloqueado */
+            status: components["schemas"]["StatusProgresso"];
             /** Titulo */
             titulo: string;
             /** Video Url */
@@ -522,6 +587,47 @@ export interface components {
              * @description Quantas páginas existem no total
              */
             total_paginas: number;
+        };
+        /**
+         * PassoDetalhe
+         * @description Conteúdo de um passo, com o bastante para a tela 26 se situar.
+         */
+        PassoDetalhe: {
+            /**
+             * Atividades
+             * @default []
+             */
+            atividades: components["schemas"]["AtividadeResumo"][];
+            /**
+             * Bloqueado
+             * @default true
+             */
+            bloqueado: boolean;
+            /**
+             * Concluido
+             * @default false
+             */
+            concluido: boolean;
+            /** Descricao */
+            descricao?: string | null;
+            /** Id */
+            id: number;
+            /** Ordem */
+            ordem: number;
+            /** Proximo */
+            proximo?: number | null;
+            /** @default bloqueado */
+            status: components["schemas"]["StatusProgresso"];
+            /** Titulo */
+            titulo: string;
+            /** Total Passos */
+            total_passos: number;
+            /** Trilha Nome */
+            trilha_nome: string;
+            /** Trilha Slug */
+            trilha_slug: string;
+            /** Video Url */
+            video_url?: string | null;
         };
         /**
          * Perfil
@@ -637,6 +743,11 @@ export interface components {
             usuario: components["schemas"]["UsuarioAutenticado"];
         };
         /**
+         * StatusProgresso
+         * @enum {string}
+         */
+        StatusProgresso: "bloqueado" | "em-andamento" | "concluido";
+        /**
          * TipoAtividade
          * @description Formato da atividade dentro de um módulo (telas 28 a 34).
          * @enum {string}
@@ -688,6 +799,36 @@ export interface components {
              * @default []
              */
             modulos: components["schemas"]["ModuloDetalhe"][];
+            /** Nome */
+            nome: string;
+            /** Periodo */
+            periodo?: number | null;
+            /**
+             * Progresso
+             * @default 0
+             */
+            progresso: number;
+            /** Slug */
+            slug: string;
+            /**
+             * Total Modulos
+             * @default 0
+             */
+            total_modulos: number;
+        };
+        /**
+         * TrilhaRecomendada
+         * @description Card da seção de sugestões da tela 24.
+         */
+        TrilhaRecomendada: {
+            /** Categoria */
+            categoria?: string | null;
+            /** Disciplina */
+            disciplina: string;
+            /** Id */
+            id: number;
+            /** Motivo */
+            motivo: string;
             /** Nome */
             nome: string;
             /** Periodo */
@@ -1176,6 +1317,8 @@ export interface operations {
                 busca?: string | null;
                 /** @description Período letivo */
                 periodo?: number | null;
+                /** @description Categoria do card (tela 24) */
+                categoria?: string | null;
                 /** @description Página, começando em 1 */
                 pagina?: number;
                 /** @description Itens por página (máximo 100) */
@@ -1220,6 +1363,44 @@ export interface operations {
             };
         };
     };
+    listarRecomendadas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrilhaRecomendada"][];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
     obterTrilha: {
         parameters: {
             query?: never;
@@ -1238,6 +1419,87 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrilhaDetalhe"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    iniciarTrilha: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrilhaDetalhe"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterPasso: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                ordem: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassoDetalhe"];
                 };
             };
             /** @description Dados inválidos */
