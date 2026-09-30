@@ -31,6 +31,18 @@ mudar `package.json` ou `requirements.txt`, rode `docker compose up --build`.
 Para derrubar tudo: `docker compose down` (com `-v` apaga também os dados do
 banco).
 
+### Configuração (`.env` da raiz)
+
+O compose lê as variáveis do `.env` ao lado do `docker-compose.yml`. Sem ele,
+tudo funciona com o PostgreSQL local:
+
+```bash
+cp .env.example .env
+```
+
+Para usar o banco do Supabase, preencha `DATABASE_URL` nele (ver
+`backend/README.md`). As migrações rodam sozinhas quando o backend sobe.
+
 ### Variante de produção
 
 Frontend compilado e servido por nginx na porta 8080, backend sem reload:

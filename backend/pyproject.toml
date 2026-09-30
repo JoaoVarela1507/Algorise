@@ -19,6 +19,9 @@ ignore = [
     # O domínio é em português: nomes como `id_trilha` e siglas como XP não
     # seguem as convenções que essas regras esperam.
     "N999",
+    # Mesma razão: a regra quer exceção terminada em `Error`, e
+    # `CredenciaisInvalidasError` seria metade em cada idioma.
+    "N818",
     # `Depends()` em default de argumento é o idioma do FastAPI, não um bug.
     "B008",
     # `class X(str, Enum)` é intencional: Pydantic e SQLAlchemy lidam bem, e

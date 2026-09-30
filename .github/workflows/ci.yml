@@ -30,6 +30,12 @@ jobs:
       - name: Formatação (Prettier)
         run: npm run format:check
 
+      # Só o que vai para o navegador do aluno (#40). As ferramentas de build
+      # (vite, esbuild) ficam de fora: o problema delas é no servidor de dev,
+      # não no bundle, e subir de versão maior é uma mudança à parte.
+      - name: Dependências vulneráveis (npm audit)
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Lint
         run: npm run lint
 
@@ -62,8 +68,20 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      # A sessão (refresh token) vive no Redis: sem ele o smoke de auth não abre
+      # sessão nenhuma.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 5
     env:
       DATABASE_URL: postgresql+psycopg://algorise:algorise@localhost:5432/algorise
+      REDIS_URL: redis://localhost:6379/0
     steps:
       - uses: actions/checkout@v7
 
@@ -82,12 +100,39 @@ jobs:
           ruff check .
           ruff format --check .
 
+      # PYSEC-2026-1325 (CVE-2024-23342, "Minerva") é um ataque de tempo na
+      # assinatura ECDSA do pacote `ecdsa`, que entra pelo python-jose. A API só
+      # assina com HS256, então esse código nunca roda, e o mantenedor não vai
+      # corrigir. Sai daqui se o JWT passar a usar ES256 ou se a lib for trocada.
+      - name: Dependências vulneráveis (pip-audit)
+        run: pip-audit -r requirements.txt --ignore-vuln PYSEC-2026-1325
+
       # Ida e volta completa: se o downgrade estiver quebrado, o CI reprova.
       - name: Migrações
         run: |
           alembic upgrade head
           alembic downgrade base
           alembic upgrade head
+
+      # No Supabase, tabela sem RLS fica legível pela Data API com a chave anon,
+      # que é pública. Toda migração que cria tabela precisa ligar o RLS nela.
+      - name: RLS em todas as tabelas
+        run: |
+          python - <<'PY'
+          import sys
+          import psycopg
+          from app.core.config import settings
+
+          url = settings.database_url.replace("postgresql+psycopg://", "postgresql://")
+          with psycopg.connect(url) as conexao:
+              sem_rls = [linha[0] for linha in conexao.execute(
+                  "SELECT relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
+                  " WHERE n.nspname = 'public' AND c.relkind = 'r' AND NOT c.relrowsecurity"
+              )]
+          if sem_rls:
+              sys.exit(f"Tabelas sem RLS: {', '.join(sem_rls)}")
+          print("RLS ligado em todas as tabelas")
+          PY
 
       - name: Seed
         run: |
@@ -107,6 +152,17 @@ jobs:
           curl -fsS http://127.0.0.1:8000/ready | tee /dev/stderr | grep -q '"banco":"ok"'
           # A rota de trilhas precisa devolver o que o seed inseriu.
           curl -fsS http://127.0.0.1:8000/trilhas | tee /dev/stderr | grep -q 'introducao-python'
+          # Autenticação: registrar, entrar e usar o token numa rota protegida,
+          # o caminho que a #10 pede. Sem token, a mesma rota precisa recusar.
+          json='Content-Type: application/json'
+          curl -fsS -X POST http://127.0.0.1:8000/auth/register -H "$json" \
+            -d '{"username":"ci_smoke","email":"ci@algorise.dev","senha":"senha-do-ci","aceite_termos":true}' > /dev/null
+          token=$(curl -fsS -X POST http://127.0.0.1:8000/auth/login -H "$json" \
+            -d '{"email":"ci@algorise.dev","senha":"senha-do-ci"}' \
+            | python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')
+          curl -fsS http://127.0.0.1:8000/auth/eu -H "Authorization: Bearer $token" \
+            | tee /dev/stderr | grep -q '"username":"ci_smoke"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/auth/eu)" = 401
 
       # TODO(#14): rodar `pytest` quando a suíte existir.
 

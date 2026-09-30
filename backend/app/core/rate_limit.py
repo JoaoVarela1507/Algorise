@@ -21,6 +21,7 @@ from redis import Redis
 from app.core.cache import chave
 from app.core.config import settings
 from app.core.redis import executar
+from app.core.seguranca import TokenInvalido, decodificar
 
 
 @dataclass(frozen=True)
@@ -60,26 +61,63 @@ def verificar(identificador: str, *, limite: int, janela: int) -> Resultado:
     )
 
 
+def limite_por_ip(nome: str, *, limite: int, janela: int, mensagem: str | None = None):
+    """Dependência que limita a rota por IP: `dependencies=[limite_por_ip("login", ...)]`.
+
+    Usada nas rotas de autenticação, que não têm aluno para servir de chave.
+    Atrás de proxy, o uvicorn precisa de `--proxy-headers` (e o IP do proxy em
+    `--forwarded-allow-ips`) para `request.client` ser o IP de quem chamou, e não
+    o do proxy — senão todo mundo divide o mesmo limite.
+    """
+
+    def limitar(request: Request) -> None:
+        _barrar_se_passou(f"{nome}:ip:{_ip(request)}", limite, janela, mensagem)
+
+    return Depends(limitar)
+
+
 def limitar_chat(request: Request) -> None:
     """Dependência do FastAPI para as rotas de chat: 429 quando passa do limite.
 
-    A chave é o IP enquanto a autenticação (#10) não existe; com ela, passa a ser
-    o id do aluno, que é o que a issue pede.
+    A chave é o aluno quando o request traz um access token válido, e o IP
+    quando não: o chat custa IA por mensagem, e o limite por aluno é o que
+    impede uma conta de gastar pelo IP de uma sala inteira.
     """
-    identificador = f"chat:{request.client.host if request.client else 'desconhecido'}"
-    resultado = verificar(
+    usuario = _usuario_do_token(request)
+    identificador = f"chat:usuario:{usuario}" if usuario else f"chat:ip:{_ip(request)}"
+    _barrar_se_passou(
         identificador,
-        limite=settings.rate_limit_chat_requisicoes,
-        janela=settings.rate_limit_chat_janela,
+        settings.rate_limit_chat_requisicoes,
+        settings.rate_limit_chat_janela,
+        "Muitas mensagens em pouco tempo. Tente de novo em instantes.",
     )
-
-    if not resultado.permitido:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Muitas mensagens em pouco tempo. Tente de novo em instantes.",
-            headers={"Retry-After": str(resultado.reiniciar_em)},
-        )
 
 
 # Açúcar para a rota: `dependencies=[LimiteDoChat]`.
 LimiteDoChat = Depends(limitar_chat)
+
+
+def _barrar_se_passou(identificador: str, limite: int, janela: int, mensagem: str | None) -> None:
+    resultado = verificar(identificador, limite=limite, janela=janela)
+    if not resultado.permitido:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=mensagem or "Muitas tentativas em pouco tempo. Tente de novo em instantes.",
+            headers={"Retry-After": str(resultado.reiniciar_em)},
+        )
+
+
+def _ip(request: Request) -> str:
+    return request.client.host if request.client else "desconhecido"
+
+
+def _usuario_do_token(request: Request) -> str | None:
+    """Dono do access token do header, sem ir ao banco. None se não houver um válido."""
+    cabecalho = request.headers.get("authorization", "")
+    esquema, _, token = cabecalho.partition(" ")
+    if esquema.lower() != "bearer" or not token:
+        return None
+    try:
+        return str(decodificar(token, tipo="access")["sub"])
+    except TokenInvalido:
+        return None

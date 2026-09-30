@@ -28,6 +28,11 @@ def _chave_revogada(jti: str) -> str:
     return chave("sessao", "revogada", jti)
 
 
+def _chave_do_usuario(usuario_id: int) -> str:
+    """Set com os `jti` abertos do aluno, para conseguir derrubar todos de uma vez."""
+    return chave("sessao", "usuario", usuario_id)
+
+
 def registrar_refresh_token(jti: str, usuario_id: int, *, ttl: int | None = None) -> bool:
     """Registra o token e devolve se deu certo.
 
@@ -35,11 +40,18 @@ def registrar_refresh_token(jti: str, usuario_id: int, *, ttl: int | None = None
     entregar o token ao cliente, porque ele não vai funcionar no refresh.
     """
     ttl = ttl or settings.refresh_token_ttl
-    gravado = executar(
-        lambda r: r.setex(_chave_token(jti), ttl, str(usuario_id)),
-        padrao=False,
-    )
-    return bool(gravado)
+
+    def gravar(r: Redis) -> bool:
+        with r.pipeline() as pipe:
+            pipe.setex(_chave_token(jti), ttl, str(usuario_id))
+            # O set acompanha o token mais longo do aluno; sem o `expire` ele
+            # sobreviveria a todas as sessões e ficaria crescendo para sempre.
+            pipe.sadd(_chave_do_usuario(usuario_id), jti)
+            pipe.expire(_chave_do_usuario(usuario_id), ttl, gt=True)
+            gravou, *_ = pipe.execute()
+        return bool(gravou)
+
+    return bool(executar(gravar, padrao=False))
 
 
 def usuario_do_refresh_token(jti: str) -> int | None:
@@ -62,6 +74,36 @@ def usuario_do_refresh_token(jti: str) -> int | None:
     return executar(ler, padrao=None)
 
 
+def consumir_refresh_token(jti: str, *, ttl: int | None = None) -> int | None:
+    """Gasta o token na rotação: devolve o dono e invalida o token na mesma ida.
+
+    O `GETDEL` é o que torna a rotação segura. Com uma leitura seguida de uma
+    revogação, dois refresh simultâneos com o mesmo token passavam os dois pela
+    leitura e cada um saía com um par novo.
+
+    None quando o token não vale (vencido, revogado, já usado) e quando o Redis
+    está fora — falha fechada, como no resto deste módulo.
+    """
+    ttl = ttl or settings.refresh_token_ttl
+
+    def consumir(r: Redis) -> int | None:
+        with r.pipeline() as pipe:
+            pipe.getdel(_chave_token(jti))
+            pipe.exists(_chave_revogada(jti))
+            dono, revogada = pipe.execute()
+
+        if dono is None or revogada:
+            return None
+
+        with r.pipeline() as pipe:
+            pipe.setex(_chave_revogada(jti), ttl, "1")
+            pipe.srem(_chave_do_usuario(int(dono)), jti)
+            pipe.execute()
+        return int(dono)
+
+    return executar(consumir, padrao=None)
+
+
 def revogar_refresh_token(jti: str, *, ttl: int | None = None) -> None:
     """Invalida o token na hora (logout) e guarda a revogação.
 
@@ -72,12 +114,39 @@ def revogar_refresh_token(jti: str, *, ttl: int | None = None) -> None:
     ttl = ttl or settings.refresh_token_ttl
 
     def revogar(r: Redis) -> None:
+        dono = r.get(_chave_token(jti))
         with r.pipeline() as pipe:
             pipe.delete(_chave_token(jti))
             pipe.setex(_chave_revogada(jti), ttl, "1")
+            if dono is not None:
+                pipe.srem(_chave_do_usuario(int(dono)), jti)
             pipe.execute()
 
     executar(revogar)
+
+
+def revogar_sessoes_do_usuario(usuario_id: int, *, ttl: int | None = None) -> int:
+    """Derruba todas as sessões do aluno e devolve quantas eram.
+
+    Usado na troca de senha: quem troca a senha espera que quem estava dentro
+    caia fora.
+    """
+    ttl = ttl or settings.refresh_token_ttl
+
+    def revogar_todas(r: Redis) -> int:
+        jtis = r.smembers(_chave_do_usuario(usuario_id))
+        if not jtis:
+            return 0
+
+        with r.pipeline() as pipe:
+            for jti in jtis:
+                pipe.delete(_chave_token(jti))
+                pipe.setex(_chave_revogada(jti), ttl, "1")
+            pipe.delete(_chave_do_usuario(usuario_id))
+            pipe.execute()
+        return len(jtis)
+
+    return executar(revogar_todas, padrao=0) or 0
 
 
 def esta_revogado(jti: str) -> bool:

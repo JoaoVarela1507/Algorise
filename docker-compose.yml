@@ -47,8 +47,16 @@ services:
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-production}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:8080}
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-algorise}:${POSTGRES_PASSWORD:-algorise}@db:5432/${POSTGRES_DB:-algorise}
+      # Sem DATABASE_URL no .env da raiz, usa o PostgreSQL do serviço `db`. Com
+      # ela (ex.: o Supabase), o backend usa esse banco e o `db` fica ocioso.
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-algorise}:${POSTGRES_PASSWORD:-algorise}@db:5432/${POSTGRES_DB:-algorise}}
       REDIS_URL: redis://redis:6379/0
+      # Sem valor no ambiente, o perfil de produção não sobe — de propósito.
+      JWT_SECRET: ${JWT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     ports:
       - '8000:8000'
     depends_on:

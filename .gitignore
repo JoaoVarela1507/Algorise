@@ -6,6 +6,9 @@ node_modules
 !.vscode/extensions.json
 .idea
 
+# segredos: o .env da raiz alimenta o docker compose
+.env
+
 # os
 .DS_Store
 Thumbs.db

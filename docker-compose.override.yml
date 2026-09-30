@@ -17,6 +17,9 @@ services:
     environment:
       ENVIRONMENT: development
       FRONTEND_ORIGIN: http://localhost:5173
+      # Pelo mesmo motivo do VITE_USE_POLLING, abaixo: sem polling, o --reload
+      # não percebe a edição feita no Windows.
+      WATCHFILES_FORCE_POLLING: 'true'
     volumes:
       - ./backend/app:/app/app
 
@@ -27,6 +30,9 @@ services:
       - '5173:5173'
     environment:
       VITE_API_URL: http://localhost:8000
+      # A pasta montada do Windows não gera evento de mudança dentro do
+      # container; sem polling o hot reload não acontece (ver vite.config.ts).
+      VITE_USE_POLLING: 'true'
     volumes:
       - ./frontend:/app
       # O node_modules vem da imagem (o volume é populado no primeiro up) e não
