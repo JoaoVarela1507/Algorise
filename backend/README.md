@@ -305,6 +305,11 @@ Isso exporta o OpenAPI (sem subir servidor) e gera `frontend/src/types/api.d.ts`
 Os dois arquivos são commitados, para o frontend compilar sem Python instalado —
 então **rode o comando quando mudar um schema ou uma rota**.
 
+O `info.version` do arquivo exportado sai congelado. Ele muda a cada release, e o
+CI compara o arquivo gerado com o commitado: sem isso, todo PR de release
+reprovaria pedindo uma regeração que não mudaria contrato nenhum. O
+`/openapi.json` que a API serve continua com a versão de verdade.
+
 O `operation_id` de cada rota sai do nome da função Python e vira nome de tipo no
 cliente gerado. Renomear a função muda o contrato gerado; é de propósito, para o
 nome ser escolhido e não sorteado pela rota.
