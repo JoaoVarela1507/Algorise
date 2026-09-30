@@ -164,6 +164,16 @@ jobs:
             | tee /dev/stderr | grep -q '"username":"ci_smoke"'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/v1/auth/eu)" = 401
 
+      # O `frontend/src/types/api.d.ts` é gerado do OpenAPI e commitado, para o
+      # frontend compilar sem Python. Se alguém mexe numa rota e esquece de
+      # rodar `npm run gen:api`, o tipo no frontend passa a mentir — e é só no
+      # runtime que aparece. Aqui isso reprova o PR.
+      - name: OpenAPI commitado está atualizado
+        working-directory: .
+        run: |
+          python backend/scripts/exportar_openapi.py
+          git diff --exit-code frontend/src/types/openapi.json             || { echo "::error::Rode 'npm run gen:api' e commite o resultado"; exit 1; }
+
       # TODO(#14): rodar `pytest` quando a suíte existir.
 
   docker:
