@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
@@ -49,6 +50,38 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  test: {
+    // `jsdom` porque os testes montam componente de verdade; `globals` para
+    // `describe`/`it` sem import em cada arquivo, como no resto do ecossistema.
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/setupTests.ts',
+    css: false,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      // Só o que tem lógica: config, tipos gerados e ponto de entrada não
+      // dizem nada sobre o que está coberto.
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/types/**',
+        'src/main.tsx',
+        'src/**/*.d.ts',
+        'src/mocks/**',
+        'src/setupTests.ts',
+      ],
+      // Limiar por arquivo, e não um número global. A maior parte das telas
+      // ainda não tem teste (elas chegaram antes da suíte), então um limiar
+      // global só poderia ser baixo o bastante para não significar nada. Por
+      // arquivo, o que já está coberto não pode regredir — e cada tela nova
+      // entra aqui junto com o seu teste.
+      thresholds: {
+        'src/services/api.ts': { lines: 90, functions: 85, branches: 90 },
+        'src/pages/Auth/LoginPage.tsx': { lines: 100, functions: 100, branches: 100 },
+        'src/components/trilhas/TrilhaCard.tsx': { lines: 100, branches: 100 },
+      },
     },
   },
   server: {
