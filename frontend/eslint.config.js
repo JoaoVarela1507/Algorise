@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint'
 import prettier from 'eslint-config-prettier'
 
 export default tseslint.config(
-  { ignores: ['dist'] },
+  // `src/types/api.d.ts` sai do `npm run gen:api`; corrigir lint nele seria
+  // perdido na próxima geração.
+  { ignores: ['dist', 'src/types/api.d.ts'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
