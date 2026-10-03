@@ -26,7 +26,7 @@ ORDENACAO_PADRAO = "periodo"
 def chave_do_catalogo(
     *,
     busca: str | None,
-    periodo: int | None,
+    periodo: list[int] | None,
     categoria: str | None,
     pagina: "Paginacao",
 ) -> str:
@@ -42,10 +42,12 @@ def chave_do_catalogo(
     catálogo por aluno.
     """
     termo = (busca or "").strip().lower()
+    # Ordenado: marcar 1 e depois 3 tem de cair na mesma chave que 3 e depois 1.
+    filtro_periodo = ",".join(str(valor) for valor in sorted(set(periodo or []))) or "todos"
     filtro_categoria = (categoria or "").strip().lower() or "todas"
     ordem = f"{pagina.ordenar_por or ORDENACAO_PADRAO}:{'desc' if pagina.decrescente else 'asc'}"
     return (
-        f"{PREFIXO_CATALOGO}:{termo}:{periodo or 'todos'}:{filtro_categoria}"
+        f"{PREFIXO_CATALOGO}:{termo}:{filtro_periodo}:{filtro_categoria}"
         f":{pagina.pagina}:{pagina.tamanho_pagina}:{ordem}"
     )
 
@@ -59,7 +61,7 @@ def listar_trilhas(
     db: Session,
     *,
     busca: str | None = None,
-    periodo: int | None = None,
+    periodo: list[int] | None = None,
     categoria: str | None = None,
     apenas_publicadas: bool = True,
     pagina: "Paginacao | None" = None,
@@ -81,8 +83,10 @@ def listar_trilhas(
 
     if apenas_publicadas:
         consulta = consulta.where(Trilha.publicada.is_(True))
-    if periodo is not None:
-        consulta = consulta.where(Trilha.periodo == periodo)
+    if periodo:
+        # A tela 25 deixa marcar vários períodos de uma vez; um `IN` resolve os
+        # dois casos, e o filtro continua acontecendo no banco.
+        consulta = consulta.where(Trilha.periodo.in_(periodo))
     if categoria:
         # Comparação sem diferenciar maiúsculas: a categoria vem de um filtro da
         # tela, não de um id.

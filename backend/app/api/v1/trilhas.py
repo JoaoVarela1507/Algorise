@@ -1,6 +1,9 @@
 """Catálogo, caminho da trilha e conteúdo de cada passo (telas 24, 25 e 26)."""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, Query, status
+from pydantic import Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import UsuarioAtual, UsuarioOpcional
@@ -23,6 +26,9 @@ from app.services import trilhas as servico
 
 router = APIRouter(prefix="/trilhas", tags=["trilhas"])
 
+# 1 a 8, como os períodos do curso.
+PeriodoLetivo = Annotated[int, Field(ge=1, le=8)]
+
 
 @router.get(
     "",
@@ -38,7 +44,11 @@ def listar_trilhas(
     usuario: UsuarioOpcional,
     db: Session = Depends(get_db),
     busca: str | None = Query(default=None, description="Filtra por nome ou disciplina"),
-    periodo: int | None = Query(default=None, ge=1, le=8, description="Período letivo"),
+    # A restrição vai no item, e não na lista: `ge` aplicado a `list[int]`
+    # tentaria comparar a lista inteira com 1 e estoura.
+    periodo: list[PeriodoLetivo] | None = Query(
+        default=None, description="Período letivo; pode repetir para filtrar vários"
+    ),
     categoria: str | None = Query(default=None, description="Categoria do card (tela 24)"),
 ) -> Pagina[Trilha]:
     # O catálogo é igual para todos os alunos, então cabe em cache compartilhado.
