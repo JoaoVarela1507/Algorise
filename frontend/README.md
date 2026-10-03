@@ -52,6 +52,32 @@ npm run dev
 
 Sobe em `http://localhost:5173`. Espera o backend rodando em `http://localhost:8000` (configurável via `VITE_API_URL`).
 
+## Dados do servidor
+
+O TanStack Query cuida do cache; a `services/api.ts` continua cuidando do token e
+da renovação no 401. Um entra em cima do outro, não no lugar.
+
+```
+src/lib/query.ts         QueryClient, política de nova tentativa e as chaves de cache
+src/services/*.ts        chamadas de cada recurso, com os tipos vindos do OpenAPI
+src/hooks/use*.ts        os hooks que as telas usam
+src/components/ui/estados.tsx   carregando, vazio e erro reaproveitáveis
+```
+
+Três coisas que valem saber antes de escrever um hook novo:
+
+- **a chave de cache vem de `chaves`, em `lib/query.ts`.** Invalidação depende de
+  a chave bater exatamente; com string solta espalhada, a tela para de atualizar
+  e ninguém entende por quê;
+- **erro 4xx não é tentado de novo.** Um 404 ou um 403 não melhora insistindo, e
+  repetir só atrasa a tela de erro;
+- **busca, filtro e paginação acontecem no servidor.** A API já faz isso;
+  filtrar no cliente só funcionaria enquanto tudo coubesse numa página.
+
+Os tipos de resposta saem de `src/types/api.d.ts`, gerado do OpenAPI com
+`npm run gen:api` na raiz — mudar um schema no backend e esquecer o frontend vira
+erro de compilação, não bug em produção.
+
 ## Testes
 
 ```bash

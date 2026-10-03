@@ -5,14 +5,10 @@ import { RankingCard } from '@/components/home/RankingCard'
 import { SaudacaoCard } from '@/components/home/SaudacaoCard'
 import { StreakCard } from '@/components/home/StreakCard'
 import { TrilhaAtualCard } from '@/components/home/TrilhaAtualCard'
+import { Carregando, ErroAoCarregar } from '@/components/ui/estados'
 import { useAuth } from '@/contexts/AuthContext'
-import {
-  USUARIO_ATUAL_ID,
-  conquistasMock,
-  metaDiariaMock,
-  rankingMock,
-  trilhaAtualMock,
-} from '@/mocks/home'
+import { useRanking } from '@/hooks/useRanking'
+import { conquistasMock, metaDiariaMock, trilhaAtualMock } from '@/mocks/home'
 
 const container: Variants = {
   oculto: {},
@@ -26,6 +22,9 @@ const secao: Variants = {
 
 export function HomePage() {
   const { usuario } = useAuth()
+  // `usuario_id` para a API devolver a posição do aluno mesmo quando ela cai
+  // fora da primeira página.
+  const ranking = useRanking({ limite: 8, usuarioId: Number(usuario?.id) || undefined })
 
   return (
     <>
@@ -47,11 +46,17 @@ export function HomePage() {
         */}
         <div className="grid flex-1 gap-6 md:grid-cols-2 xl:grid-cols-12">
           <motion.section variants={secao} className="md:col-span-2 xl:col-span-5">
-            <RankingCard
-              ranking={rankingMock}
-              usuarioAtualId={USUARIO_ATUAL_ID}
-              className="h-full"
-            />
+            {ranking.isPending ? (
+              <Carregando rotulo="Carregando ranking…" />
+            ) : ranking.isError ? (
+              <ErroAoCarregar erro={ranking.error} aoTentarDeNovo={() => void ranking.refetch()} />
+            ) : (
+              <RankingCard
+                ranking={ranking.data.linhas}
+                usuarioAtualId={usuario?.id ?? ''}
+                className="h-full"
+              />
+            )}
           </motion.section>
 
           <div className="flex flex-col gap-6 xl:col-span-4">

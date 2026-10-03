@@ -82,6 +82,10 @@ export default defineConfig({
       // entra aqui junto com o seu teste.
       thresholds: {
         'src/services/api.ts': { lines: 90, functions: 85, branches: 90 },
+        'src/lib/query.ts': { lines: 100, branches: 100 },
+        'src/services/trilhas.ts': { lines: 90, branches: 80 },
+        'src/services/ranking.ts': { lines: 75, branches: 100 },
+        'src/hooks/useTrilhas.ts': { lines: 70, branches: 100 },
         'src/pages/Auth/LoginPage.tsx': { lines: 100, functions: 100, branches: 100 },
         'src/components/trilhas/TrilhaCard.tsx': { lines: 100, branches: 100 },
       },

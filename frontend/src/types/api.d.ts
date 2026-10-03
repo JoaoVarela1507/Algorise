@@ -1315,8 +1315,8 @@ export interface operations {
             query?: {
                 /** @description Filtra por nome ou disciplina */
                 busca?: string | null;
-                /** @description Período letivo */
-                periodo?: number | null;
+                /** @description Período letivo; pode repetir para filtrar vários */
+                periodo?: number[] | null;
                 /** @description Categoria do card (tela 24) */
                 categoria?: string | null;
                 /** @description Página, começando em 1 */

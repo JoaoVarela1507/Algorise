@@ -1704,22 +1704,25 @@
             }
           },
           {
-            "description": "Período letivo",
+            "description": "Período letivo; pode repetir para filtrar vários",
             "in": "query",
             "name": "periodo",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "maximum": 8,
-                  "minimum": 1,
-                  "type": "integer"
+                  "items": {
+                    "maximum": 8,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "type": "array"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "description": "Período letivo",
+              "description": "Período letivo; pode repetir para filtrar vários",
               "title": "Periodo"
             }
           },
