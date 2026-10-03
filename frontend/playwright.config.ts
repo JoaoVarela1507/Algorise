@@ -41,8 +41,11 @@ export default defineConfig({
 
   webServer: [
     {
+      // O seed entra aqui para a tela de trilhas ter o que mostrar: ela lê a
+      // API de verdade, e um catálogo vazio não exercitaria nada.
       command:
         `python scripts/preparar_e2e.py e2e.db && ` +
+        `python -m app.seeds && ` +
         `python -m uvicorn app.main:app --port ${PORTA_API}`,
       cwd: '../backend',
       url: `http://127.0.0.1:${PORTA_API}/health`,
