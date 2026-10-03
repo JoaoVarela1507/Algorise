@@ -14,6 +14,13 @@ O tipo do commit define o bump:
 - `feat!: ...` ou `BREAKING CHANGE:` no corpo — major (**1**.0.0)
 - `chore:`, `docs:`, `test:` — não geram release
 
+## [0.10.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.9.0...v0.10.0) (2026-10-03)
+
+
+### Adicionado
+
+* ligar o frontend a API com TanStack Query ([#140](https://github.com/JoaoVarela1507/Algorise/issues/140)) ([73e5fc9](https://github.com/JoaoVarela1507/Algorise/commit/73e5fc9bb6a023d247951f43a90e12de83295bc7))
+
 ## [0.9.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.8.0...v0.9.0) (2026-09-30)
 
 
