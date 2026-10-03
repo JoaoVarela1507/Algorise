@@ -4,8 +4,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core import cache
-from app.models import Modulo, Trilha
+from app.models import Modulo, NivelExperiencia, Trilha, Usuario
 from app.schemas.pagina import Paginacao
+from app.services import progresso
 
 # Prefixo próprio para o catálogo poder ser invalidado inteiro de uma vez, sem
 # precisar saber que combinações de busca e período alguém consultou.
@@ -22,17 +23,29 @@ ORDENACOES = {
 ORDENACAO_PADRAO = "periodo"
 
 
-def chave_do_catalogo(*, busca: str | None, periodo: int | None, pagina: "Paginacao") -> str:
+def chave_do_catalogo(
+    *,
+    busca: str | None,
+    periodo: int | None,
+    categoria: str | None,
+    pagina: "Paginacao",
+) -> str:
     """Chave de cache da listagem.
 
-    A busca entra normalizada para "Python" e "python " não virarem duas
-    entradas com o mesmo conteúdo. A página faz parte da chave: duas páginas
-    diferentes são dois conteúdos diferentes.
+    A busca e a categoria entram normalizadas para "Python" e "python " não
+    virarem duas entradas com o mesmo conteúdo. A página faz parte da chave:
+    duas páginas diferentes são dois conteúdos diferentes.
+
+    O aluno **não** entra na chave, de propósito: o cache guarda o catálogo, que
+    é igual para todo mundo, e o progresso de cada um é sobreposto depois (ver
+    `app/api/v1/trilhas.py`). Misturar os dois aqui criaria uma cópia do
+    catálogo por aluno.
     """
     termo = (busca or "").strip().lower()
+    filtro_categoria = (categoria or "").strip().lower() or "todas"
     ordem = f"{pagina.ordenar_por or ORDENACAO_PADRAO}:{'desc' if pagina.decrescente else 'asc'}"
     return (
-        f"{PREFIXO_CATALOGO}:{termo}:{periodo or 'todos'}"
+        f"{PREFIXO_CATALOGO}:{termo}:{periodo or 'todos'}:{filtro_categoria}"
         f":{pagina.pagina}:{pagina.tamanho_pagina}:{ordem}"
     )
 
@@ -47,6 +60,7 @@ def listar_trilhas(
     *,
     busca: str | None = None,
     periodo: int | None = None,
+    categoria: str | None = None,
     apenas_publicadas: bool = True,
     pagina: "Paginacao | None" = None,
 ) -> tuple[list[tuple[Trilha, int]], int]:
@@ -69,6 +83,10 @@ def listar_trilhas(
         consulta = consulta.where(Trilha.publicada.is_(True))
     if periodo is not None:
         consulta = consulta.where(Trilha.periodo == periodo)
+    if categoria:
+        # Comparação sem diferenciar maiúsculas: a categoria vem de um filtro da
+        # tela, não de um id.
+        consulta = consulta.where(func.lower(Trilha.categoria) == categoria.strip().lower())
     if busca:
         termo = f"%{busca.strip()}%"
         consulta = consulta.where(Trilha.nome.ilike(termo) | Trilha.disciplina.ilike(termo))
@@ -101,3 +119,56 @@ def obter_trilha(db: Session, slug: str) -> Trilha | None:
         .options(selectinload(Trilha.modulos).selectinload(Modulo.atividades))
     )
     return db.execute(consulta).scalar_one_or_none()
+
+
+# Quantas trilhas a tela 24 sugere de uma vez.
+LIMITE_DE_RECOMENDACOES = 6
+
+MOTIVO_PERIODO = "Combina com o seu período"
+MOTIVO_PROXIMO = "Vem logo depois do seu período"
+MOTIVO_NIVEL = "Boa para quem está começando"
+MOTIVO_GERAL = "Conhecimentos gerais"
+
+
+def recomendar_trilhas(
+    db: Session, usuario: "Usuario", *, limite: int = LIMITE_DE_RECOMENDACOES
+) -> list[tuple[Trilha, int, str]]:
+    """Trilhas sugeridas para o aluno, cada uma com o motivo de ter aparecido.
+
+    A regra usa o que o onboarding coletou: período e nível. A recomendação a
+    partir da ementa em PDF depende da #38 — quando ela existir, entra aqui sem
+    mudar o contrato, porque o motivo já viaja junto.
+
+    Trilha concluída sai da lista: sugerir o que o aluno já terminou é ruído.
+    """
+    trilhas, _ = listar_trilhas(db, apenas_publicadas=True)
+    if not trilhas:
+        return []
+
+    concluidos = progresso.concluidos_por_trilha(
+        db, usuario_id=usuario.id, trilha_ids=[trilha.id for trilha, _ in trilhas]
+    )
+
+    candidatas: list[tuple[Trilha, int, str]] = []
+    for trilha, total_modulos in trilhas:
+        feitos = concluidos.get(trilha.id, 0)
+        if total_modulos and feitos >= total_modulos:
+            continue
+        candidatas.append((trilha, total_modulos, _motivo(trilha, usuario)))
+
+    # Quem casa com o período do aluno aparece primeiro; depois o que vem logo
+    # a seguir; o resto fecha a lista.
+    prioridade = {MOTIVO_PERIODO: 0, MOTIVO_PROXIMO: 1, MOTIVO_NIVEL: 2, MOTIVO_GERAL: 3}
+    candidatas.sort(key=lambda item: (prioridade[item[2]], item[0].periodo or 99, item[0].nome))
+
+    return candidatas[:limite]
+
+
+def _motivo(trilha: Trilha, usuario: "Usuario") -> str:
+    if usuario.periodo is not None and trilha.periodo == usuario.periodo:
+        return MOTIVO_PERIODO
+    if usuario.periodo is not None and trilha.periodo == usuario.periodo + 1:
+        return MOTIVO_PROXIMO
+    if usuario.nivel_experiencia is NivelExperiencia.baixo and (trilha.periodo or 9) <= 2:
+        return MOTIVO_NIVEL
+    return MOTIVO_GERAL

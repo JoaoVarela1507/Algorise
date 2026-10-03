@@ -287,6 +287,27 @@ Quem consome passa `pagina`, `tamanho_pagina` (máximo 100), `ordenar_por` e
 devolve 422 dizendo quais valem — o valor vira nome de coluna, então a lista não
 é preciosismo.
 
+### Trilhas e desbloqueio
+
+| Rota | O que faz |
+| --- | --- |
+| `GET /api/v1/trilhas` | catálogo paginado; com token, cada card traz o progresso |
+| `GET /api/v1/trilhas/recomendadas` | sugestões por período e nível, com o motivo |
+| `GET /api/v1/trilhas/{slug}` | a trilha com o estado de cada passo |
+| `GET /api/v1/trilhas/{slug}/passos/{ordem}` | conteúdo do passo; 403 se ainda não abriu |
+| `POST /api/v1/trilhas/{slug}/iniciar` | começa a trilha (idempotente) |
+
+**Quem decide o que está liberado é o servidor.** O cadeado da tela 26 é
+decoração: `app/services/progresso.py` calcula o estado de cada passo a partir do
+que está em `progresso_usuario`, e pedir um passo bloqueado direto na API
+responde 403. O primeiro passo nasce aberto; o passo N abre quando o N-1 fecha.
+
+O progresso **não entra no cache do catálogo**. A página fica num cache
+compartilhado, igual para todo mundo, e o "3/10" de cada aluno é sobreposto no
+request, com uma consulta só para a página inteira. Assim não existe uma cópia do
+catálogo por aluno, e concluir um passo aparece na hora, sem esperar TTL nem
+invalidação.
+
 ### Rastreio
 
 Toda resposta traz `X-Request-Id` e `X-Response-Time-Ms`. O id vem de fora se o
@@ -304,6 +325,11 @@ npm run gen:api    # na raiz do repositório
 Isso exporta o OpenAPI (sem subir servidor) e gera `frontend/src/types/api.d.ts`.
 Os dois arquivos são commitados, para o frontend compilar sem Python instalado —
 então **rode o comando quando mudar um schema ou uma rota**.
+
+O `info.version` do arquivo exportado sai congelado. Ele muda a cada release, e o
+CI compara o arquivo gerado com o commitado: sem isso, todo PR de release
+reprovaria pedindo uma regeração que não mudaria contrato nenhum. O
+`/openapi.json` que a API serve continua com a versão de verdade.
 
 O `operation_id` de cada rota sai do nome da função Python e vira nome de tipo no
 cliente gerado. Renomear a função muda o contrato gerado; é de propósito, para o

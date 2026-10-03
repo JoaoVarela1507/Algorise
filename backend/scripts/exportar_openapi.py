@@ -18,6 +18,15 @@ from app.main import app
 
 PADRAO = Path("frontend/src/types/openapi.json")
 
+# A versão sai do arquivo de propósito. Ela muda a cada release (o
+# release-please edita `app/__init__.py`), e o CI compara este arquivo com o que
+# está commitado: sem o congelamento, **todo PR de release** reprovaria pedindo
+# um `npm run gen:api` que não mudaria contrato nenhum.
+#
+# O `/openapi.json` que a API serve continua com a versão de verdade; só este
+# artefato, que existe para gerar os tipos TypeScript, é normalizado.
+VERSAO_CONGELADA = "nao-versionado"
+
 
 def main() -> None:
     destino = Path(sys.argv[1]) if len(sys.argv) > 1 else PADRAO
@@ -25,7 +34,10 @@ def main() -> None:
 
     # `sort_keys` e a quebra de linha no fim mantêm o arquivo estável entre
     # gerações: sem isso, cada execução viraria um diff gigante e inútil.
-    conteudo = json.dumps(app.openapi(), indent=2, ensure_ascii=False, sort_keys=True)
+    esquema = app.openapi()
+    esquema["info"]["version"] = VERSAO_CONGELADA
+
+    conteudo = json.dumps(esquema, indent=2, ensure_ascii=False, sort_keys=True)
     destino.write_text(conteudo + "\n", encoding="utf-8")
 
     print(f"OpenAPI escrito em {destino}")
