@@ -18,7 +18,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 import bcrypt
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError
 
 from app.core.config import settings
 
@@ -76,7 +77,7 @@ def decodificar(token: str, *, tipo: TipoToken) -> dict[str, Any]:
     """
     try:
         conteudo = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algoritmo])
-    except JWTError as erro:
+    except PyJWTError as erro:
         raise TokenInvalido(str(erro)) from erro
 
     if conteudo.get("tipo") != tipo:

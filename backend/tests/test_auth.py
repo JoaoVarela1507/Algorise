@@ -7,9 +7,9 @@ sete correções numa área que não tinha suíte nenhuma. Os testes marcados co
 
 from datetime import UTC, datetime, timedelta
 
+import jwt
 import pytest
 from fastapi.testclient import TestClient
-from jose import jwt
 from sqlalchemy.orm import Session
 
 from app.core import seguranca
