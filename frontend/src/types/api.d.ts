@@ -4,6 +4,47 @@
  */
 
 export interface paths {
+    "/api/v1/atividades/{atividade_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Enunciado da atividade
+         * @description Nunca inclui o gabarito: a correção é do servidor (`POST .../submissoes`).
+         */
+        get: operations["obterAtividade"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/atividades/{atividade_id}/submissoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tentativas anteriores do aluno
+         * @description Só as do próprio aluno; serve para retomar de onde parou.
+         */
+        get: operations["listarSubmissoes"];
+        put?: never;
+        /** Envia a resposta e recebe a correção */
+        post: operations["submeter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/esqueci-senha": {
         parameters: {
             query?: never;
@@ -289,6 +330,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/trilhas/{slug}/passos/{ordem}/concluir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fecha o passo e concede o XP
+         * @description Exige ter acertado as atividades corrigíveis do passo. Fechar de novo não paga XP outra vez.
+         */
+        post: operations["concluirPasso"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/usuarios/me": {
         parameters: {
             query?: never;
@@ -439,6 +500,24 @@ export interface components {
             tipo_trilha?: components["schemas"]["TipoTrilha"] | null;
         };
         /**
+         * Correcao
+         * @description A resposta da submissão.
+         */
+        Correcao: {
+            /** Correta */
+            correta: boolean;
+            /** Em Analise */
+            em_analise: boolean;
+            /** Feedback */
+            feedback: string;
+            /** Tentativa */
+            tentativa: number;
+            /** Xp Ganho */
+            xp_ganho: number;
+            /** Xp Total */
+            xp_total: number;
+        };
+        /**
          * EntradaRanking
          * @description Uma linha do pódio ou da lista rolável (telas 16 e 17).
          */
@@ -587,6 +666,18 @@ export interface components {
              * @description Quantas páginas existem no total
              */
             total_paginas: number;
+        };
+        /**
+         * PassoConcluido
+         * @description O que volta ao fechar um passo.
+         */
+        PassoConcluido: {
+            /** Proximo */
+            proximo?: number | null;
+            /** Xp Ganho */
+            xp_ganho: number;
+            /** Xp Total */
+            xp_total: number;
         };
         /**
          * PassoDetalhe
@@ -748,6 +839,39 @@ export interface components {
          */
         StatusProgresso: "bloqueado" | "em-andamento" | "concluido";
         /**
+         * Submissao
+         * @description O que o aluno envia.
+         */
+        Submissao: {
+            /** Conteudo */
+            conteudo: string;
+            /** Tempo Gasto Segundos */
+            tempo_gasto_segundos?: number | null;
+        };
+        /**
+         * Tentativa
+         * @description Uma tentativa já registrada.
+         */
+        Tentativa: {
+            /** Conteudo */
+            conteudo: string;
+            /** Correta */
+            correta: boolean;
+            /**
+             * Criado Em
+             * Format: date-time
+             */
+            criado_em: string;
+            /** Feedback */
+            feedback?: string | null;
+            /** Id */
+            id: number;
+            /** Tempo Gasto Segundos */
+            tempo_gasto_segundos?: number | null;
+            /** Tentativa */
+            tentativa: number;
+        };
+        /**
          * TipoAtividade
          * @description Formato da atividade dentro de um módulo (telas 28 a 34).
          * @enum {string}
@@ -897,6 +1021,130 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    obterAtividade: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                atividade_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AtividadeResumo"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    listarSubmissoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                atividade_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tentativa"][];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    submeter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                atividade_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Submissao"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Correcao"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
     esqueciSenha: {
         parameters: {
             query?: never;
@@ -1500,6 +1748,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PassoDetalhe"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    concluirPasso: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                ordem: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassoConcluido"];
                 };
             };
             /** @description Dados inválidos */
