@@ -78,6 +78,33 @@ Os tipos de resposta saem de `src/types/api.d.ts`, gerado do OpenAPI com
 `npm run gen:api` na raiz — mudar um schema no backend e esquecer o frontend vira
 erro de compilação, não bug em produção.
 
+## Terminal simulado
+
+As atividades práticas (telas 28 a 33) usam um terminal falso, feito com Xterm.js:
+
+```
+src/lib/terminal/roteiro.ts        o que cada comando responde — sem DOM, testável sozinho
+src/lib/terminal/mapa.ts           qual roteiro pertence a qual atividade da API
+src/components/atividades/TerminalSimulado.tsx    o terminal na tela
+src/components/atividades/AtividadeTerminal.tsx   enunciado, tempo, progresso e "Avançar"
+```
+
+A divisão é de propósito: **o roteiro não sabe o que é tela**, então a regra tem
+teste sem montar nada, e fica claro que ali é encenação — o `winget` não instala
+Python nenhum.
+
+O roteiro mora no frontend porque a API **não manda o gabarito** antes da
+submissão: `comando_esperado` na resposta entregaria o exercício a quem abrisse o
+devtools. A ligação entre a atividade da API e o roteiro é por posição (trilha,
+passo, atividade), em `mapa.ts`. Quando a submissão existir (#30), quem diz se
+acertou passa a ser o servidor e o roteiro fica só com a encenação.
+
+**Acessibilidade:** o Xterm desenha num `<canvas>`, que leitor de tela não lê. Por
+isso tudo o que sai no terminal é espelhado num log com `aria-live`, e há um campo
+de texto comum como caminho alternativo — dá para concluir a atividade inteira só
+pelo teclado. Esse campo é também o que os testes de componente usam, já que o
+jsdom não desenha canvas; o terminal de verdade é exercitado no E2E.
+
 ## Testes
 
 ```bash
@@ -104,6 +131,10 @@ O Playwright sobe backend e frontend sozinho. Antes da primeira vez:
 npx playwright install chromium
 docker compose up -d redis     # a sessão vive no Redis
 ```
+
+No Git Bash do Windows, o `PATH` do shell é POSIX e o `cmd` que o Playwright usa
+para subir os servidores não o entende; se der "'python' não é reconhecido",
+rode o comando a partir do PowerShell.
 
 O banco do E2E é um SQLite descartável, montado a partir dos modelos
 (`backend/scripts/preparar_e2e.py`). Depois de uma falha,
