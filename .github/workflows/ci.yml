@@ -101,12 +101,8 @@ jobs:
           ruff check .
           ruff format --check .
 
-      # PYSEC-2026-1325 (CVE-2024-23342, "Minerva") é um ataque de tempo na
-      # assinatura ECDSA do pacote `ecdsa`, que entra pelo python-jose. A API só
-      # assina com HS256, então esse código nunca roda, e o mantenedor não vai
-      # corrigir. Sai daqui se o JWT passar a usar ES256 ou se a lib for trocada.
       - name: Dependências vulneráveis (pip-audit)
-        run: pip-audit -r requirements.txt --ignore-vuln PYSEC-2026-1325
+        run: pip-audit -r requirements.txt
 
       # Ida e volta completa: se o downgrade estiver quebrado, o CI reprova.
       - name: Migrações
