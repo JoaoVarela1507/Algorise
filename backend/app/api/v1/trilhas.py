@@ -14,6 +14,7 @@ from app.core.erros import ErroDeNegocio
 from app.models import StatusProgresso, Usuario
 from app.models import Trilha as TrilhaModelo
 from app.schemas.pagina import Pagina, PaginacaoAtual
+from app.schemas.submissao import PassoConcluido
 from app.schemas.trilha import (
     ModuloDetalhe,
     PassoDetalhe,
@@ -22,6 +23,7 @@ from app.schemas.trilha import (
     TrilhaRecomendada,
 )
 from app.services import progresso as servico_progresso
+from app.services import submissoes
 from app.services import trilhas as servico
 
 router = APIRouter(prefix="/trilhas", tags=["trilhas"])
@@ -193,6 +195,55 @@ def _recomendada(
     dados = Trilha.model_validate(trilha).model_dump()
     dados.update(total_modulos=total_modulos, progresso=progresso)
     return TrilhaRecomendada(**dados, motivo=motivo)
+
+
+@router.post(
+    "/{slug}/passos/{ordem}/concluir",
+    response_model=PassoConcluido,
+    summary="Fecha o passo e concede o XP",
+    description=(
+        "Exige ter acertado as atividades corrigíveis do passo. Fechar de novo "
+        "não paga XP outra vez."
+    ),
+)
+def concluir_passo(
+    slug: str, ordem: int, usuario: UsuarioAtual, db: Session = Depends(get_db)
+) -> PassoConcluido:
+    trilha = _buscar(db, slug)
+
+    try:
+        modulo = servico_progresso.conteudo_do_passo(
+            db, usuario_id=usuario.id, trilha=trilha, ordem=ordem
+        )
+    except LookupError as erro:
+        raise ErroDeNegocio(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="passo_nao_encontrado",
+            message="Esse passo não existe nesta trilha",
+            details={"trilha": slug, "ordem": ordem},
+        ) from erro
+    except servico_progresso.PassoBloqueado as erro:
+        raise ErroDeNegocio(
+            status_code=status.HTTP_403_FORBIDDEN,
+            code="passo_bloqueado",
+            message="Conclua o passo anterior para abrir este",
+            details={"trilha": slug, "ordem": ordem},
+        ) from erro
+
+    try:
+        ganho, proximo = submissoes.concluir_passo(
+            db, usuario=usuario, trilha=trilha, modulo=modulo
+        )
+    except submissoes.AtividadesPendentes as erro:
+        raise ErroDeNegocio(
+            status_code=status.HTTP_409_CONFLICT,
+            code="atividades_pendentes",
+            message="Ainda falta acertar atividade deste passo",
+            details={"pendentes": int(str(erro))},
+        ) from erro
+
+    db.refresh(usuario)
+    return PassoConcluido(xp_ganho=ganho, xp_total=usuario.xp_total, proximo=proximo)
 
 
 def _buscar(db: Session, slug: str) -> TrilhaModelo:

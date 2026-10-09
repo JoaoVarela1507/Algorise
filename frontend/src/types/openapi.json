@@ -135,6 +135,45 @@
         "title": "AtualizacaoPerfil",
         "type": "object"
       },
+      "Correcao": {
+        "description": "A resposta da submissão.",
+        "properties": {
+          "correta": {
+            "title": "Correta",
+            "type": "boolean"
+          },
+          "em_analise": {
+            "title": "Em Analise",
+            "type": "boolean"
+          },
+          "feedback": {
+            "title": "Feedback",
+            "type": "string"
+          },
+          "tentativa": {
+            "title": "Tentativa",
+            "type": "integer"
+          },
+          "xp_ganho": {
+            "title": "Xp Ganho",
+            "type": "integer"
+          },
+          "xp_total": {
+            "title": "Xp Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "correta",
+          "em_analise",
+          "feedback",
+          "tentativa",
+          "xp_ganho",
+          "xp_total"
+        ],
+        "title": "Correcao",
+        "type": "object"
+      },
       "EntradaRanking": {
         "description": "Uma linha do pódio ou da lista rolável (telas 16 e 17).",
         "properties": {
@@ -427,6 +466,36 @@
           "total_paginas"
         ],
         "title": "Pagina[Trilha]",
+        "type": "object"
+      },
+      "PassoConcluido": {
+        "description": "O que volta ao fechar um passo.",
+        "properties": {
+          "proximo": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proximo"
+          },
+          "xp_ganho": {
+            "title": "Xp Ganho",
+            "type": "integer"
+          },
+          "xp_total": {
+            "title": "Xp Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "xp_ganho",
+          "xp_total"
+        ],
+        "title": "PassoConcluido",
         "type": "object"
       },
       "PassoDetalhe": {
@@ -811,6 +880,92 @@
         "title": "StatusProgresso",
         "type": "string"
       },
+      "Submissao": {
+        "description": "O que o aluno envia.",
+        "properties": {
+          "conteudo": {
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Conteudo",
+            "type": "string"
+          },
+          "tempo_gasto_segundos": {
+            "anyOf": [
+              {
+                "maximum": 21600.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo Gasto Segundos"
+          }
+        },
+        "required": [
+          "conteudo"
+        ],
+        "title": "Submissao",
+        "type": "object"
+      },
+      "Tentativa": {
+        "description": "Uma tentativa já registrada.",
+        "properties": {
+          "conteudo": {
+            "title": "Conteudo",
+            "type": "string"
+          },
+          "correta": {
+            "title": "Correta",
+            "type": "boolean"
+          },
+          "criado_em": {
+            "format": "date-time",
+            "title": "Criado Em",
+            "type": "string"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "tempo_gasto_segundos": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo Gasto Segundos"
+          },
+          "tentativa": {
+            "title": "Tentativa",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "tentativa",
+          "conteudo",
+          "correta",
+          "criado_em"
+        ],
+        "title": "Tentativa",
+        "type": "object"
+      },
       "TipoAtividade": {
         "description": "Formato da atividade dentro de um módulo (telas 28 a 34).",
         "enum": [
@@ -1145,6 +1300,191 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/atividades/{atividade_id}": {
+      "get": {
+        "description": "Nunca inclui o gabarito: a correção é do servidor (`POST .../submissoes`).",
+        "operationId": "obterAtividade",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "atividade_id",
+            "required": true,
+            "schema": {
+              "title": "Atividade Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtividadeResumo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Enunciado da atividade",
+        "tags": [
+          "atividades"
+        ]
+      }
+    },
+    "/api/v1/atividades/{atividade_id}/submissoes": {
+      "get": {
+        "description": "Só as do próprio aluno; serve para retomar de onde parou.",
+        "operationId": "listarSubmissoes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "atividade_id",
+            "required": true,
+            "schema": {
+              "title": "Atividade Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Tentativa"
+                  },
+                  "title": "Response Listarsubmissoes",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Tentativas anteriores do aluno",
+        "tags": [
+          "atividades"
+        ]
+      },
+      "post": {
+        "operationId": "submeter",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "atividade_id",
+            "required": true,
+            "schema": {
+              "title": "Atividade Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Submissao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Correcao"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Envia a resposta e recebe a correção",
+        "tags": [
+          "atividades"
+        ]
+      }
+    },
     "/api/v1/auth/esqueci-senha": {
       "post": {
         "description": "Começa a recuperação. Sempre 202, tenha o e-mail conta ou não.",
@@ -2073,6 +2413,73 @@
           }
         ],
         "summary": "Conteúdo de um passo",
+        "tags": [
+          "trilhas"
+        ]
+      }
+    },
+    "/api/v1/trilhas/{slug}/passos/{ordem}/concluir": {
+      "post": {
+        "description": "Exige ter acertado as atividades corrigíveis do passo. Fechar de novo não paga XP outra vez.",
+        "operationId": "concluirPasso",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ordem",
+            "required": true,
+            "schema": {
+              "title": "Ordem",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassoConcluido"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Fecha o passo e concede o XP",
         "tags": [
           "trilhas"
         ]

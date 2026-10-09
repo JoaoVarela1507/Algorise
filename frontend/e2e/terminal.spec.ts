@@ -41,6 +41,27 @@ test('o Avançar só libera com o comando certo', async ({ page }) => {
   await expect(avancar).toBeDisabled()
 })
 
+test('concluir o passo leva ao próximo e soma no progresso da trilha', async ({ page }) => {
+  // As duas atividades de terminal do passo 1 do seed.
+  await page.getByLabel('Digite o comando da atividade').fill('winget install Python.Python.3.14')
+  await page.keyboard.press('Enter')
+  const avancar = page.getByRole('button', { name: 'Avançar' })
+  await expect(avancar).toBeEnabled({ timeout: 15_000 })
+  await avancar.click()
+
+  await page.getByLabel('Digite o comando da atividade').fill('python --version')
+  await page.keyboard.press('Enter')
+  await expect(avancar).toBeEnabled()
+  await avancar.click()
+
+  // Quem fechou o passo foi a API, e foi ela que disse qual é o próximo.
+  await expect(page).toHaveURL('/trilhas/introducao-python/questao/2')
+
+  // E o catálogo já mostra o passo fechado, sem recarregar na mão.
+  await page.goto('/trilhas')
+  await expect(page.getByText('1/10')).toBeVisible()
+})
+
 test('encadeia as duas atividades do passo', async ({ page }) => {
   await expect(page.getByRole('progressbar', { name: 'Atividade 1 de 2' })).toBeVisible()
 
@@ -59,8 +80,8 @@ test('encadeia as duas atividades do passo', async ({ page }) => {
   await expect(avancar).toBeEnabled()
   await avancar.click()
 
-  // Fim do passo: volta para a trilha.
-  await expect(page).toHaveURL('/trilhas/introducao-python')
+  // Fim do passo: a API fecha o passo e manda para o próximo.
+  await expect(page).toHaveURL('/trilhas/introducao-python/questao/2')
 })
 
 test('o erro do protótipo mostra a dica do python -h', async ({ page }) => {

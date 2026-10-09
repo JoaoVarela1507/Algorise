@@ -59,6 +59,10 @@ export const chaves = {
     detalhe: (slug: string) => ['trilhas', 'detalhe', slug] as const,
     passo: (slug: string, ordem: number) => ['trilhas', 'passo', slug, ordem] as const,
   },
+  atividades: {
+    todas: ['atividades'] as const,
+    tentativas: (atividadeId: number) => ['atividades', atividadeId, 'tentativas'] as const,
+  },
   ranking: {
     todas: ['ranking'] as const,
     pagina: (filtros: Record<string, unknown>) => ['ranking', filtros] as const,

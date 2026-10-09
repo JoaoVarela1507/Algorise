@@ -1,6 +1,7 @@
 import { CheckCircle2, Clock, Lightbulb } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { TerminalSimulado } from '@/components/atividades/TerminalSimulado'
+import { useSubmeterResposta } from '@/hooks/useAtividades'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Atividade } from '@/lib/terminal/roteiro'
@@ -11,6 +12,8 @@ import type { Atividade } from '@/lib/terminal/roteiro'
  */
 
 export interface AtividadeTerminalProps {
+  /** Id na API: é para ele que a resposta é submetida. */
+  atividadeId: number
   enunciado: string
   dica?: string | null
   atividade: Atividade
@@ -25,6 +28,7 @@ export interface AtividadeTerminalProps {
 }
 
 export function AtividadeTerminal({
+  atividadeId,
   enunciado,
   dica,
   atividade,
@@ -37,6 +41,23 @@ export function AtividadeTerminal({
   const [acertou, setAcertou] = useState(concluida)
   const [tentativas, setTentativas] = useState(0)
   const [mostrarDica, setMostrarDica] = useState(false)
+  const submissao = useSubmeterResposta(atividadeId)
+
+  /**
+   * Quem diz se acertou é o servidor (#30). O roteiro do terminal encena a
+   * saída — e tem de encenar, senão o aluno esperaria a rede para ver o
+   * `winget` rodar —, mas o acerto que conta, e que paga XP, vem da API.
+   */
+  async function conferirNoServidor(comando: string) {
+    try {
+      const correcao = await submissao.mutateAsync({ conteudo: comando })
+      if (correcao.correta) setAcertou(true)
+      else setTentativas((n) => n + 1)
+    } catch {
+      // A API não respondeu: não dá para afirmar que errou, então a tentativa
+      // não é contada e o aluno pode mandar de novo.
+    }
+  }
 
   return (
     <section className="flex flex-col gap-4">
@@ -66,10 +87,7 @@ export function AtividadeTerminal({
 
       <TerminalSimulado
         atividade={atividade}
-        aoAcertar={() => setAcertou(true)}
-        aoExecutar={(_comando, certo) => {
-          if (!certo) setTentativas((n) => n + 1)
-        }}
+        aoExecutar={(comando) => void conferirNoServidor(comando)}
       />
 
       <footer className="flex flex-wrap items-center justify-between gap-3">
@@ -88,7 +106,7 @@ export function AtividadeTerminal({
 
         <Button
           size="lg"
-          disabled={!acertou}
+          disabled={!acertou || submissao.isPending}
           onClick={aoAvancar}
           // O botão desabilitado some do leitor de tela; o texto acima diz o
           // que falta, e isto explica o porquê de ele não responder.

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AtividadeTerminal } from '@/components/atividades/AtividadeTerminal'
 import { Button } from '@/components/ui/button'
 import { Carregando, ErroAoCarregar, Vazio } from '@/components/ui/estados'
+import { useConcluirPasso } from '@/hooks/useAtividades'
 import { usePasso } from '@/hooks/useTrilhas'
 import { roteiroDaAtividade } from '@/lib/terminal/mapa'
 
@@ -23,6 +24,7 @@ export function QuestaoPage() {
   const ordemPasso = Number(questaoId)
 
   const passo = usePasso(trilhaId, Number.isInteger(ordemPasso) ? ordemPasso : undefined)
+  const concluir = useConcluirPasso(trilhaId)
   const [indice, setIndice] = useState(0)
 
   if (passo.isPending) return <Carregando rotulo="Carregando atividade…" />
@@ -59,20 +61,32 @@ export function QuestaoPage() {
           // A chave troca junto com a atividade: sem ela, o terminal da
           // anterior continuaria na tela com o histórico dela.
           key={atual.id}
+          atividadeId={atual.id}
           enunciado={atual.enunciado}
           dica={atual.dica}
           atividade={atual.roteiro!}
           numero={indice + 1}
           total={atividades.length}
           tempoSugeridoSegundos={atual.tempo_sugerido_segundos}
-          aoAvancar={() => {
+          aoAvancar={async () => {
             if (indice + 1 < atividades.length) {
               setIndice(indice + 1)
               return
             }
-            // Último do passo: volta para a trilha. Fechar o passo e ganhar XP
-            // é a submissão, que vem na #30.
-            navigate(`/trilhas/${trilhaId}`)
+
+            // Último do passo: fecha na API, que paga o bônus e diz qual é o
+            // próximo. Se ela recusar (atividade pendente), volta para a
+            // trilha — lá o aluno vê o que falta.
+            try {
+              const resultado = await concluir.mutateAsync(passo.data.ordem)
+              navigate(
+                resultado.proximo
+                  ? `/trilhas/${trilhaId}/questao/${resultado.proximo}`
+                  : `/trilhas/${trilhaId}`,
+              )
+            } catch {
+              navigate(`/trilhas/${trilhaId}`)
+            }
           }}
         />
       ) : (

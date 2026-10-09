@@ -118,6 +118,17 @@ def concluir_passo(db: Session, *, usuario_id: int, trilha: Trilha, modulo: Modu
     db.commit()
 
 
+def esta_concluido(db: Session, *, usuario_id: int, modulo_id: int) -> bool:
+    """Se o aluno já fechou este passo. Usado para não pagar o bônus duas vezes."""
+    registro = db.execute(
+        select(ProgressoUsuario.status).where(
+            ProgressoUsuario.usuario_id == usuario_id,
+            ProgressoUsuario.modulo_id == modulo_id,
+        )
+    ).scalar_one_or_none()
+    return registro is StatusProgresso.concluido
+
+
 def concluidos_por_trilha(db: Session, *, usuario_id: int, trilha_ids: list[int]) -> dict[int, int]:
     """Quantos passos o aluno fechou em cada trilha, para o "3/10" dos cards.
 

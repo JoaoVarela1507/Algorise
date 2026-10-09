@@ -11,7 +11,7 @@ não podem mudar de endereço porque a API virou v2.
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, oauth, ranking, trilhas, usuarios
+from app.api.v1 import atividades, auth, oauth, ranking, trilhas, usuarios
 
 PREFIXO = "/api/v1"
 
@@ -20,5 +20,6 @@ router = APIRouter(prefix=PREFIXO)
 router.include_router(auth.router)
 router.include_router(oauth.router)
 router.include_router(trilhas.router)
+router.include_router(atividades.router)
 router.include_router(ranking.router)
 router.include_router(usuarios.router)
