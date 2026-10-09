@@ -45,3 +45,7 @@ class ResizeObserverFalso {
 }
 
 window.ResizeObserver = ResizeObserverFalso as unknown as typeof ResizeObserver
+
+// O Xterm desenha num `<canvas>`, que o jsdom não implementa: sem isto, todo
+// teste que monta o terminal imprime um "Not implemented" que não é erro.
+window.HTMLCanvasElement.prototype.getContext = vi.fn() as never
