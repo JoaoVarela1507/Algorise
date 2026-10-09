@@ -42,19 +42,17 @@ const RESET = '\x1b[0m'
 
 export interface TerminalSimuladoProps {
   atividade: Atividade
-  /** Chamado quando o aluno acerta o comando pedido. */
-  aoAcertar?: () => void
-  /** Chamado a cada comando, certo ou errado — serve para contar tentativas. */
-  aoExecutar?: (comando: string, acertou: boolean) => void
+  /**
+   * Chamado a cada comando executado, com o que o **roteiro local** achou.
+   *
+   * O `acertou` daqui serve para encenar o terminal, não para decidir nada: o
+   * acerto que vale é o que o servidor responde (ver `AtividadeTerminal`).
+   */
+  aoExecutar?: (comando: string, acertouNoRoteiro: boolean) => void
   className?: string
 }
 
-export function TerminalSimulado({
-  atividade,
-  aoAcertar,
-  aoExecutar,
-  className,
-}: TerminalSimuladoProps) {
+export function TerminalSimulado({ atividade, aoExecutar, className }: TerminalSimuladoProps) {
   const caixa = useRef<HTMLDivElement>(null)
   const terminal = useRef<Terminal | null>(null)
   const linhaAtual = useRef('')
@@ -68,8 +66,8 @@ export function TerminalSimulado({
 
   // Em ref porque o handler do Xterm é registrado uma vez; sem isso ele
   // chamaria sempre a primeira versão das funções.
-  const callbacks = useRef({ aoAcertar, aoExecutar, atividade })
-  callbacks.current = { aoAcertar, aoExecutar, atividade }
+  const callbacks = useRef({ aoExecutar, atividade })
+  callbacks.current = { aoExecutar, atividade }
 
   const escrever = useCallback(async (linhas: Linha[]) => {
     const term = terminal.current
@@ -112,7 +110,6 @@ export function TerminalSimulado({
       ocupado.current = false
 
       callbacks.current.aoExecutar?.(comando, acertou)
-      if (acertou) callbacks.current.aoAcertar?.()
 
       term.write(`\r\n${COR.comando}${PROMPT}${RESET} `)
     },
