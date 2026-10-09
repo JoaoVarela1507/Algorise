@@ -308,6 +308,31 @@ request, com uma consulta só para a página inteira. Assim não existe uma cóp
 catálogo por aluno, e concluir um passo aparece na hora, sem esperar TTL nem
 invalidação.
 
+### Atividades e submissões
+
+| Rota | O que faz |
+| --- | --- |
+| `GET /api/v1/atividades/{id}` | enunciado, tipo, dica e tempo — **sem o gabarito** |
+| `POST /api/v1/atividades/{id}/submissoes` | envia a resposta e recebe a correção |
+| `GET /api/v1/atividades/{id}/submissoes` | as tentativas do próprio aluno |
+| `POST /api/v1/trilhas/{slug}/passos/{ordem}/concluir` | fecha o passo, paga o bônus e diz qual é o próximo |
+
+**A correção é do servidor.** `comando_esperado` e `resposta_esperada` nunca saem
+da API antes da submissão — o terminal simulado do frontend encena a saída, mas
+quem decide o acerto (e paga XP) é `app/services/submissoes.py`. Tem teste para o
+gabarito não vazar.
+
+**XP sai uma vez por atividade.** A checagem é a existência de uma tentativa
+correta anterior; reenviar a resposta certa devolve `xp_ganho: 0`. O mesmo vale
+para o bônus de fechar o passo.
+
+**Toda tentativa é guardada**, não só a última: é o que permite retomar de onde
+parou e é a base das métricas de aprendizado.
+
+A resposta aberta fica **em análise**: sem a correção por IA (#11), dar XP por
+texto que ninguém leu seria inventar acerto. Por isso ela também não trava o
+fechamento do passo.
+
 ### Rastreio
 
 Toda resposta traz `X-Request-Id` e `X-Response-Time-Ms`. O id vem de fora se o
