@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     cache_ttl_trilhas: int = 300
     cache_ttl_ranking: int = 60
 
+    # Teto de XP por janela, contra farm (#31). Generoso de propósito: o aluno
+    # dedicado passa longe disso, e um script varrendo o catálogo esbarra.
+    xp_maximo_por_janela: int = 500
+    xp_janela_segundos: int = 60 * 60
+
     # Janela e teto do rate limit do chat, que custa chamada de IA por request.
     rate_limit_chat_requisicoes: int = 20
     rate_limit_chat_janela: int = 60
