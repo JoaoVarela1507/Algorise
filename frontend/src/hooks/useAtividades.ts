@@ -34,6 +34,7 @@ export function useSubmeterResposta(atividadeId: number) {
       if (correcao.xp_ganho > 0) {
         void queryClient.invalidateQueries({ queryKey: chaves.perfil.todas })
         void queryClient.invalidateQueries({ queryKey: chaves.ranking.todas })
+        void queryClient.invalidateQueries({ queryKey: chaves.gamificacao.todas })
       }
     },
   })
@@ -49,6 +50,7 @@ export function useConcluirPasso(slug: string | undefined) {
       void queryClient.invalidateQueries({ queryKey: chaves.trilhas.todas })
       void queryClient.invalidateQueries({ queryKey: chaves.perfil.todas })
       void queryClient.invalidateQueries({ queryKey: chaves.ranking.todas })
+      void queryClient.invalidateQueries({ queryKey: chaves.gamificacao.todas })
     },
   })
 }

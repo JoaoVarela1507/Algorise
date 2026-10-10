@@ -8,7 +8,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.models import OrigemXP, Usuario, XPEvento
-from app.services import ranking
+from app.services import gamificacao, ranking
 
 
 def registrar_xp(
@@ -21,11 +21,21 @@ def registrar_xp(
 ) -> int:
     """Concede `valor` de XP ao aluno e devolve o novo saldo.
 
+    O valor passa pelo teto por janela (#31) antes de entrar: o que exceder é
+    descartado, e o resto é concedido normalmente. Devolver só o saldo mantém
+    quem chama livre de saber disso.
+
     O evento em `xp_eventos` é a fonte da verdade; `usuarios.xp_total` é o saldo
     desnormalizado. O `UPDATE ... SET xp_total = xp_total + valor` soma no banco
     em vez de em Python, para dois pedidos simultâneos não sobrescreverem um ao
     outro.
     """
+    valor = gamificacao.xp_permitido(usuario_id, valor)
+    if valor <= 0:
+        # Estourou o teto: o progresso continua gravado (a atividade está feita),
+        # só não vira ponto.
+        return db.execute(select(Usuario.xp_total).where(Usuario.id == usuario_id)).scalar_one()
+
     db.add(
         XPEvento(
             usuario_id=usuario_id,

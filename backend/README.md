@@ -308,6 +308,32 @@ request, com uma consulta só para a página inteira. Assim não existe uma cóp
 catálogo por aluno, e concluir um passo aparece na hora, sem esperar TTL nem
 invalidação.
 
+### Gamificação
+
+| Rota | O que faz |
+| --- | --- |
+| `GET /api/v1/gamificacao/me` | XP, nível, progresso no nível e streak |
+| `POST /api/v1/gamificacao/checkin` | registra o acesso do dia e devolve o streak |
+
+**A curva de níveis é quadrática**: o nível N começa em `50 * (N-1)²`. Do 1 para
+o 2 são 50 XP; do 9 para o 10, 750. Começo rápido, para o aluno ver progresso na
+primeira sessão, sem que o nível 20 caiba numa tarde. É fórmula e não tabela
+porque assim `nivel_de` e `xp_do_nivel` são inversas por construção — e há teste
+comparando as duas.
+
+Quanto vale cada coisa está em `app/services/niveis.py`, no topo. XP sai **uma
+vez** por atividade e uma vez por passo.
+
+**Teto por janela** (`xp_maximo_por_janela`, `xp_janela_segundos`): o limite por
+atividade já impede repetir a mesma para pontuar; o teto impede o outro caminho,
+um script varrendo o catálogo. Quem estoura continua concluindo as atividades —
+só não vira ponto. Com o Redis fora o teto libera tudo, pela mesma razão do rate
+limit: punir o aluno honesto por uma queda de cache é pior do que o abuso que se
+evita.
+
+O `GET /api/v1/gamificacao/me` **não** mexe no streak: só o check-in registra
+acesso. Uma tela que exibe não deveria alterar a sequência de ninguém.
+
 ### Atividades e submissões
 
 | Rota | O que faz |

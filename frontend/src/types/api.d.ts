@@ -213,6 +213,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gamificacao/checkin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Registra o acesso do dia e devolve o streak atualizado
+         * @description Chamar várias vezes no mesmo dia conta uma vez só.
+         */
+        post: operations["registrarCheckin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gamificacao/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * XP, nível e streak do aluno
+         * @description Só leitura: não registra acesso nem mexe no streak.
+         */
+        get: operations["obterPainel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ranking": {
         parameters: {
             query?: never;
@@ -666,6 +706,24 @@ export interface components {
              * @description Quantas páginas existem no total
              */
             total_paginas: number;
+        };
+        /**
+         * Painel
+         * @description XP, nível e streak do aluno, como as telas mostram.
+         */
+        Painel: {
+            /** Maior Streak */
+            maior_streak: number;
+            /** Nivel */
+            nivel: number;
+            /** Streak Dias */
+            streak_dias: number;
+            /** Xp No Nivel */
+            xp_no_nivel: number;
+            /** Xp Para O Proximo */
+            xp_para_o_proximo: number;
+            /** Xp Total */
+            xp_total: number;
         };
         /**
          * PassoConcluido
@@ -1491,6 +1549,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    registrarCheckin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Painel"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterPainel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Painel"];
                 };
             };
             /** @description Dados inválidos */

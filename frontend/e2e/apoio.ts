@@ -42,3 +42,20 @@ export async function entrar(page: Page, conta: Conta): Promise<void> {
   await page.getByRole('button', { name: 'Entrar' }).click()
   await expect(page).toHaveURL('/')
 }
+
+/**
+ * Um access token da conta, pedido direto à API.
+ *
+ * O app guarda o access token em memória (só o refresh vai para o navegador),
+ * então o teste não tem como pescá-lo da página — e nem deveria: pedir um novo
+ * é mais simples e não depende de detalhe interno do frontend.
+ */
+export async function cabecalhoDe(request: APIRequestContext, conta: Conta) {
+  const resposta = await request.post(`${API}/auth/login`, {
+    data: { email: conta.email, senha: conta.senha },
+  })
+  expect(resposta.ok(), await resposta.text()).toBeTruthy()
+
+  const { access_token } = (await resposta.json()) as { access_token: string }
+  return { Authorization: `Bearer ${access_token}` }
+}
