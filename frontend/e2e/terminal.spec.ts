@@ -27,7 +27,9 @@ test('o terminal responde ao que o aluno digita', async ({ page }) => {
   // A saída é longa e roteirizada; o log acessível espelha o que saiu na tela.
   const log = page.getByRole('log', { name: 'Saída do terminal' })
   await expect(log).toContainText('Instalação concluída com êxito', { timeout: 15_000 })
-  await expect(page.getByText('Comando correto!')).toBeVisible()
+  // O "correto" vem do servidor (#30), e só depois de o roteiro terminar de
+  // escrever: a saída deste comando leva ~3s sozinha.
+  await expect(page.getByText('Comando correto!')).toBeVisible({ timeout: 15_000 })
 })
 
 test('o Avançar só libera com o comando certo', async ({ page }) => {

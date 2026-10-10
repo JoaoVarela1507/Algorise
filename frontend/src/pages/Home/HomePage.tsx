@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { motion, type Variants } from 'framer-motion'
 import { ConquistasCard } from '@/components/home/ConquistasCard'
 import { MetaDiariaCard } from '@/components/home/MetaDiariaCard'
@@ -7,6 +8,7 @@ import { StreakCard } from '@/components/home/StreakCard'
 import { TrilhaAtualCard } from '@/components/home/TrilhaAtualCard'
 import { Carregando, ErroAoCarregar } from '@/components/ui/estados'
 import { useAuth } from '@/contexts/AuthContext'
+import { useCheckin, usePainel } from '@/hooks/useGamificacao'
 import { useRanking } from '@/hooks/useRanking'
 import { conquistasMock, metaDiariaMock, trilhaAtualMock } from '@/mocks/home'
 
@@ -25,6 +27,18 @@ export function HomePage() {
   // `usuario_id` para a API devolver a posição do aluno mesmo quando ela cai
   // fora da primeira página.
   const ranking = useRanking({ limite: 8, usuarioId: Number(usuario?.id) || undefined })
+  const painel = usePainel()
+  const checkin = useCheckin()
+
+  // Abrir a home é o acesso do dia: é aqui que o streak da tela 16 avança. A
+  // API conta um por dia, então repetir não estraga nada — só gasta rede, e por
+  // isso o efeito roda uma vez por montagem.
+  useEffect(() => {
+    checkin.mutate()
+    // `checkin` muda de identidade a cada render; incluí-lo aqui faria o efeito
+    // disparar em loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <>
@@ -70,7 +84,7 @@ export function HomePage() {
 
           <div className="flex flex-col gap-6 xl:col-span-3">
             <motion.section variants={secao}>
-              <StreakCard dias={usuario?.streakDias ?? 0} />
+              <StreakCard dias={painel.data?.streak_dias ?? usuario?.streakDias ?? 0} />
             </motion.section>
             <motion.section variants={secao} className="flex-1">
               <MetaDiariaCard meta={metaDiariaMock} className="h-full" />

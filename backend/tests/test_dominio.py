@@ -111,10 +111,11 @@ def test_ranking_aquece_o_sorted_set_do_banco(
 
 def test_ganhar_xp_muda_a_posicao_na_hora(db: Session, redis_falso: fakeredis.FakeRedis) -> None:
     """A invalidação é explícita: quem grava XP corrige o score (#12)."""
-    alunos = criar_alunos(db, {"ana": 500, "bia": 300, "caio": 900})
+    alunos = criar_alunos(db, {"ana": 500, "bia": 300, "caio": 600})
     ranking.obter_ranking(db, limite=3)
 
-    xp.registrar_xp(db, usuario_id=alunos["bia"].id, valor=1000, origem=OrigemXP.atividade)
+    # 400 cabe no teto por janela (#31); o que se testa aqui é o ranking.
+    xp.registrar_xp(db, usuario_id=alunos["bia"].id, valor=400, origem=OrigemXP.atividade)
 
     assert ranking.obter_ranking(db, limite=3).podio[0].username == "bia"
 
