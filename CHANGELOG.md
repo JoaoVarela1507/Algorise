@@ -14,6 +14,14 @@ O tipo do commit define o bump:
 - `feat!: ...` ou `BREAKING CHANGE:` no corpo — major (**1**.0.0)
 - `chore:`, `docs:`, `test:` — não geram release
 
+## [0.11.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.10.0...v0.11.0) (2026-10-09)
+
+
+### Adicionado
+
+* adicionar o terminal simulado das atividades ([#155](https://github.com/JoaoVarela1507/Algorise/issues/155)) ([a3485d4](https://github.com/JoaoVarela1507/Algorise/commit/a3485d4ffa65843e21c82639ce1c5e9e3bc2333f))
+* corrigir submissoes de atividade e fechar passo com XP ([#160](https://github.com/JoaoVarela1507/Algorise/issues/160)) ([856edb3](https://github.com/JoaoVarela1507/Algorise/commit/856edb36b9fe8bfa587e4432cbdc0cb32e13eff8))
+
 ## [0.10.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.9.0...v0.10.0) (2026-10-03)
 
 
