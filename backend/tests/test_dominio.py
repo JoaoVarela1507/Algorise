@@ -251,3 +251,119 @@ def test_streak_funciona_com_redis_fora(db: Session, usuario: Usuario, redis_for
     resultado = streak.registrar_acesso(db, usuario.id, hoje=hoje + timedelta(days=1))
 
     assert resultado.dias_consecutivos == 2
+
+
+# --------------------------------------------------------------------------
+# Ranking por trilha (#12)
+# --------------------------------------------------------------------------
+
+
+def test_ranking_da_trilha_conta_so_o_xp_dela(
+    db: Session, redis_falso: fakeredis.FakeRedis
+) -> None:
+    """O XP geral soma tudo; o da trilha, só o que foi ganho nela."""
+    alunos = criar_alunos(db, {"ana": 0, "bia": 0})
+    esta = Trilha(slug="esta", nome="Esta", disciplina="D", publicada=True)
+    outra = Trilha(slug="outra", nome="Outra", disciplina="D", publicada=True)
+    db.add_all([esta, outra])
+    db.commit()
+
+    xp.registrar_xp(
+        db, usuario_id=alunos["ana"].id, valor=100, origem=OrigemXP.atividade, trilha_id=esta.id
+    )
+    xp.registrar_xp(
+        db, usuario_id=alunos["bia"].id, valor=30, origem=OrigemXP.atividade, trilha_id=esta.id
+    )
+    xp.registrar_xp(
+        db,
+        usuario_id=alunos["bia"].id,
+        valor=500,
+        origem=OrigemXP.atividade,
+        trilha_id=outra.id,
+    )
+
+    geral = ranking.obter_ranking(db, limite=2)
+    da_trilha = ranking.obter_ranking(db, trilha_id=esta.id, limite=2)
+
+    assert [e.username for e in geral.podio] == ["bia", "ana"]
+    assert [e.username for e in da_trilha.podio] == ["ana", "bia"]
+    assert [e.xp for e in da_trilha.podio] == [100, 30]
+
+
+def test_ranking_da_trilha_usa_sorted_set_proprio(
+    db: Session, redis_falso: fakeredis.FakeRedis
+) -> None:
+    alunos = criar_alunos(db, {"ana": 0})
+    xp.registrar_xp(
+        db, usuario_id=alunos["ana"].id, valor=10, origem=OrigemXP.atividade, trilha_id=7
+    )
+
+    ranking.obter_ranking(db, trilha_id=7, limite=1)
+
+    assert redis_falso.exists(ranking.chave_do_ranking(7))
+    assert ranking.chave_do_ranking(7) != ranking.chave_do_ranking()
+
+
+def test_ganhar_xp_na_trilha_atualiza_os_dois_rankings(
+    db: Session, redis_falso: fakeredis.FakeRedis
+) -> None:
+    alunos = criar_alunos(db, {"ana": 50, "bia": 100})
+    # Esquenta os dois antes de o XP entrar.
+    ranking.obter_ranking(db, limite=2)
+    xp.registrar_xp(
+        db, usuario_id=alunos["ana"].id, valor=10, origem=OrigemXP.atividade, trilha_id=1
+    )
+    ranking.obter_ranking(db, trilha_id=1, limite=2)
+
+    xp.registrar_xp(
+        db, usuario_id=alunos["ana"].id, valor=200, origem=OrigemXP.atividade, trilha_id=1
+    )
+
+    assert ranking.obter_ranking(db, limite=2).podio[0].username == "ana"
+    assert ranking.obter_ranking(db, trilha_id=1, limite=2).podio[0].xp == 210
+
+
+def test_ranking_da_trilha_cai_no_banco_com_redis_fora(db: Session, redis_fora: None) -> None:
+    alunos = criar_alunos(db, {"ana": 0, "bia": 0})
+    xp.registrar_xp(
+        db, usuario_id=alunos["bia"].id, valor=80, origem=OrigemXP.atividade, trilha_id=1
+    )
+    xp.registrar_xp(
+        db, usuario_id=alunos["ana"].id, valor=20, origem=OrigemXP.atividade, trilha_id=1
+    )
+
+    resultado = ranking.obter_ranking(db, trilha_id=1, limite=2, usuario_id=alunos["ana"].id)
+
+    assert [e.username for e in resultado.podio] == ["bia", "ana"]
+    assert resultado.total == 2
+    assert resultado.usuario is not None
+    assert (resultado.usuario.username, resultado.usuario.posicao) == ("ana", 2)
+
+
+def test_quem_nao_pontuou_na_trilha_fica_de_fora(
+    db: Session, redis_falso: fakeredis.FakeRedis
+) -> None:
+    """No ranking geral todo mundo aparece; no da trilha, só quem jogou nela."""
+    alunos = criar_alunos(db, {"ana": 0, "bia": 300})
+    xp.registrar_xp(
+        db, usuario_id=alunos["ana"].id, valor=10, origem=OrigemXP.atividade, trilha_id=1
+    )
+
+    da_trilha = ranking.obter_ranking(db, trilha_id=1, limite=10)
+
+    assert [e.username for e in da_trilha.lista] == ["ana"]
+    assert da_trilha.total == 1
+
+
+def test_remover_tira_o_aluno_tambem_do_ranking_da_trilha(
+    db: Session, redis_falso: fakeredis.FakeRedis
+) -> None:
+    alunos = criar_alunos(db, {"ana": 0})
+    xp.registrar_xp(
+        db, usuario_id=alunos["ana"].id, valor=10, origem=OrigemXP.atividade, trilha_id=1
+    )
+    ranking.obter_ranking(db, trilha_id=1, limite=1)
+
+    ranking.remover(alunos["ana"].id)
+
+    assert redis_falso.zscore(ranking.chave_do_ranking(1), str(alunos["ana"].id)) is None
