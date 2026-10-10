@@ -82,7 +82,8 @@ Cache e dados voláteis. O que está lá:
 
 | Chave                              | Estrutura  | Para quê                                  |
 | ---------------------------------- | ---------- | ----------------------------------------- |
-| `algorise:ranking:xp`              | sorted set | pódio, lista rolável e posição do aluno   |
+| `algorise:ranking:xp`              | sorted set | ranking geral: pódio, lista e posição     |
+| `algorise:ranking:trilha:<id>`     | sorted set | ranking de uma trilha (telas 16 e 17)     |
 | `algorise:trilhas:catalogo:*`      | string     | catálogo por busca e período (telas 24/25) |
 | `algorise:streak:visto:<id>:<dia>` | string     | acesso do dia já contabilizado            |
 | `algorise:sessao:refresh:<jti>`    | string     | refresh token válido e seu dono            |
@@ -307,6 +308,25 @@ compartilhado, igual para todo mundo, e o "3/10" de cada aluno é sobreposto no
 request, com uma consulta só para a página inteira. Assim não existe uma cópia do
 catálogo por aluno, e concluir um passo aparece na hora, sem esperar TTL nem
 invalidação.
+
+### Ranking
+
+`GET /api/v1/ranking` devolve o ranking geral; com `?trilha=<slug>`, o daquela
+trilha. Com token, a posição do próprio aluno vem junto, mesmo quando cai fora da
+página pedida — e **só a dele**: não há parâmetro para espiar a de outro.
+
+Os dois recortes somam coisas diferentes, e por isso vêm de lugares diferentes:
+
+- **geral**: `usuarios.xp_total`, o saldo desnormalizado;
+- **por trilha**: `SUM(xp_eventos.valor)` com `trilha_id`, porque saldo por
+  trilha não existe em lugar nenhum — `xp_eventos` é a fonte da verdade, e somar
+  ali é exato por construção.
+
+`xp_eventos.trilha_id` é denormalização consciente: dava para derivar do
+`referencia_id`, mas com um caminho diferente por origem (atividade → módulo →
+trilha). A coluna deixa o ranking ser um `GROUP BY` em vez de três junções em
+união. Eventos anteriores à coluna ficam nulos e não entram em ranking de trilha
+nenhum.
 
 ### Atividades e submissões
 

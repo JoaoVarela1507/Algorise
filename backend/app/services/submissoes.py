@@ -109,6 +109,7 @@ def submeter(
     *,
     usuario: Usuario,
     atividade: Atividade,
+    trilha_id: int | None = None,
     conteudo: str,
     tempo_gasto_segundos: int | None = None,
 ) -> tuple[RespostaUsuario, Correcao, int]:
@@ -141,6 +142,7 @@ def submeter(
         valor=atividade.xp,
         origem=OrigemXP.atividade,
         referencia_id=atividade.id,
+        trilha_id=trilha_id,
     )
     return tentativa, correcao, atividade.xp
 
@@ -189,6 +191,7 @@ def concluir_passo(
             valor=ganho,
             origem=OrigemXP.modulo,
             referencia_id=modulo.id,
+            trilha_id=trilha.id,
         )
 
     ordens = sorted(m.ordem for m in trilha.modulos)

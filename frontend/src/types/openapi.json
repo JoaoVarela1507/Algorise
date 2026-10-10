@@ -1934,6 +1934,7 @@
     },
     "/api/v1/ranking": {
       "get": {
+        "description": "Sem `trilha`, soma todo o XP do aluno. Com `trilha`, só o ganho nela. Com token, a posição do próprio aluno vem junto, mesmo fora da página.",
         "operationId": "obterRanking",
         "parameters": [
           {
@@ -1964,21 +1965,21 @@
             }
           },
           {
-            "description": "Aluno cuja posição também entra",
+            "description": "Slug da trilha, para o ranking dela (telas 16 e 17)",
             "in": "query",
-            "name": "usuario_id",
+            "name": "trilha",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "description": "Aluno cuja posição também entra",
-              "title": "Usuario Id"
+              "description": "Slug da trilha, para o ranking dela (telas 16 e 17)",
+              "title": "Trilha"
             }
           }
         ],
@@ -2014,7 +2015,12 @@
             "description": "Erro inesperado"
           }
         },
-        "summary": "Obter Ranking",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Pódio e lista rolável",
         "tags": [
           "ranking"
         ]

@@ -9,14 +9,17 @@ export type EntradaRankingApi = components['schemas']['EntradaRanking']
 export interface FiltrosRanking {
   limite?: number
   deslocamento?: number
-  usuarioId?: number
+  /** Slug da trilha, para o ranking dela em vez do geral (telas 16 e 17). */
+  trilha?: string
 }
 
 export function buscarRanking(filtros: FiltrosRanking = {}): Promise<RankingApi> {
   const params = new URLSearchParams()
   if (filtros.limite) params.set('limite', String(filtros.limite))
   if (filtros.deslocamento) params.set('deslocamento', String(filtros.deslocamento))
-  if (filtros.usuarioId) params.set('usuario_id', String(filtros.usuarioId))
+  // A posição do próprio aluno vem do token, não de um parâmetro: com ele na
+  // query, qualquer um espiava a de outro.
+  if (filtros.trilha) params.set('trilha', filtros.trilha)
 
   const texto = params.toString()
   return apiGet<RankingApi>(`/ranking${texto ? `?${texto}` : ''}`)
