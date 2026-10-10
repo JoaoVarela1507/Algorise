@@ -45,13 +45,14 @@ def submeter(
     usuario: UsuarioAtual,
     db: Session = Depends(get_db),
 ) -> Correcao:
-    atividade, _, _ = _atividade_liberada(db, atividade_id, usuario)
+    atividade, _, trilha = _atividade_liberada(db, atividade_id, usuario)
 
     try:
         tentativa, correcao, ganho = submissoes.submeter(
             db,
             usuario=usuario,
             atividade=atividade,
+            trilha_id=trilha.id,
             conteudo=dados.conteudo,
             tempo_gasto_segundos=dados.tempo_gasto_segundos,
         )

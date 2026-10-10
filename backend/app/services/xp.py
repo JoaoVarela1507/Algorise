@@ -18,8 +18,12 @@ def registrar_xp(
     valor: int,
     origem: OrigemXP,
     referencia_id: int | None = None,
+    trilha_id: int | None = None,
 ) -> int:
     """Concede `valor` de XP ao aluno e devolve o novo saldo.
+
+    `trilha_id` diz em qual trilha o XP foi ganho; é o que alimenta o ranking
+    por trilha das telas 16 e 17. Nulo para XP que não vem de trilha.
 
     O evento em `xp_eventos` é a fonte da verdade; `usuarios.xp_total` é o saldo
     desnormalizado. O `UPDATE ... SET xp_total = xp_total + valor` soma no banco
@@ -31,6 +35,7 @@ def registrar_xp(
             usuario_id=usuario_id,
             origem=origem,
             referencia_id=referencia_id,
+            trilha_id=trilha_id,
             valor=valor,
         )
     )
@@ -41,6 +46,6 @@ def registrar_xp(
 
     # Depois do commit, nunca antes: se a transação falhar, o ranking não pode
     # ficar com um XP que o banco não tem.
-    ranking.registrar_xp(usuario_id, valor)
+    ranking.registrar_xp(usuario_id, valor, trilha_id)
 
     return db.execute(select(Usuario.xp_total).where(Usuario.id == usuario_id)).scalar_one()

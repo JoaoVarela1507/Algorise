@@ -220,7 +220,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Obter Ranking */
+        /**
+         * Pódio e lista rolável
+         * @description Sem `trilha`, soma todo o XP do aluno. Com `trilha`, só o ganho nela. Com token, a posição do próprio aluno vem junto, mesmo fora da página.
+         */
         get: operations["obterRanking"];
         put?: never;
         post?: never;
@@ -1520,8 +1523,8 @@ export interface operations {
                 limite?: number;
                 /** @description Quantos pular na lista rolável */
                 deslocamento?: number;
-                /** @description Aluno cuja posição também entra */
-                usuario_id?: number | null;
+                /** @description Slug da trilha, para o ranking dela (telas 16 e 17) */
+                trilha?: string | null;
             };
             header?: never;
             path?: never;
