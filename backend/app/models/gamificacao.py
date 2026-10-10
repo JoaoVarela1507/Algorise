@@ -13,7 +13,11 @@ class XPEvento(Base, TimestampMixin):
     """Fonte da verdade do XP. `usuarios.xp_total` é só um cache disso."""
 
     __tablename__ = "xp_eventos"
-    __table_args__ = (Index("ix_xp_eventos_usuario_data", "usuario_id", "criado_em"),)
+    __table_args__ = (
+        Index("ix_xp_eventos_usuario_data", "usuario_id", "criado_em"),
+        # O ranking por trilha (telas 16 e 17) soma por aqui.
+        Index("ix_xp_eventos_trilha_usuario", "trilha_id", "usuario_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"))
@@ -21,6 +25,11 @@ class XPEvento(Base, TimestampMixin):
     # Id do que gerou o XP (atividade, módulo, trilha...). Sem FK porque a
     # origem varia.
     referencia_id: Mapped[int | None]
+    # Em qual trilha o XP foi ganho. Dá para derivar do `referencia_id`, mas só
+    # com um caminho diferente por origem (atividade -> módulo -> trilha); a
+    # coluna existe para o ranking da trilha ser um `GROUP BY`, e não três
+    # junções em união. Nulo para XP que não pertence a trilha nenhuma.
+    trilha_id: Mapped[int | None] = mapped_column(ForeignKey("trilhas.id", ondelete="SET NULL"))
     valor: Mapped[int]
 
 
