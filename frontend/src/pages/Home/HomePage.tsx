@@ -22,9 +22,9 @@ const secao: Variants = {
 
 export function HomePage() {
   const { usuario } = useAuth()
-  // `usuario_id` para a API devolver a posição do aluno mesmo quando ela cai
+  // A posição do próprio aluno vem junto, pelo token, mesmo quando ela cai
   // fora da primeira página.
-  const ranking = useRanking({ limite: 8, usuarioId: Number(usuario?.id) || undefined })
+  const ranking = useRanking({ limite: 8 })
 
   return (
     <>
