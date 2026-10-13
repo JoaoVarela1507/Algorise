@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 # Preenchidos pelo CI; em build local ficam como "unknown" (ver issue #42).
 ARG GIT_COMMIT=unknown
