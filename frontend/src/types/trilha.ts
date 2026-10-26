@@ -15,6 +15,38 @@ export interface Trilha {
   modulos: Modulo[]
 }
 
+export type StatusModulo = 'concluido' | 'atual' | 'bloqueado'
+
+/** Um módulo como o mapa da trilha o mostra. */
+export interface ModuloTrilha {
+  id: string
+  ordem: number
+  titulo: string
+  descricao: string
+  atividades: number
+  xp: number
+  status: StatusModulo
+}
+
+/** Mesmos valores do `TipoAtividade` do backend (telas 28 a 34). */
+export type TipoAtividade =
+  | 'multipla-escolha'
+  | 'ordenacao'
+  | 'preencher-lacuna'
+  | 'terminal'
+  | 'resposta-aberta'
+  | 'desafio-codigo'
+
+export type StatusAtividade = 'feita' | 'proxima' | 'pendente' | 'bloqueada'
+
+export interface AtividadeModulo {
+  id: string
+  tipo: TipoAtividade
+  titulo: string
+  minutos: number
+  status: StatusAtividade
+}
+
 export type CategoriaTrilha = 'Linguagens' | 'Gerais' | 'Fundamentos' | 'Infraestrutura' | 'Dados'
 
 /** Versão enxuta da trilha usada na listagem (tela de Trilhas). */

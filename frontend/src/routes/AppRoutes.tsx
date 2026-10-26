@@ -11,6 +11,7 @@ import { PrivacidadePage } from '@/pages/Legal/PrivacidadePage'
 import { RedefinirSenhaPage } from '@/pages/Auth/RedefinirSenhaPage'
 import { HomePage } from '@/pages/Home/HomePage'
 import { TrilhasPage } from '@/pages/Trilhas/TrilhasPage'
+import { TrilhaPage } from '@/pages/Trilha/TrilhaPage'
 import { QuestaoPage } from '@/pages/Questao/QuestaoPage'
 import { ChatPage } from '@/pages/Chat/ChatPage'
 import { PerfilPage } from '@/pages/Perfil/PerfilPage'
@@ -38,6 +39,7 @@ export function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/trilhas" element={<TrilhasPage />} />
+          <Route path="/trilhas/:trilhaId" element={<TrilhaPage />} />
           <Route path="/trilhas/:trilhaId/questao/:questaoId" element={<QuestaoPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/perfil" element={<PerfilPage />} />
