@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { motion, type Variants } from 'framer-motion'
 import { ConquistasCard } from '@/components/home/ConquistasCard'
 import { MetaDiariaCard } from '@/components/home/MetaDiariaCard'
@@ -5,14 +6,11 @@ import { RankingCard } from '@/components/home/RankingCard'
 import { SaudacaoCard } from '@/components/home/SaudacaoCard'
 import { StreakCard } from '@/components/home/StreakCard'
 import { TrilhaAtualCard } from '@/components/home/TrilhaAtualCard'
+import { Carregando, ErroAoCarregar } from '@/components/ui/estados'
 import { useAuth } from '@/contexts/AuthContext'
-import {
-  USUARIO_ATUAL_ID,
-  conquistasMock,
-  metaDiariaMock,
-  rankingMock,
-  trilhaAtualMock,
-} from '@/mocks/home'
+import { useCheckin, usePainel } from '@/hooks/useGamificacao'
+import { useRanking } from '@/hooks/useRanking'
+import { conquistasMock, metaDiariaMock, trilhaAtualMock } from '@/mocks/home'
 
 const container: Variants = {
   oculto: {},
@@ -26,6 +24,21 @@ const secao: Variants = {
 
 export function HomePage() {
   const { usuario } = useAuth()
+  // `usuario_id` para a API devolver a posição do aluno mesmo quando ela cai
+  // fora da primeira página.
+  const ranking = useRanking({ limite: 8, usuarioId: Number(usuario?.id) || undefined })
+  const painel = usePainel()
+  const checkin = useCheckin()
+
+  // Abrir a home é o acesso do dia: é aqui que o streak da tela 16 avança. A
+  // API conta um por dia, então repetir não estraga nada — só gasta rede, e por
+  // isso o efeito roda uma vez por montagem.
+  useEffect(() => {
+    checkin.mutate()
+    // `checkin` muda de identidade a cada render; incluí-lo aqui faria o efeito
+    // disparar em loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <>
@@ -47,11 +60,17 @@ export function HomePage() {
         */}
         <div className="grid flex-1 gap-6 md:grid-cols-2 xl:grid-cols-12">
           <motion.section variants={secao} className="md:col-span-2 xl:col-span-5">
-            <RankingCard
-              ranking={rankingMock}
-              usuarioAtualId={USUARIO_ATUAL_ID}
-              className="h-full"
-            />
+            {ranking.isPending ? (
+              <Carregando rotulo="Carregando ranking…" />
+            ) : ranking.isError ? (
+              <ErroAoCarregar erro={ranking.error} aoTentarDeNovo={() => void ranking.refetch()} />
+            ) : (
+              <RankingCard
+                ranking={ranking.data.linhas}
+                usuarioAtualId={usuario?.id ?? ''}
+                className="h-full"
+              />
+            )}
           </motion.section>
 
           <div className="flex flex-col gap-6 xl:col-span-4">
@@ -65,7 +84,7 @@ export function HomePage() {
 
           <div className="flex flex-col gap-6 xl:col-span-3">
             <motion.section variants={secao}>
-              <StreakCard dias={usuario?.streakDias ?? 0} />
+              <StreakCard dias={painel.data?.streak_dias ?? usuario?.streakDias ?? 0} />
             </motion.section>
             <motion.section variants={secao} className="flex-1">
               <MetaDiariaCard meta={metaDiariaMock} className="h-full" />

@@ -42,7 +42,7 @@ def obter_json(nome: str) -> Any | None:
 def definir_json(nome: str, valor: Any, ttl: int) -> None:
     """Grava o valor serializado com TTL. `ensure_ascii=False` por causa dos acentos."""
     conteudo = json.dumps(valor, ensure_ascii=False, default=str)
-    executar(lambda r: r.setex(nome, ttl, conteudo))
+    executar(lambda r: r.set(nome, conteudo, ex=ttl))
 
 
 def invalidar(*nomes: str) -> None:

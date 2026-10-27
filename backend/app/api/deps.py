@@ -52,3 +52,27 @@ def get_current_user(
 
 
 UsuarioAtual = Annotated[Usuario, Depends(get_current_user)]
+
+
+def get_usuario_opcional(
+    credenciais: Annotated[HTTPAuthorizationCredentials | None, Depends(esquema)] = None,
+    db: Session = Depends(get_db),
+) -> Usuario | None:
+    """O aluno, quando há token válido; None quando não há.
+
+    Para rota que serve visitante e aluno pela mesma porta — o catálogo de
+    trilhas mostra o mesmo conteúdo para os dois, e só acrescenta o progresso
+    para quem está logado. Token inválido aqui é tratado como visitante, e não
+    como erro: recusar a página inteira por causa de um token vencido esconderia
+    conteúdo público.
+    """
+    if credenciais is None:
+        return None
+
+    try:
+        return get_current_user(credenciais, db)
+    except HTTPException:
+        return None
+
+
+UsuarioOpcional = Annotated[Usuario | None, Depends(get_usuario_opcional)]

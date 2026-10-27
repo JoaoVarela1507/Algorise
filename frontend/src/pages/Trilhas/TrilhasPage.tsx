@@ -1,13 +1,16 @@
-import { useId, useMemo, useState } from 'react'
+import { useId, useState } from 'react'
 import { AnimatePresence, motion, type Variants } from 'framer-motion'
 import { Check, ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TrilhaCard } from '@/components/trilhas/TrilhaCard'
 import { PERIODOS, coresPeriodo } from '@/components/trilhas/periodos'
+import { Carregando, ErroAoCarregar } from '@/components/ui/estados'
 import { useAuth } from '@/contexts/AuthContext'
+import { useDebounce } from '@/hooks/useDebounce'
+import { useCatalogoDeTrilhas } from '@/hooks/useTrilhas'
 import { cn } from '@/lib/utils'
-import { INSTITUICAO_MOCK, trilhasMock } from '@/mocks/trilhas'
+import { INSTITUICAO_MOCK } from '@/mocks/trilhas'
 import mascotePolvo from '@/assets/images/mascote-polvo.png'
 
 // 3 colunas × 3 linhas: a página cabe numa tela de desktop sem rolar.
@@ -23,13 +26,6 @@ const item: Variants = {
   visivel: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
 }
 
-function normalizar(texto: string) {
-  return texto
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-}
-
 const doisDigitos = (n: number) => String(n).padStart(2, '0')
 
 export function TrilhasPage() {
@@ -40,20 +36,23 @@ export function TrilhasPage() {
   const [pagina, setPagina] = useState(0)
   const filtroId = useId()
 
-  const filtradas = useMemo(() => {
-    const termo = normalizar(busca.trim())
-    return trilhasMock.filter(
-      (trilha) =>
-        // Busca só pelo nome da cadeira, casando com o começo dele ("re" → Redes…).
-        (!termo || normalizar(trilha.nome).startsWith(termo)) &&
-        (periodos.length === 0 || periodos.includes(trilha.periodo)),
-    )
-  }, [busca, periodos])
+  // Busca, filtro e paginação acontecem no servidor (#29): filtrar aqui só
+  // funcionaria enquanto o catálogo inteiro coubesse numa página. A busca passa
+  // por um atraso para não disparar uma requisição por tecla.
+  const buscaAtrasada = useDebounce(busca)
+  const consulta = useCatalogoDeTrilhas({
+    busca: buscaAtrasada,
+    periodos,
+    // A tela conta páginas a partir de 0; a API, de 1.
+    pagina: pagina + 1,
+    tamanhoPagina: POR_PAGINA,
+  })
 
-  const totalPaginas = Math.max(1, Math.ceil(filtradas.length / POR_PAGINA))
+  const visiveis = consulta.data?.trilhas ?? []
+  const total = consulta.data?.total ?? 0
+  const totalPaginas = Math.max(1, consulta.data?.totalPaginas ?? 1)
   const paginaAtual = Math.min(pagina, totalPaginas - 1)
   const inicio = paginaAtual * POR_PAGINA
-  const visiveis = filtradas.slice(inicio, inicio + POR_PAGINA)
 
   function alternarPeriodo(periodo: number) {
     setPeriodos((atuais) =>
@@ -199,7 +198,11 @@ export function TrilhasPage() {
           )}
         </AnimatePresence>
 
-        {visiveis.length > 0 ? (
+        {consulta.isPending ? (
+          <Carregando rotulo="Carregando trilhas…" />
+        ) : consulta.isError ? (
+          <ErroAoCarregar erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
+        ) : visiveis.length > 0 ? (
           <motion.ul
             key={paginaAtual}
             variants={grade}
@@ -243,7 +246,7 @@ export function TrilhasPage() {
           </motion.div>
         )}
 
-        {filtradas.length > 0 && (
+        {visiveis.length > 0 && (
           <nav
             aria-label="Paginação"
             className="mt-auto flex items-center justify-center gap-4 pt-2"
@@ -259,7 +262,7 @@ export function TrilhasPage() {
             </Button>
             <span className="font-display text-lg font-bold text-foreground" aria-live="polite">
               {doisDigitos(inicio + 1)}–{doisDigitos(inicio + visiveis.length)}{' '}
-              <span className="text-muted-foreground">de {doisDigitos(filtradas.length)}</span>
+              <span className="text-muted-foreground">de {doisDigitos(total)}</span>
             </span>
             <Button
               variant="ghost"

@@ -8,5 +8,10 @@ package-lock.json
 # Gerado pelo release-please
 CHANGELOG.md
 
+# Gerados pelo `npm run gen:api` a partir do OpenAPI. Formatar aqui só criaria
+# diferença entre o arquivo gerado e o commitado.
+frontend/src/types/api.d.ts
+frontend/src/types/openapi.json
+
 # Python fica com o Ruff
 backend/

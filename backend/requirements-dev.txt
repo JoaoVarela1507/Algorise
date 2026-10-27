@@ -3,3 +3,8 @@
 ruff==0.16.8
 # Auditoria de dependências com vulnerabilidade conhecida (#40), no CI.
 pip-audit==2.10.1
+# Suíte de testes (#14). O `fakeredis` evita depender de container para rodar
+# `pytest` na máquina de quem está desenvolvendo.
+pytest==9.1.1
+pytest-cov==7.1.0
+fakeredis==2.38.0

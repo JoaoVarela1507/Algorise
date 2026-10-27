@@ -223,7 +223,7 @@ def criar_token_de_recuperacao(db: Session, email: str) -> str | None:
 
     token = secrets.token_urlsafe(32)
     gravado = executar(
-        lambda r: r.setex(_chave_reset(token), settings.reset_senha_ttl, str(usuario.id)),
+        lambda r: r.set(_chave_reset(token), str(usuario.id), ex=settings.reset_senha_ttl),
         padrao=False,
     )
     if not gravado:

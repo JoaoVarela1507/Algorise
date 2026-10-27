@@ -18,6 +18,10 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Nota de API: use `set(chave, valor, ex=segundos)` em vez de `setex`, que o
+# redis-py 8 marca como obsoleto — a suíte roda com warning virando erro e
+# reprova o uso antigo.
+
 # `decode_responses` devolve str em vez de bytes: todo valor que guardamos é
 # texto (JSON, número, id), então converter na borda evita `.decode()` espalhado.
 #

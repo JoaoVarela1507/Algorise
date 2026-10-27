@@ -1,0 +1,8 @@
+# Gerados pelo `npm run gen:api` a partir do OpenAPI do backend. Formatar aqui
+# criaria diferença entre o arquivo gerado e o commitado, e o CI reprovaria o
+# PR seguinte.
+#
+# A raiz tem o seu próprio `.prettierignore`: o Prettier lê o do diretório em
+# que roda, e o `npm run format:check` daqui roda de dentro de `frontend/`.
+src/types/api.d.ts
+src/types/openapi.json

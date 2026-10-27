@@ -39,7 +39,7 @@ def atualizar_perfil(
         return servico_perfil.atualizar_perfil(db, usuario, dados)
     except servico_perfil.CursoSemInstituicao as erro:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Informe a instituição antes do curso",
         ) from erro
 

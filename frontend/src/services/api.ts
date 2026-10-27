@@ -1,10 +1,29 @@
 export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
-/** Erro de uma resposta da API, com a mensagem que o backend mandou em `detail`. */
+/**
+ * Prefixo das rotas de negócio. Fica num lugar só: quando a API subir para a
+ * v2, é esta linha que muda.
+ *
+ * `/health` e `/version` ficam fora dele de propósito — são de operação, e o
+ * frontend não os consome.
+ */
+export const API_V1 = `${API_URL}/api/v1`
+
+/**
+ * Erro de uma resposta da API.
+ *
+ * `code` é o código estável do backend (`nao_autenticado`, `conflito`...) e é
+ * nele que o código decide o que fazer; `message` é o texto em português, para
+ * mostrar ao aluno. Um erro sem resposta (servidor fora) vem com status 0 e sem
+ * `code`.
+ */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     mensagem: string,
+    readonly code?: string,
+    readonly details?: Record<string, unknown>,
+    readonly requestId?: string,
   ) {
     super(mensagem)
     this.name = 'ApiError'
@@ -66,7 +85,7 @@ export async function apiFetch<T>(
   }
 
   if (!resposta.ok) {
-    throw new ApiError(resposta.status, await lerDetalhe(resposta))
+    throw await lerErro(resposta)
   }
 
   // 204 e 202 sem corpo não têm JSON para ler.
@@ -110,27 +129,46 @@ async function enviar(path: string, init: RequestInit, autenticar: boolean): Pro
   }
 
   try {
-    return await fetch(`${API_URL}${path}`, { ...init, headers })
+    return await fetch(`${API_V1}${path}`, { ...init, headers })
   } catch {
     // `fetch` só rejeita quando nem houve resposta: API fora ou sem rede.
     throw new ApiError(0, 'Não foi possível falar com o servidor. Tente de novo em instantes.')
   }
 }
 
-async function lerDetalhe(resposta: Response): Promise<string> {
+async function lerErro(resposta: Response): Promise<ApiError> {
   const padrao = 'Algo deu errado. Tente de novo.'
+
   try {
-    const corpo = (await resposta.json()) as { detail?: unknown }
-    if (typeof corpo.detail === 'string') {
-      return corpo.detail
+    const corpo = (await resposta.json()) as {
+      erro?: {
+        code?: string
+        message?: string
+        details?: Record<string, unknown>
+        request_id?: string
+      }
+      detail?: unknown
     }
-    // Erro de validação do FastAPI (422): lista com uma mensagem por campo.
-    if (Array.isArray(corpo.detail) && corpo.detail.length > 0) {
-      const primeiro = corpo.detail[0] as { msg?: string }
-      return primeiro.msg ?? padrao
+
+    // Formato único da API (ver `backend/app/core/erros.py`).
+    if (corpo.erro?.message) {
+      return new ApiError(
+        resposta.status,
+        corpo.erro.message,
+        corpo.erro.code,
+        corpo.erro.details,
+        corpo.erro.request_id,
+      )
+    }
+
+    // Resposta que não passou pelos nossos handlers — erro do proxy, ou uma
+    // rota que ainda devolva o `detail` do FastAPI.
+    if (typeof corpo.detail === 'string') {
+      return new ApiError(resposta.status, corpo.detail)
     }
   } catch {
-    // Corpo vazio ou que não é JSON (ex.: erro do proxy).
+    // Corpo vazio ou que não é JSON.
   }
-  return padrao
+
+  return new ApiError(resposta.status, padrao)
 }

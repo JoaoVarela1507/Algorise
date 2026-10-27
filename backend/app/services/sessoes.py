@@ -43,7 +43,7 @@ def registrar_refresh_token(jti: str, usuario_id: int, *, ttl: int | None = None
 
     def gravar(r: Redis) -> bool:
         with r.pipeline() as pipe:
-            pipe.setex(_chave_token(jti), ttl, str(usuario_id))
+            pipe.set(_chave_token(jti), str(usuario_id), ex=ttl)
             # O set acompanha o token mais longo do aluno; sem o `expire` ele
             # sobreviveria a todas as sessões e ficaria crescendo para sempre.
             pipe.sadd(_chave_do_usuario(usuario_id), jti)
@@ -96,7 +96,7 @@ def consumir_refresh_token(jti: str, *, ttl: int | None = None) -> int | None:
             return None
 
         with r.pipeline() as pipe:
-            pipe.setex(_chave_revogada(jti), ttl, "1")
+            pipe.set(_chave_revogada(jti), "1", ex=ttl)
             pipe.srem(_chave_do_usuario(int(dono)), jti)
             pipe.execute()
         return int(dono)
@@ -117,7 +117,7 @@ def revogar_refresh_token(jti: str, *, ttl: int | None = None) -> None:
         dono = r.get(_chave_token(jti))
         with r.pipeline() as pipe:
             pipe.delete(_chave_token(jti))
-            pipe.setex(_chave_revogada(jti), ttl, "1")
+            pipe.set(_chave_revogada(jti), "1", ex=ttl)
             if dono is not None:
                 pipe.srem(_chave_do_usuario(int(dono)), jti)
             pipe.execute()
@@ -141,7 +141,7 @@ def revogar_sessoes_do_usuario(usuario_id: int, *, ttl: int | None = None) -> in
         with r.pipeline() as pipe:
             for jti in jtis:
                 pipe.delete(_chave_token(jti))
-                pipe.setex(_chave_revogada(jti), ttl, "1")
+                pipe.set(_chave_revogada(jti), "1", ex=ttl)
             pipe.delete(_chave_do_usuario(usuario_id))
             pipe.execute()
         return len(jtis)

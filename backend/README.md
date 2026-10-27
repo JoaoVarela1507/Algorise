@@ -157,7 +157,7 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 
 Sem as credenciais do provedor, `/auth/github/login` responde 503 com a razão em
 vez de mandar o aluno para uma tela de erro do GitHub. Os callbacks a cadastrar
-no provedor são `http://localhost:8000/auth/github/callback` e o equivalente do
+no provedor são `http://localhost:8000/api/v1/auth/github/callback` e o equivalente do
 Google.
 
 ### Hash de senha
@@ -216,17 +216,189 @@ tabela nova com `usuario_id` entra na exportação sozinha** (ela é descoberta 
 mapeamento), mas precisa de `ondelete="CASCADE"` para sair no expurgo, e de RLS
 na migração.
 
+## Testes
+
+```powershell
+pytest                      # a suíte inteira
+pytest tests/test_auth.py   # um arquivo
+pytest -k refresh           # por nome
+pytest --cov=app            # com cobertura
+```
+
+Roda em máquina sem Docker: o banco é SQLite na memória, recriado a cada teste,
+e o Redis é o `fakeredis`. As fixtures estão em `tests/conftest.py` — `cliente`
+(HTTP da aplicação), `usuario`, `autenticado`, `trilha`, `redis_falso` e
+`redis_fora`, essa última para os testes de degradação.
+
+O que fica de fora daqui, de propósito: migração é verificada pelo CI contra um
+PostgreSQL de verdade (`upgrade`, `downgrade`, `upgrade`), porque a migração de
+RLS é PostgreSQL puro.
+
+A suíte roda com **aviso virando erro** (`filterwarnings = ["error"]` no
+`pyproject.toml`). É como um `setex` obsoleto aparece antes de virar quebra numa
+atualização de biblioteca. Se um aviso de dependência sem solução aparecer,
+acrescente a exceção na lista, com o motivo.
+
+O CI reprova abaixo de **80% de cobertura**.
+
+## Contrato da API
+
+Tudo que é contrato com o frontend vive sob **`/api/v1`**. Fora do prefixo ficam
+`/health`, `/ready` e `/version`: são de operação, e o healthcheck do container
+não pode mudar de endereço porque a API subiu para a v2.
+
+### Nomes
+
+Rota em português, no plural, com hífen quando tem mais de uma palavra
+(`/api/v1/usuarios/me`, `/api/v1/auth/esqueci-senha`). Campo em `snake_case`,
+também em português (`nome_exibicao`, `tamanho_pagina`) — a exceção são os campos
+que o OAuth2 define, como `access_token` e `token_type`, que seguem o padrão.
+
+### Erro
+
+Toda falha sai igual, seja 404, 422 ou 500:
+
+```json
+{
+  "erro": {
+    "code": "trilha_nao_encontrada",
+    "message": "Trilha não encontrada",
+    "details": { "slug": "python" },
+    "request_id": "5f3c9a…"
+  }
+}
+```
+
+`code` é estável e em inglês — é nele que o **código** do cliente decide o que
+fazer. `message` é em português e pode mudar a qualquer momento: é o que o
+**aluno** lê, e não serve para `if`. Para escolher o código à mão, levante
+`ErroDeNegocio` em vez de `HTTPException` (ver `app/core/erros.py`).
+
+### Paginação
+
+Lista sempre devolve `Pagina[T]`, nunca uma lista nua:
+
+```json
+{ "itens": [], "pagina": 1, "tamanho_pagina": 20, "total": 37, "total_paginas": 2 }
+```
+
+Quem consome passa `pagina`, `tamanho_pagina` (máximo 100), `ordenar_por` e
+`decrescente`. Cada rota declara por quais campos aceita ordenar; pedir outro
+devolve 422 dizendo quais valem — o valor vira nome de coluna, então a lista não
+é preciosismo.
+
+### Trilhas e desbloqueio
+
+| Rota | O que faz |
+| --- | --- |
+| `GET /api/v1/trilhas` | catálogo paginado; com token, cada card traz o progresso |
+| `GET /api/v1/trilhas/recomendadas` | sugestões por período e nível, com o motivo |
+| `GET /api/v1/trilhas/{slug}` | a trilha com o estado de cada passo |
+| `GET /api/v1/trilhas/{slug}/passos/{ordem}` | conteúdo do passo; 403 se ainda não abriu |
+| `POST /api/v1/trilhas/{slug}/iniciar` | começa a trilha (idempotente) |
+
+**Quem decide o que está liberado é o servidor.** O cadeado da tela 26 é
+decoração: `app/services/progresso.py` calcula o estado de cada passo a partir do
+que está em `progresso_usuario`, e pedir um passo bloqueado direto na API
+responde 403. O primeiro passo nasce aberto; o passo N abre quando o N-1 fecha.
+
+O progresso **não entra no cache do catálogo**. A página fica num cache
+compartilhado, igual para todo mundo, e o "3/10" de cada aluno é sobreposto no
+request, com uma consulta só para a página inteira. Assim não existe uma cópia do
+catálogo por aluno, e concluir um passo aparece na hora, sem esperar TTL nem
+invalidação.
+
+### Gamificação
+
+| Rota | O que faz |
+| --- | --- |
+| `GET /api/v1/gamificacao/me` | XP, nível, progresso no nível e streak |
+| `POST /api/v1/gamificacao/checkin` | registra o acesso do dia e devolve o streak |
+
+**A curva de níveis é quadrática**: o nível N começa em `50 * (N-1)²`. Do 1 para
+o 2 são 50 XP; do 9 para o 10, 750. Começo rápido, para o aluno ver progresso na
+primeira sessão, sem que o nível 20 caiba numa tarde. É fórmula e não tabela
+porque assim `nivel_de` e `xp_do_nivel` são inversas por construção — e há teste
+comparando as duas.
+
+Quanto vale cada coisa está em `app/services/niveis.py`, no topo. XP sai **uma
+vez** por atividade e uma vez por passo.
+
+**Teto por janela** (`xp_maximo_por_janela`, `xp_janela_segundos`): o limite por
+atividade já impede repetir a mesma para pontuar; o teto impede o outro caminho,
+um script varrendo o catálogo. Quem estoura continua concluindo as atividades —
+só não vira ponto. Com o Redis fora o teto libera tudo, pela mesma razão do rate
+limit: punir o aluno honesto por uma queda de cache é pior do que o abuso que se
+evita.
+
+O `GET /api/v1/gamificacao/me` **não** mexe no streak: só o check-in registra
+acesso. Uma tela que exibe não deveria alterar a sequência de ninguém.
+
+### Atividades e submissões
+
+| Rota | O que faz |
+| --- | --- |
+| `GET /api/v1/atividades/{id}` | enunciado, tipo, dica e tempo — **sem o gabarito** |
+| `POST /api/v1/atividades/{id}/submissoes` | envia a resposta e recebe a correção |
+| `GET /api/v1/atividades/{id}/submissoes` | as tentativas do próprio aluno |
+| `POST /api/v1/trilhas/{slug}/passos/{ordem}/concluir` | fecha o passo, paga o bônus e diz qual é o próximo |
+
+**A correção é do servidor.** `comando_esperado` e `resposta_esperada` nunca saem
+da API antes da submissão — o terminal simulado do frontend encena a saída, mas
+quem decide o acerto (e paga XP) é `app/services/submissoes.py`. Tem teste para o
+gabarito não vazar.
+
+**XP sai uma vez por atividade.** A checagem é a existência de uma tentativa
+correta anterior; reenviar a resposta certa devolve `xp_ganho: 0`. O mesmo vale
+para o bônus de fechar o passo.
+
+**Toda tentativa é guardada**, não só a última: é o que permite retomar de onde
+parou e é a base das métricas de aprendizado.
+
+A resposta aberta fica **em análise**: sem a correção por IA (#11), dar XP por
+texto que ninguém leu seria inventar acerto. Por isso ela também não trava o
+fechamento do passo.
+
+### Rastreio
+
+Toda resposta traz `X-Request-Id` e `X-Response-Time-Ms`. O id vem de fora se o
+proxy já mandou um, e é o mesmo que aparece no log e no corpo do erro: com o id
+que o aluno mostrou na tela, o log sai por `grep`.
+
+### Tipos do frontend
+
+O frontend não escreve à mão os tipos que o backend já descreve:
+
+```bash
+npm run gen:api    # na raiz do repositório
+```
+
+Isso exporta o OpenAPI (sem subir servidor) e gera `frontend/src/types/api.d.ts`.
+Os dois arquivos são commitados, para o frontend compilar sem Python instalado —
+então **rode o comando quando mudar um schema ou uma rota**.
+
+O `info.version` do arquivo exportado sai congelado. Ele muda a cada release, e o
+CI compara o arquivo gerado com o commitado: sem isso, todo PR de release
+reprovaria pedindo uma regeração que não mudaria contrato nenhum. O
+`/openapi.json` que a API serve continua com a versão de verdade.
+
+O `operation_id` de cada rota sai do nome da função Python e vira nome de tipo no
+cliente gerado. Renomear a função muda o contrato gerado; é de propósito, para o
+nome ser escolhido e não sorteado pela rota.
+
 ## Estrutura de pastas
 
 ```
 main.py          ponto de entrada — roda o servidor (python main.py)
 app/
-  api/routes/    endpoints da API, um arquivo por recurso
+  api/v1/        endpoints da API v1, um arquivo por recurso
+  api/infra/     /health, /ready e /version — fora do contrato versionado
   api/deps.py    dependências compartilhadas (ex.: usuário autenticado)
   core/          configuração, conexões (PostgreSQL, Redis) e cache
   models/        modelos SQLAlchemy (um arquivo por área do domínio)
   schemas/       schemas Pydantic (contrato da API, espelham os types do frontend)
   services/      regras de negócio (ex.: geração de trilhas, integração com IA)
   tarefas/       rotinas de manutenção rodadas fora da API (ex.: expurgo)
+scripts/         utilitários de linha de comando (ex.: exportar o OpenAPI)
   main.py        cria a instância do FastAPI (app) e registra as rotas
 ```

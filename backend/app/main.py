@@ -2,11 +2,26 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api.routes import auth, health, oauth, ranking, trilhas, usuarios, versao
+from app.api import infra, v1
 from app.core.config import settings
+from app.core.erros import registrar_handlers
+from app.core.openapi import RESPOSTAS_PADRAO, TAGS, gerar_operation_id
 from app.core.protecao_http import ProtecaoHTTP
+from app.core.rastreio import Rastreio
 
-app = FastAPI(title=settings.app_name, version=settings.app_version)
+app = FastAPI(
+    title=settings.app_name,
+    version=settings.app_version,
+    description=(
+        "API do Algorise. As rotas de negócio vivem sob `/api/v1`; `/health`, "
+        "`/ready` e `/version` ficam fora do prefixo por serem de operação."
+    ),
+    openapi_tags=TAGS,
+    # Nome da função vira `operation_id`, que vira nome de função no cliente
+    # TypeScript gerado (ver `app/core/openapi.py`).
+    generate_unique_id_function=gerar_operation_id,
+    responses=RESPOSTAS_PADRAO,
+)
 
 # O Authlib guarda o `state` do OAuth2 num cookie de sessão assinado. Ele só
 # existe entre o início do fluxo e o callback; nada da aplicação depende dele.
@@ -39,10 +54,12 @@ app.add_middleware(
 # respostas de erro do CORS, e o teto de tamanho barra o corpo antes de tudo.
 app.add_middleware(ProtecaoHTTP)
 
-app.include_router(health.router)
-app.include_router(versao.router)
-app.include_router(trilhas.router)
-app.include_router(ranking.router)
-app.include_router(auth.router)
-app.include_router(oauth.router)
-app.include_router(usuarios.router)
+# Mais externo que todos: o id precisa existir antes de qualquer coisa poder
+# falhar, e o tempo medido é o da requisição inteira, middlewares inclusos.
+app.add_middleware(Rastreio)
+
+# Todo erro sai no formato único (ver `app/core/erros.py`).
+registrar_handlers(app)
+
+app.include_router(infra.router)
+app.include_router(v1.router)
