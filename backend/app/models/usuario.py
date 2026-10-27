@@ -1,10 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, false, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
-from app.models.enums import NivelExperiencia, TipoTrilha
+from app.models.enums import NivelExperiencia, TamanhoFonte, TipoTrilha
 
 
 class Usuario(Base, TimestampMixin):
@@ -27,6 +27,15 @@ class Usuario(Base, TimestampMixin):
     curso_id: Mapped[int | None] = mapped_column(ForeignKey("cursos.id", ondelete="SET NULL"))
     periodo: Mapped[int | None]
 
+    # Acessibilidade (telas 18 e 19). Ficam na conta para valer em qualquer
+    # aparelho em que o aluno entrar; o navegador guarda uma cópia para a tela
+    # de login, que abre antes de saber quem é o aluno.
+    tamanho_fonte: Mapped[TamanhoFonte] = mapped_column(
+        default=TamanhoFonte.normal, server_default=TamanhoFonte.normal.value
+    )
+    alto_contraste: Mapped[bool] = mapped_column(default=False, server_default=false())
+    reduzir_animacoes: Mapped[bool] = mapped_column(default=False, server_default=false())
+
     # Saldo desnormalizado: a verdade são os registros em `xp_eventos`. Existe
     # para o ranking não somar a tabela inteira a cada consulta.
     xp_total: Mapped[int] = mapped_column(default=0, index=True)
@@ -38,8 +47,11 @@ class Usuario(Base, TimestampMixin):
         DateTime(timezone=True), index=True
     )
 
+    # Com o cascade, apagar a conta apaga o streak. Sem ele, o ORM tentava
+    # zerar `streaks.usuario_id` antes do DELETE, e o expurgo de quem já tinha
+    # aberto o app estourava no NOT NULL.
     streak: Mapped["Streak | None"] = relationship(  # noqa: F821
-        back_populates="usuario", uselist=False
+        back_populates="usuario", uselist=False, cascade="all, delete-orphan"
     )
     contas_oauth: Mapped[list["ContaOAuth"]] = relationship(
         back_populates="usuario", cascade="all, delete-orphan"

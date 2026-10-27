@@ -23,6 +23,13 @@ class TipoTrilha(str, Enum):
     mista = "mista"
 
 
+class TamanhoFonte(str, Enum):
+    """Preferência de acessibilidade das telas 18 e 19."""
+
+    normal = "normal"
+    alta = "alta"
+
+
 class TipoAtividade(str, Enum):
     """Formato da atividade dentro de um módulo (telas 28 a 34)."""
 
