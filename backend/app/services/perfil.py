@@ -1,5 +1,7 @@
 """Leitura e edição do perfil do aluno, e o perfil público que os outros veem."""
 
+from datetime import UTC, datetime
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -7,16 +9,25 @@ from app.models import Curso, Instituicao, TipoTrilha, Usuario
 from app.schemas.perfil import (
     AtualizacaoPerfil,
     AtualizacaoPreferencias,
+    Onboarding,
     Perfil,
     PerfilPublico,
     Preferencias,
 )
-from app.services import niveis
+from app.services import catalogo, niveis
 from app.services import streak as servico_streak
 
 
 class CursoSemInstituicao(Exception):
     """Curso informado sem instituição, nem nova nem já salva no perfil."""
+
+
+class OnboardingInvalido(Exception):
+    """Referência ao catálogo que não confere. `codigo` vai para o `code` do erro."""
+
+    def __init__(self, codigo: str, mensagem: str) -> None:
+        super().__init__(mensagem)
+        self.codigo = codigo
 
 
 def montar_perfil(db: Session, usuario: Usuario) -> Perfil:
@@ -44,6 +55,7 @@ def montar_perfil(db: Session, usuario: Usuario) -> Perfil:
         curso=curso.nome if curso else None,
         periodo=usuario.periodo,
         preferencias=Preferencias.model_validate(usuario),
+        onboarding_concluido_em=usuario.onboarding_concluido_em,
     )
 
 
@@ -101,6 +113,57 @@ def trocar_modo_trilha(db: Session, usuario: Usuario, modo: TipoTrilha) -> Perfi
     return montar_perfil(db, usuario)
 
 
+def concluir_onboarding(db: Session, usuario: Usuario, dados: Onboarding) -> Perfil:
+    """Grava o onboarding inteiro. Pode ser refeito: a data registrada é a primeira."""
+    instituicao, curso = _resolver_academico(db, dados)
+
+    usuario.nivel_experiencia = dados.nivel_experiencia
+    usuario.tipo_trilha = dados.tipo_trilha
+    usuario.instituicao_id = instituicao.id if instituicao else None
+    usuario.curso_id = curso.id if curso else None
+    usuario.periodo = dados.periodo
+    usuario.onboarding_concluido_em = usuario.onboarding_concluido_em or datetime.now(UTC)
+
+    db.commit()
+    db.refresh(usuario)
+    return montar_perfil(db, usuario)
+
+
+def _resolver_academico(db: Session, dados: Onboarding) -> tuple[Instituicao | None, Curso | None]:
+    """Instituição e curso do onboarding, do catálogo ou criados do texto livre."""
+    curso: Curso | None = None
+    if dados.curso_id is not None:
+        curso = catalogo.obter_curso_verificado(db, dados.curso_id)
+        if curso is None:
+            raise OnboardingInvalido("curso_nao_encontrado", "Esse curso não está no catálogo")
+
+    instituicao: Instituicao | None = None
+    if dados.instituicao_id is not None:
+        instituicao = catalogo.obter_instituicao_verificada(db, dados.instituicao_id)
+        if instituicao is None:
+            raise OnboardingInvalido(
+                "instituicao_nao_encontrada", "Essa instituição não está no catálogo"
+            )
+    elif dados.instituicao is not None:
+        instituicao = _obter_ou_criar_instituicao(db, dados.instituicao)
+    elif curso is not None:
+        # Só o curso, pelo id: a instituição é a dele.
+        instituicao = db.get(Instituicao, curso.instituicao_id)
+
+    if curso is not None and instituicao is not None and curso.instituicao_id != instituicao.id:
+        raise OnboardingInvalido(
+            "curso_de_outra_instituicao", "Esse curso não é da instituição informada"
+        )
+    if curso is None and dados.curso is not None and instituicao is not None:
+        curso = _obter_ou_criar_curso(db, instituicao.id, dados.curso)
+
+    if curso is not None and dados.periodo is not None and dados.periodo > curso.total_periodos:
+        raise OnboardingInvalido(
+            "periodo_fora_do_curso", f"O curso tem {curso.total_periodos} períodos"
+        )
+    return instituicao, curso
+
+
 def atualizar_perfil(db: Session, usuario: Usuario, dados: AtualizacaoPerfil) -> Perfil:
     campos = dados.model_dump(exclude_unset=True)
 
@@ -137,6 +200,20 @@ def _obter_ou_criar_instituicao(db: Session, nome: str) -> Instituicao:
     ).scalar_one_or_none()
     if existente is not None:
         return existente
+
+    # Quem digita a sigla de uma instituição do catálogo ("UFRPE") está falando
+    # dela, e não de uma instituição nova com nome de sigla.
+    pela_sigla = (
+        db.execute(
+            select(Instituicao).where(
+                Instituicao.verificada.is_(True), func.lower(Instituicao.sigla) == nome.lower()
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if pela_sigla is not None:
+        return pela_sigla
 
     instituicao = Instituicao(nome=nome)
     db.add(instituicao)
