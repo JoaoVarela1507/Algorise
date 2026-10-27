@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CircleCheck, Upload } from 'lucide-react'
+import { CampoAutocomplete } from '@/components/onboarding/CampoAutocomplete'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -15,6 +15,8 @@ import {
 import { niveis, trilhas, type OpcaoPerfil } from '@/components/onboarding/opcoes'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
+import { useCursos, useInstituicoes } from '@/hooks/useAcademico'
+import { enviarEmenta, type Escolha } from '@/services/onboarding'
 import type { NivelExperiencia, TipoTrilha } from '@/types/usuario'
 
 const periodos = [1, 2, 3, 4, 5, 6, 7, 8] as const
@@ -68,8 +70,8 @@ export interface RascunhoOnboarding {
   passo: number
   nivel: NivelExperiencia | null
   trilha: TipoTrilha | null
-  instituicao: string
-  curso: string
+  instituicao: Escolha
+  curso: Escolha
   periodo: string
   ementa: File | null
 }
@@ -92,7 +94,7 @@ export function OnboardingWizard({
   rascunho?: RascunhoOnboarding
   onRascunhoChange?: (rascunho: RascunhoOnboarding) => void
 }) {
-  const { usuario, atualizarPerfil } = useAuth()
+  const { usuario, concluirOnboarding } = useAuth()
   const [salvando, setSalvando] = useState(false)
   const [erroApi, setErroApi] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -104,8 +106,19 @@ export function OnboardingWizard({
   const [trilha, setTrilha] = useState<TipoTrilha | null>(
     rascunho?.trilha ?? usuario?.tipoTrilha ?? null,
   )
-  const [instituicao, setInstituicao] = useState(rascunho?.instituicao ?? '')
-  const [curso, setCurso] = useState(rascunho?.curso ?? '')
+  const [instituicao, setInstituicao] = useState<Escolha>(
+    rascunho?.instituicao ?? { texto: '', id: null },
+  )
+  const [curso, setCurso] = useState<Escolha>(rascunho?.curso ?? { texto: '', id: null })
+  // A ementa já subiu: tentar de novo depois de um erro não a envia duas vezes.
+  const [ementaEnviada, setEmentaEnviada] = useState<File | null>(null)
+
+  const instituicoes = useInstituicoes(instituicao.id === null ? instituicao.texto : '')
+  const cursos = useCursos(instituicao.id)
+  const textoDoCurso = curso.texto.trim().toLowerCase()
+  const sugestoesDeCurso = (cursos.data ?? [])
+    .filter((c) => c.nome.toLowerCase().includes(textoDoCurso))
+    .map((c) => ({ id: c.id, rotulo: c.nome }))
   const [periodo, setPeriodo] = useState(rascunho?.periodo ?? '')
   const [ementa, setEmenta] = useState<File | null>(rascunho?.ementa ?? null)
 
@@ -118,23 +131,38 @@ export function OnboardingWizard({
   const ementaObrigatoria = trilha === 'guiada'
 
   async function finalizar() {
+    // Os passos 1 e 2 só deixam avançar com os dois escolhidos.
+    if (!nivel || !trilha) return
     setSalvando(true)
     setErroApi(null)
     try {
-      // A ementa ainda não sobe: o upload entra junto com a extração (#38).
-      await atualizarPerfil({
-        nivelExperiencia: nivel ?? undefined,
-        tipoTrilha: trilha ?? undefined,
-        instituicao: instituicao.trim() || undefined,
-        curso: curso.trim() || undefined,
+      await concluirOnboarding({
+        nivelExperiencia: nivel,
+        tipoTrilha: trilha,
+        instituicao,
+        curso,
         periodo: periodo ? Number(periodo) : undefined,
       })
     } catch (erro) {
       setErroApi(erro instanceof Error ? erro.message : 'Não foi possível salvar.')
-      return
-    } finally {
       setSalvando(false)
+      return
     }
+
+    // Depois do onboarding, para a ementa já sair com o curso e o período do
+    // aluno. O texto é lido no servidor, sem o aluno esperar.
+    if (ementa && ementa !== ementaEnviada) {
+      try {
+        await enviarEmenta(ementa)
+        setEmentaEnviada(ementa)
+      } catch (erro) {
+        const motivo = erro instanceof Error ? erro.message : 'Tente outro arquivo.'
+        setErroApi(`Seus dados foram salvos, mas a ementa não foi enviada: ${motivo}`)
+        setSalvando(false)
+        return
+      }
+    }
+    setSalvando(false)
     if (onConcluir) {
       onConcluir()
     } else {
@@ -231,36 +259,46 @@ export function OnboardingWizard({
                 )}
                 {ementa ? ementa.name : 'Faça o upload da sua grade curricular'}
                 <span className="text-xs">
-                  {ementaObrigatoria ? 'PDF ou imagem (obrigatório)' : 'PDF ou imagem (opcional)'}
+                  {ementaObrigatoria
+                    ? 'PDF de até 5 MB (obrigatório)'
+                    : 'PDF de até 5 MB (opcional)'}
                 </span>
                 <input
                   id="grade-curricular"
                   type="file"
                   className="hidden"
-                  accept="application/pdf,image/*"
+                  accept="application/pdf"
                   onChange={(event) => setEmenta(event.target.files?.[0] ?? null)}
                 />
               </label>
 
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="instituicao">Qual é a sua universidade/faculdade?</Label>
-                <Input
-                  id="instituicao"
-                  placeholder="Informe sua instituição de ensino"
-                  value={instituicao}
-                  onChange={(event) => setInstituicao(event.target.value)}
-                />
-              </div>
+              <CampoAutocomplete
+                id="instituicao"
+                rotulo="Qual é a sua universidade/faculdade?"
+                placeholder="Informe sua instituição de ensino"
+                valor={instituicao}
+                onChange={(nova) => {
+                  // Curso é da instituição: trocar uma invalida o curso escolhido.
+                  if (nova.id !== instituicao.id) setCurso((atual) => ({ ...atual, id: null }))
+                  setInstituicao(nova)
+                }}
+                carregando={instituicoes.isFetching}
+                sugestoes={(instituicoes.data ?? []).map((i) => ({
+                  id: i.id,
+                  rotulo: i.nome,
+                  detalhe: i.sigla ?? undefined,
+                }))}
+              />
 
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="curso">Qual é o seu curso de graduação?</Label>
-                <Input
-                  id="curso"
-                  placeholder="Informe o seu curso"
-                  value={curso}
-                  onChange={(event) => setCurso(event.target.value)}
-                />
-              </div>
+              <CampoAutocomplete
+                id="curso"
+                rotulo="Qual é o seu curso de graduação?"
+                placeholder="Informe o seu curso"
+                valor={curso}
+                onChange={setCurso}
+                carregando={cursos.isFetching}
+                sugestoes={sugestoesDeCurso}
+              />
 
               <div className="flex flex-col gap-1">
                 <Label htmlFor="periodo">Selecione seu período/semestre atual</Label>
@@ -291,7 +329,7 @@ export function OnboardingWizard({
                 <Button
                   className="flex-1"
                   size="lg"
-                  disabled={!instituicao.trim() || (ementaObrigatoria && !ementa) || salvando}
+                  disabled={!instituicao.texto.trim() || (ementaObrigatoria && !ementa) || salvando}
                   onClick={finalizar}
                 >
                   {salvando ? 'Salvando…' : 'Continuar'}

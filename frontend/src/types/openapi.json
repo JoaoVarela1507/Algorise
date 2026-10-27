@@ -189,6 +189,21 @@
         "title": "Body_enviarAvatar",
         "type": "object"
       },
+      "Body_enviarEmenta": {
+        "properties": {
+          "arquivo": {
+            "contentMediaType": "application/octet-stream",
+            "description": "PDF de até 5 MB",
+            "title": "Arquivo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "arquivo"
+        ],
+        "title": "Body_enviarEmenta",
+        "type": "object"
+      },
       "Correcao": {
         "description": "A resposta da submissão.",
         "properties": {
@@ -226,6 +241,97 @@
           "xp_total"
         ],
         "title": "Correcao",
+        "type": "object"
+      },
+      "CursoResumo": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "total_periodos": {
+            "title": "Total Periodos",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "nome",
+          "total_periodos"
+        ],
+        "title": "CursoResumo",
+        "type": "object"
+      },
+      "EmentaStatus": {
+        "description": "Onde está o processamento. O texto extraído não sai daqui: é insumo da #38.",
+        "properties": {
+          "criado_em": {
+            "format": "date-time",
+            "title": "Criado Em",
+            "type": "string"
+          },
+          "erro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erro"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "nome_original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Original"
+          },
+          "paginas": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paginas"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusEmenta"
+          },
+          "tamanho_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tamanho Bytes"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "criado_em"
+        ],
+        "title": "EmentaStatus",
         "type": "object"
       },
       "EntradaRanking": {
@@ -377,6 +483,46 @@
         "title": "ExclusaoConta",
         "type": "object"
       },
+      "InstituicaoResumo": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "sigla": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sigla"
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uf"
+          }
+        },
+        "required": [
+          "id",
+          "nome"
+        ],
+        "title": "InstituicaoResumo",
+        "type": "object"
+      },
       "Login": {
         "properties": {
           "email": {
@@ -477,6 +623,84 @@
         ],
         "title": "NivelExperiencia",
         "type": "string"
+      },
+      "Onboarding": {
+        "description": "O fim do onboarding, numa chamada só (telas 7 a 15).\n\nInstituição e curso vêm de um de dois jeitos: pelo `id`, quando o aluno\nescolheu uma sugestão do autocomplete, ou pelo nome, quando digitou algo\nque não está no catálogo. O texto livre não trava o fluxo: vira um registro\ndo aluno, que só não aparece como sugestão para os outros.\n\nÉ o retrato completo do onboarding: o que não vier fica vazio no perfil.",
+        "properties": {
+          "curso": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curso"
+          },
+          "curso_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curso Id"
+          },
+          "instituicao": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instituicao"
+          },
+          "instituicao_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instituicao Id"
+          },
+          "nivel_experiencia": {
+            "$ref": "#/components/schemas/NivelExperiencia"
+          },
+          "periodo": {
+            "anyOf": [
+              {
+                "maximum": 12.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo"
+          },
+          "tipo_trilha": {
+            "$ref": "#/components/schemas/TipoTrilha"
+          }
+        },
+        "required": [
+          "nivel_experiencia",
+          "tipo_trilha"
+        ],
+        "title": "Onboarding",
+        "type": "object"
       },
       "Pagina_Trilha_": {
         "properties": {
@@ -748,6 +972,18 @@
             "title": "Nome Exibicao",
             "type": "string"
           },
+          "onboarding_concluido_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Onboarding Concluido Em"
+          },
           "periodo": {
             "anyOf": [
               {
@@ -849,6 +1085,27 @@
           "streak_dias"
         ],
         "title": "PerfilPublico",
+        "type": "object"
+      },
+      "PeriodoCurso": {
+        "properties": {
+          "disciplinas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disciplinas",
+            "type": "array"
+          },
+          "numero": {
+            "title": "Numero",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "numero",
+          "disciplinas"
+        ],
+        "title": "PeriodoCurso",
         "type": "object"
       },
       "Preferencias": {
@@ -1053,6 +1310,17 @@
         ],
         "title": "Sessao",
         "type": "object"
+      },
+      "StatusEmenta": {
+        "description": "Processamento do PDF enviado no onboarding (telas 14 e 15).",
+        "enum": [
+          "pendente",
+          "processando",
+          "processada",
+          "falhou"
+        ],
+        "title": "StatusEmenta",
+        "type": "string"
       },
       "StatusProgresso": {
         "enum": [
@@ -2136,6 +2404,176 @@
         ]
       }
     },
+    "/api/v1/cursos/{curso_id}/periodos": {
+      "get": {
+        "operationId": "listarPeriodos",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "curso_id",
+            "required": true,
+            "schema": {
+              "title": "Curso Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PeriodoCurso"
+                  },
+                  "title": "Response Listarperiodos",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "summary": "Períodos do curso e as disciplinas que o Algorise cobre em cada um",
+        "tags": [
+          "academico"
+        ]
+      }
+    },
+    "/api/v1/ementas": {
+      "post": {
+        "description": "Responde na hora com status `pendente`; o texto é extraído em segundo plano. Acompanhe por `GET /ementas/{id}`.",
+        "operationId": "enviarEmenta",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_enviarEmenta"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmentaStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Envia a ementa em PDF",
+        "tags": [
+          "ementas"
+        ]
+      }
+    },
+    "/api/v1/ementas/{ementa_id}": {
+      "get": {
+        "operationId": "obterEmenta",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ementa_id",
+            "required": true,
+            "schema": {
+              "title": "Ementa Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmentaStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Status da leitura da ementa",
+        "tags": [
+          "ementas"
+        ]
+      }
+    },
     "/api/v1/gamificacao/checkin": {
       "post": {
         "description": "Chamar várias vezes no mesmo dia conta uma vez só.",
@@ -2227,6 +2665,190 @@
         "summary": "XP, nível e streak do aluno",
         "tags": [
           "gamificacao"
+        ]
+      }
+    },
+    "/api/v1/instituicoes": {
+      "get": {
+        "description": "Tolera acento, caixa e erro de digitação. Casa com o nome ou a sigla.",
+        "operationId": "buscarInstituicoes",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "busca",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 100,
+              "title": "Busca",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limite",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Limite",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InstituicaoResumo"
+                  },
+                  "title": "Response Buscarinstituicoes",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "summary": "Autocomplete de instituições",
+        "tags": [
+          "academico"
+        ]
+      }
+    },
+    "/api/v1/instituicoes/{instituicao_id}/cursos": {
+      "get": {
+        "operationId": "listarCursos",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "instituicao_id",
+            "required": true,
+            "schema": {
+              "title": "Instituicao Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CursoResumo"
+                  },
+                  "title": "Response Listarcursos",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "summary": "Listar Cursos",
+        "tags": [
+          "academico"
+        ]
+      }
+    },
+    "/api/v1/onboarding": {
+      "post": {
+        "description": "Instituição e curso pelo `id` do catálogo ou pelo nome digitado. Pode ser refeito; `onboarding_concluido_em` guarda a primeira conclusão.",
+        "operationId": "concluirOnboarding",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Onboarding"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Perfil"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Grava nível, modo de trilha, instituição, curso e período",
+        "tags": [
+          "usuarios"
         ]
       }
     },
@@ -3407,6 +4029,14 @@
     {
       "description": "Pódio e classificação por XP.",
       "name": "ranking"
+    },
+    {
+      "description": "Instituições, cursos e períodos do onboarding.",
+      "name": "academico"
+    },
+    {
+      "description": "Upload da ementa em PDF e o status da leitura.",
+      "name": "ementas"
     },
     {
       "description": "Vivo e pronto para servir. Fora do contrato versionado.",

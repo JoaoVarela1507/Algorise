@@ -586,8 +586,8 @@ const RASCUNHO_ONBOARDING_INICIAL: RascunhoOnboarding = {
   passo: 1,
   nivel: null,
   trilha: null,
-  instituicao: '',
-  curso: '',
+  instituicao: { texto: '', id: null },
+  curso: { texto: '', id: null },
   periodo: '',
   ementa: null,
 }

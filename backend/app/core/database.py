@@ -48,3 +48,13 @@ def get_db() -> Generator[Session]:
     """Dependência do FastAPI: uma sessão por request, sempre fechada no fim."""
     with SessionLocal() as sessao:
         yield sessao
+
+
+def get_fabrica_de_sessoes() -> sessionmaker[Session]:
+    """Dependência para o trabalho que roda depois da resposta (`BackgroundTasks`).
+
+    A sessão do `get_db` já fechou quando a tarefa em segundo plano começa, então
+    ela abre a sua. Vem por dependência, e não importada direto, para o teste
+    trocar pelo banco dele.
+    """
+    return SessionLocal

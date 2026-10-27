@@ -5,6 +5,7 @@ import { ehLoginTeste, loginTesteHabilitado, USUARIO_TESTE } from '@/lib/loginTe
 import { chaves } from '@/lib/query'
 import { configurarAutenticacao } from '@/services/api'
 import * as auth from '@/services/auth'
+import * as onboarding from '@/services/onboarding'
 import type { AtualizacaoPerfil, Preferencias, TipoTrilha, Usuario } from '@/types/usuario'
 
 interface AuthContextValue {
@@ -25,6 +26,8 @@ interface AuthContextValue {
   salvarPreferencias: (dados: Partial<Preferencias>) => Promise<void>
   enviarAvatar: (arquivo: File) => Promise<void>
   removerAvatar: () => Promise<void>
+  /** Fim do onboarding (`POST /onboarding`): nível, trilha e dados acadêmicos. */
+  concluirOnboarding: (dados: onboarding.DadosOnboarding) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -160,6 +163,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(await auth.removerAvatar())
   }, [])
 
+  const concluirOnboarding = useCallback(
+    async (dados: onboarding.DadosOnboarding) => {
+      if (sessaoTesteGuardada()) {
+        atualizarUsuario({
+          nivelExperiencia: dados.nivelExperiencia,
+          tipoTrilha: dados.tipoTrilha,
+          instituicao: dados.instituicao.texto.trim() || undefined,
+          curso: dados.curso.texto.trim() || undefined,
+          periodo: dados.periodo,
+          onboardingConcluido: true,
+        })
+        return
+      }
+      setUsuario(await onboarding.concluirOnboarding(dados))
+      // Período e modo mudam o que é recomendado e o que está liberado.
+      void queryClient.invalidateQueries({ queryKey: chaves.trilhas.todas })
+    },
+    [atualizarUsuario, queryClient],
+  )
+
   return (
     <AuthContext.Provider
       value={{
@@ -175,6 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         salvarPreferencias,
         enviarAvatar,
         removerAvatar,
+        concluirOnboarding,
       }}
     >
       {children}

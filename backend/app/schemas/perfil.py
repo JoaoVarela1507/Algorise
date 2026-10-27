@@ -1,12 +1,16 @@
 """Contrato do perfil do aluno (telas 18 e 19) e do fim do onboarding (telas 7 a 15)."""
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from datetime import datetime
+from typing import Self
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.models.enums import NivelExperiencia, TamanhoFonte, TipoTrilha
 
 __all__ = [
     "AtualizacaoPerfil",
     "AtualizacaoPreferencias",
+    "Onboarding",
     "Perfil",
     "PerfilPublico",
     "Preferencias",
@@ -53,6 +57,8 @@ class Perfil(BaseModel):
     curso: str | None = None
     periodo: int | None = None
     preferencias: Preferencias = Field(default_factory=Preferencias)
+    # Nulo é quem ainda não passou pelo onboarding (telas 7 a 15).
+    onboarding_concluido_em: datetime | None = None
 
 
 class PerfilPublico(BaseModel):
@@ -93,6 +99,37 @@ class AtualizacaoPreferencias(BaseModel):
     tamanho_fonte: TamanhoFonte | None = None
     alto_contraste: bool | None = None
     reduzir_animacoes: bool | None = None
+
+
+class Onboarding(BaseModel):
+    """O fim do onboarding, numa chamada só (telas 7 a 15).
+
+    Instituição e curso vêm de um de dois jeitos: pelo `id`, quando o aluno
+    escolheu uma sugestão do autocomplete, ou pelo nome, quando digitou algo
+    que não está no catálogo. O texto livre não trava o fluxo: vira um registro
+    do aluno, que só não aparece como sugestão para os outros.
+
+    É o retrato completo do onboarding: o que não vier fica vazio no perfil.
+    """
+
+    nivel_experiencia: NivelExperiencia
+    tipo_trilha: TipoTrilha
+    instituicao_id: int | None = None
+    instituicao: str | None = Field(default=None, min_length=2, max_length=200)
+    curso_id: int | None = None
+    curso: str | None = Field(default=None, min_length=2, max_length=200)
+    periodo: int | None = Field(default=None, ge=1, le=12)
+
+    @model_validator(mode="after")
+    def _um_jeito_so(self) -> Self:
+        if self.instituicao_id is not None and self.instituicao is not None:
+            raise ValueError("Informe a instituição pelo id ou pelo nome, não pelos dois")
+        if self.curso_id is not None and self.curso is not None:
+            raise ValueError("Informe o curso pelo id ou pelo nome, não pelos dois")
+        # Curso pelo id já diz a instituição; pelo nome, não.
+        if self.curso is not None and self.instituicao_id is None and self.instituicao is None:
+            raise ValueError("Informe a instituição antes do curso")
+        return self
 
 
 class TrocaDeTrilha(BaseModel):

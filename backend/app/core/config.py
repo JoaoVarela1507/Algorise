@@ -97,6 +97,12 @@ class Settings(BaseSettings):
     # Teto da foto do perfil, em bytes. Acima disso nem chega a ser aberta.
     tamanho_maximo_avatar: int = 2 * 1024 * 1024
 
+    # Teto da ementa em PDF (#28), em bytes e em páginas. Ementa de verdade tem
+    # poucas páginas; o limite de páginas é o que segura um PDF gigante na hora
+    # de extrair o texto, que o de bytes sozinho não pega.
+    tamanho_maximo_ementa: int = 5 * 1024 * 1024
+    maximo_paginas_ementa: int = 50
+
     # Versão dos termos de uso e da política de privacidade. Mudar a versão é o
     # que faz um consentimento antigo deixar de valer.
     versao_termos: str = "2026-09-29"

@@ -6,7 +6,7 @@ Rode da pasta `backend/`:
 """
 
 from app.core.database import SessionLocal
-from app.seeds import introducao_python
+from app.seeds import academico, introducao_python
 
 
 def main() -> None:
@@ -16,6 +16,7 @@ def main() -> None:
         # para o total impresso ser o que está no banco.
         db.refresh(trilha)
         print(f"seed aplicado: {trilha.nome} ({len(trilha.modulos)} módulos)")
+        print(f"seed aplicado: catálogo acadêmico ({academico.aplicar(db)} instituições)")
 
 
 if __name__ == "__main__":

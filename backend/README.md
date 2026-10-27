@@ -345,6 +345,36 @@ original, que pode ter a localização GPS, fica para trás. O teto é
 e é servido em `/media/avatares`; só essa subpasta é pública. No compose ela
 fica no volume `midia`.
 
+### Onboarding e ementa
+
+| Rota | O que faz |
+| --- | --- |
+| `GET /api/v1/instituicoes?busca=` | autocomplete; tolera acento, caixa, sigla e erro de digitação |
+| `GET /api/v1/instituicoes/{id}/cursos` | cursos da instituição |
+| `GET /api/v1/cursos/{id}/periodos` | cada período com as disciplinas que o catálogo cobre |
+| `POST /api/v1/onboarding` | grava nível, modo de trilha, instituição, curso e período |
+| `POST /api/v1/ementas` | sobe o PDF da ementa (multipart, campo `arquivo`); responde 202 |
+| `GET /api/v1/ementas/{id}` | status da leitura: `pendente`, `processando`, `processada` ou `falhou` |
+
+O catálogo (`python -m app.seeds`) traz a UFRPE com o Bacharelado em Sistemas de
+Informação e as outras instituições de Recife. **Só o que é verificado aparece
+como sugestão.** Instituição e curso digitados livremente no `POST /onboarding`
+são gravados para o aluno, mas não viram sugestão para os outros. Digitar a sigla
+de uma verificada ("UFRPE") cai nela, e não cria uma nova.
+
+A busca roda em Python sobre o catálogo verificado, que é pequeno. No banco ela
+pediria `unaccent` e `pg_trgm`, que o SQLite da suíte não tem. Se o catálogo
+crescer para milhares de linhas, é em `app/services/catalogo.py` que o `pg_trgm`
+entra.
+
+A ementa (`app/services/ementas.py`) é conferida no request (PDF pelo conteúdo,
+até `TAMANHO_MAXIMO_EMENTA`, 5 MB) e gravada em `DIRETORIO_MIDIA/ementas/<aluno>/`,
+**fora** de `/media/avatares`: ementa não tem URL. O texto é extraído depois da
+resposta, com o pypdf, e fica em `ementas.texto_extraido` para a #38. PDF sem
+texto (escaneado), com senha, corrompido ou com mais de `MAXIMO_PAGINAS_EMENTA`
+páginas termina em `falhou`, com o motivo escrito para o aluno. O mesmo PDF
+enviado de novo é reconhecido pelo SHA-256 e reaproveita o texto.
+
 ### Gamificação
 
 | Rota | O que faz |

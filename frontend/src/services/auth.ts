@@ -245,7 +245,7 @@ export async function excluirConta(dados: { confirmacao: string; senha?: string 
 // --- perfil -----------------------------------------------------------------
 
 /** Formato do `/usuarios/me`: o `UsuarioApi` mais o que o onboarding coleta. */
-interface PerfilApi extends UsuarioApi {
+export interface PerfilApi extends UsuarioApi {
   streak_dias: number
   nivel_experiencia: NivelExperiencia
   tipo_trilha: TipoTrilha
@@ -253,6 +253,7 @@ interface PerfilApi extends UsuarioApi {
   curso: string | null
   periodo: number | null
   preferencias: PreferenciasApi
+  onboarding_concluido_em: string | null
 }
 
 interface PreferenciasApi {
@@ -278,7 +279,7 @@ function preferenciasDaApi(api: PreferenciasApi): Preferencias {
   }
 }
 
-function perfilParaUsuario(api: PerfilApi): Usuario {
+export function perfilParaUsuario(api: PerfilApi): Usuario {
   return {
     id: String(api.id),
     nome: api.nome_exibicao,
@@ -294,6 +295,7 @@ function perfilParaUsuario(api: PerfilApi): Usuario {
     curso: api.curso ?? undefined,
     periodo: api.periodo ?? undefined,
     preferencias: preferenciasDaApi(api.preferencias),
+    onboardingConcluido: api.onboarding_concluido_em !== null,
   }
 }
 

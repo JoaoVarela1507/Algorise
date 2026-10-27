@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core import redis as nucleo_redis
-from app.core.database import get_db
+from app.core.database import get_db, get_fabrica_de_sessoes
 from app.main import app
 from app.models import Base, Trilha, Usuario
 from app.services import auth as servico_auth
@@ -104,11 +104,14 @@ def cliente(
             yield sessao
 
     app.dependency_overrides[get_db] = get_db_de_teste
+    # O trabalho em segundo plano (a leitura da ementa) abre a sessão dele.
+    app.dependency_overrides[get_fabrica_de_sessoes] = lambda: sessao_factory
     try:
         with TestClient(app, raise_server_exceptions=False) as cliente_http:
             yield cliente_http
     finally:
         app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_fabrica_de_sessoes, None)
 
 
 @pytest.fixture

@@ -59,3 +59,40 @@ export async function cabecalhoDe(request: APIRequestContext, conta: Conta) {
   const { access_token } = (await resposta.json()) as { access_token: string }
   return { Authorization: `Bearer ${access_token}` }
 }
+
+/**
+ * PDF mínimo com texto selecionável, montado em memória.
+ *
+ * O backend extrai o texto da ementa, então um arquivo que só começa com
+ * `%PDF-` passa no upload mas falha na leitura. Para o caminho feliz, precisa
+ * ser um PDF de verdade.
+ */
+export function pdfComTexto(linhas: string[]): Buffer {
+  const texto = linhas.map((linha) => `(${linha}) Tj 0 -16 Td`).join(' ')
+  const conteudo = `BT /F1 12 Tf 72 720 Td ${texto} ET`
+  const objetos = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] ' +
+      '/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+    `<< /Length ${conteudo.length} >>\nstream\n${conteudo}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  ]
+
+  let pdf = '%PDF-1.4\n'
+  const deslocamentos = objetos.map((corpo, i) => {
+    const inicio = pdf.length
+    pdf += `${i + 1} 0 obj\n${corpo}\nendobj\n`
+    return inicio
+  })
+  const xref = pdf.length
+  pdf += `xref\n0 ${objetos.length + 1}\n0000000000 65535 f \n`
+  pdf += deslocamentos.map((d) => `${String(d).padStart(10, '0')} 00000 n \n`).join('')
+  pdf += `trailer\n<< /Size ${objetos.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`
+  return Buffer.from(pdf, 'latin1')
+}
+
+export const EMENTA_DE_TESTE = [
+  'Introducao a Programacao - 60 horas',
+  'Conteudo programatico: variaveis, condicionais, lacos e funcoes.',
+]
