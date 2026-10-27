@@ -76,3 +76,10 @@ class ModoResposta(str, Enum):
     rapido = "rapido"
     medio = "medio"
     detalhado = "detalhado"
+
+
+class OrigemVault(str, Enum):
+    """De onde veio um documento do vault das skills (#200)."""
+
+    transcricao = "transcricao"
+    prompt = "prompt"

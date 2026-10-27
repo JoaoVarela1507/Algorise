@@ -8,6 +8,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from app.core.database import metadata
 from app.models.enums import (
     NivelExperiencia,
+    OrigemVault,
     OrigemXP,
     PapelMensagem,
     StatusEmenta,
@@ -44,6 +45,7 @@ class Base(DeclarativeBase):
         OrigemXP: _enum(OrigemXP),
         TamanhoFonte: _enum(TamanhoFonte),
         PapelMensagem: _enum(PapelMensagem),
+        OrigemVault: _enum(OrigemVault),
     }
 
 

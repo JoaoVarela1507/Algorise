@@ -80,15 +80,15 @@ Teste a ida e a volta antes de abrir o PR — o CI roda `upgrade`, `downgrade` e
 
 Cache e dados voláteis. O que está lá:
 
-| Chave                              | Estrutura  | Para quê                                  |
-| ---------------------------------- | ---------- | ----------------------------------------- |
-| `algorise:ranking:xp`              | sorted set | pódio, lista rolável e posição do aluno   |
+| Chave                              | Estrutura  | Para quê                                   |
+| ---------------------------------- | ---------- | ------------------------------------------ |
+| `algorise:ranking:xp`              | sorted set | pódio, lista rolável e posição do aluno    |
 | `algorise:trilhas:catalogo:*`      | string     | catálogo por busca e período (telas 24/25) |
-| `algorise:streak:visto:<id>:<dia>` | string     | acesso do dia já contabilizado            |
+| `algorise:streak:visto:<id>:<dia>` | string     | acesso do dia já contabilizado             |
 | `algorise:sessao:refresh:<jti>`    | string     | refresh token válido e seu dono            |
-| `algorise:sessao:revogada:<jti>`   | string     | sessão revogada até o fim do prazo        |
-| `algorise:ratelimit:<chave>`       | contador   | janela do rate limit                      |
-| `algorise:login:falhas:<hash>`     | contador   | tentativas de login erradas por e-mail    |
+| `algorise:sessao:revogada:<jti>`   | string     | sessão revogada até o fim do prazo         |
+| `algorise:ratelimit:<chave>`       | contador   | janela do rate limit                       |
+| `algorise:login:falhas:<hash>`     | contador   | tentativas de login erradas por e-mail     |
 
 **A API funciona sem ele.** Todo acesso passa por `executar()`, em
 `app/core/redis.py`, que engole erro de conexão e devolve um padrão — a rota então
@@ -114,16 +114,16 @@ mão — é ele que corrige o ranking em seguida.
 
 JWT para a sessão e OAuth2 para os botões de GitHub e Google da tela 5.
 
-| Rota                         | O que faz                                          |
-| ---------------------------- | -------------------------------------------------- |
-| `POST /auth/register`        | cria a conta e já devolve a sessão                 |
-| `POST /auth/login`           | e-mail e senha; `lembrar` alonga o refresh          |
-| `POST /auth/refresh`         | troca o par de tokens e revoga o anterior          |
-| `POST /auth/logout`          | revoga a sessão                                     |
-| `GET /auth/eu`               | rota protegida de referência                        |
-| `POST /auth/esqueci-senha`   | gera o link de recuperação (hoje vai para o log)   |
-| `POST /auth/redefinir-senha` | troca a senha e derruba as sessões abertas         |
-| `GET /auth/{provedor}/login` | começa o fluxo do GitHub ou do Google               |
+| Rota                         | O que faz                                        |
+| ---------------------------- | ------------------------------------------------ |
+| `POST /auth/register`        | cria a conta e já devolve a sessão               |
+| `POST /auth/login`           | e-mail e senha; `lembrar` alonga o refresh       |
+| `POST /auth/refresh`         | troca o par de tokens e revoga o anterior        |
+| `POST /auth/logout`          | revoga a sessão                                  |
+| `GET /auth/eu`               | rota protegida de referência                     |
+| `POST /auth/esqueci-senha`   | gera o link de recuperação (hoje vai para o log) |
+| `POST /auth/redefinir-senha` | troca a senha e derruba as sessões abertas       |
+| `GET /auth/{provedor}/login` | começa o fluxo do GitHub ou do Google            |
 
 Para proteger uma rota, peça o aluno pela dependência:
 
@@ -192,9 +192,9 @@ O que vale para toda a API (#40):
 
 Direitos do titular:
 
-| Rota                     | O que faz                                                      |
-| ------------------------ | -------------------------------------------------------------- |
-| `GET /usuarios/me/dados` | baixa, em JSON, tudo o que o Algorise guarda sobre o aluno     |
+| Rota                     | O que faz                                                     |
+| ------------------------ | ------------------------------------------------------------- |
+| `GET /usuarios/me/dados` | baixa, em JSON, tudo o que o Algorise guarda sobre o aluno    |
 | `DELETE /usuarios/me`    | desativa a conta agora e marca o expurgo para daqui a 30 dias |
 
 O cadastro exige `aceite_termos: true` e grava o aceite em `consentimentos`
@@ -235,6 +235,11 @@ e o Redis é o `fakeredis`. As fixtures estão em `tests/conftest.py` — `clien
 O que fica de fora daqui, de propósito: migração é verificada pelo CI contra um
 PostgreSQL de verdade (`upgrade`, `downgrade`, `upgrade`), porque a migração de
 RLS é PostgreSQL puro.
+
+Os testes marcados `postgres` (hoje, a busca do vault no pgvector) só rodam com
+`TESTE_POSTGRES_URL` apontando para um PostgreSQL migrado com a extensão
+`vector`; sem ela, são pulados. O CI liga. Eles rodam numa transação desfeita
+no fim, então podem usar o banco de desenvolvimento.
 
 A suíte roda com **aviso virando erro** (`filterwarnings = ["error"]` no
 `pyproject.toml`). É como um `setex` obsoleto aparece antes de virar quebra numa
@@ -291,24 +296,24 @@ devolve 422 dizendo quais valem — o valor vira nome de coluna, então a lista 
 
 ### Trilhas e desbloqueio
 
-| Rota | O que faz |
-| --- | --- |
-| `GET /api/v1/trilhas` | catálogo paginado; com token, cada card traz o progresso |
-| `GET /api/v1/trilhas/recomendadas` | sugestões por período e nível, com o motivo |
-| `GET /api/v1/trilhas/{slug}` | a trilha com o estado de cada passo |
-| `GET /api/v1/trilhas/{slug}/passos/{ordem}` | conteúdo do passo; 403 se ainda não abriu |
-| `POST /api/v1/trilhas/{slug}/iniciar` | começa a trilha (idempotente) |
+| Rota                                        | O que faz                                                |
+| ------------------------------------------- | -------------------------------------------------------- |
+| `GET /api/v1/trilhas`                       | catálogo paginado; com token, cada card traz o progresso |
+| `GET /api/v1/trilhas/recomendadas`          | sugestões por período e nível, com o motivo              |
+| `GET /api/v1/trilhas/{slug}`                | a trilha com o estado de cada passo                      |
+| `GET /api/v1/trilhas/{slug}/passos/{ordem}` | conteúdo do passo; 403 se ainda não abriu                |
+| `POST /api/v1/trilhas/{slug}/iniciar`       | começa a trilha (idempotente)                            |
 
 **Quem decide o que está liberado é o servidor.** O cadeado da tela 26 é
 decoração: `app/services/progresso.py` calcula o estado de cada passo a partir do
 que está em `progresso_usuario`, e pedir um passo bloqueado direto na API
 responde 403. Quanto abre depende do modo de trilha do aluno:
 
-| Modo | O que fica liberado |
-| --- | --- |
-| guiada | o primeiro passo; o passo N abre quando o N-1 fecha |
-| livre | todos os passos, na ordem que o aluno quiser |
-| mista | em ordem nas trilhas do período do aluno, livre nas demais (sem período, em ordem) |
+| Modo   | O que fica liberado                                                                |
+| ------ | ---------------------------------------------------------------------------------- |
+| guiada | o primeiro passo; o passo N abre quando o N-1 fecha                                |
+| livre  | todos os passos, na ordem que o aluno quiser                                       |
+| mista  | em ordem nas trilhas do período do aluno, livre nas demais (sem período, em ordem) |
 
 O estado é calculado a cada leitura, então trocar de modo não grava nem apaga
 nada: o que foi concluído continua concluído, inclusive o que o aluno fechou fora
@@ -322,15 +327,15 @@ invalidação.
 
 ### Perfil
 
-| Rota | O que faz |
-| --- | --- |
-| `GET /api/v1/usuarios/me` | perfil completo, com nível, streak e preferências |
-| `PATCH /api/v1/usuarios/me` | nome, nível em programação e dados do onboarding |
-| `PATCH /api/v1/usuarios/me/preferencias` | tamanho da fonte, alto contraste e animações |
-| `PATCH /api/v1/usuarios/me/trilha` | troca entre guiada, livre e mista |
-| `PUT /api/v1/usuarios/me/avatar` | troca a foto (multipart, campo `arquivo`) |
-| `DELETE /api/v1/usuarios/me/avatar` | volta para as iniciais |
-| `GET /api/v1/usuarios/{username}` | perfil reduzido de outro aluno, para o ranking |
+| Rota                                     | O que faz                                         |
+| ---------------------------------------- | ------------------------------------------------- |
+| `GET /api/v1/usuarios/me`                | perfil completo, com nível, streak e preferências |
+| `PATCH /api/v1/usuarios/me`              | nome, nível em programação e dados do onboarding  |
+| `PATCH /api/v1/usuarios/me/preferencias` | tamanho da fonte, alto contraste e animações      |
+| `PATCH /api/v1/usuarios/me/trilha`       | troca entre guiada, livre e mista                 |
+| `PUT /api/v1/usuarios/me/avatar`         | troca a foto (multipart, campo `arquivo`)         |
+| `DELETE /api/v1/usuarios/me/avatar`      | volta para as iniciais                            |
+| `GET /api/v1/usuarios/{username}`        | perfil reduzido de outro aluno, para o ranking    |
 
 Toda escrita é sobre `/me`: não existe rota que receba o id de outra pessoa para
 alterar. O perfil público traz só o que o ranking já mostra, mais nível e
@@ -347,14 +352,14 @@ fica no volume `midia`.
 
 ### Onboarding e ementa
 
-| Rota | O que faz |
-| --- | --- |
-| `GET /api/v1/instituicoes?busca=` | autocomplete; tolera acento, caixa, sigla e erro de digitação |
-| `GET /api/v1/instituicoes/{id}/cursos` | cursos da instituição |
-| `GET /api/v1/cursos/{id}/periodos` | cada período com as disciplinas que o catálogo cobre |
-| `POST /api/v1/onboarding` | grava nível, modo de trilha, instituição, curso e período |
-| `POST /api/v1/ementas` | sobe o PDF da ementa (multipart, campo `arquivo`); responde 202 |
-| `GET /api/v1/ementas/{id}` | status da leitura: `pendente`, `processando`, `processada` ou `falhou` |
+| Rota                                   | O que faz                                                              |
+| -------------------------------------- | ---------------------------------------------------------------------- |
+| `GET /api/v1/instituicoes?busca=`      | autocomplete; tolera acento, caixa, sigla e erro de digitação          |
+| `GET /api/v1/instituicoes/{id}/cursos` | cursos da instituição                                                  |
+| `GET /api/v1/cursos/{id}/periodos`     | cada período com as disciplinas que o catálogo cobre                   |
+| `POST /api/v1/onboarding`              | grava nível, modo de trilha, instituição, curso e período              |
+| `POST /api/v1/ementas`                 | sobe o PDF da ementa (multipart, campo `arquivo`); responde 202        |
+| `GET /api/v1/ementas/{id}`             | status da leitura: `pendente`, `processando`, `processada` ou `falhou` |
 
 O catálogo (`python -m app.seeds`) traz a UFRPE com o Bacharelado em Sistemas de
 Informação e as outras instituições de Recife. **Só o que é verificado aparece
@@ -395,13 +400,14 @@ tabela de eventos está no `/docs`.
 
 A IA mora em `app/ia/`, separada de quem a usa:
 
-| Arquivo | O que tem |
-| --- | --- |
-| `base.py` | o contrato: `ProvedorIA.gerar(mensagens, max_tokens)` devolve os pedaços |
-| `ollama.py` | o cliente do Ollama (`httpx2`), com timeout e nova tentativa só antes do primeiro pedaço |
-| `eco.py` | provedor de teste: devolve a pergunta, sem rede |
-| `provedor.py` | qual dos dois atende, conforme `IA_PROVEDOR` |
-| `skills/` | cada uso da IA com o seu prompt e os seus limites; o tutor do chat é o primeiro |
+| Arquivo       | O que tem                                                                                                   |
+| ------------- | ----------------------------------------------------------------------------------------------------------- |
+| `base.py`     | o contrato: `ProvedorIA.gerar(mensagens, max_tokens)` devolve os pedaços, e `embeddings(textos)` os vetores |
+| `ollama.py`   | o cliente do Ollama (`httpx2`), com timeout e nova tentativa só antes do primeiro pedaço                    |
+| `eco.py`      | provedor de teste: devolve a pergunta, sem rede, e um embedding falso de palavras                           |
+| `provedor.py` | qual dos dois atende, conforme `IA_PROVEDOR`                                                                |
+| `skills/`     | cada uso da IA com o seu prompt e os seus limites; o tutor do chat é o primeiro                             |
+| `vault/`      | a base de conhecimento das skills, consultada como um RAG (ver abaixo)                                      |
 
 Uma skill não recebe `Session` nem `Usuario`, só o que precisa já em texto. Assim
 o prompt muda num lugar só, e o teste dele não precisa de banco. Uma skill nova
@@ -416,11 +422,39 @@ baixa o modelo de `OLLAMA_MODELO` uma vez, no volume `ollama_data`. Sem o Ollama
 Toolkit, acrescente ao serviço `ollama` um
 `deploy.resources.reservations.devices` com `capabilities: [gpu]`.
 
+### Vault das skills
+
+O vault (#200) guarda o que as skills consultam: as transcrições dos vídeos dos
+módulos e os prompts das skills. O texto é dividido em trechos de cerca de 800
+caracteres, cortados em fim de frase, e cada trecho ganha um embedding do
+`bge-m3` (`OLLAMA_MODELO_EMBEDDING`, baixado pelo `ollama-modelo`). A busca usa
+a distância de cosseno do pgvector, com índice HNSW.
+
+```powershell
+python -m app.ia.vault ingerir --modulo 3 aula.vtt   # .srt, .vtt ou .txt, em UTF-8
+python -m app.ia.vault registrar-prompts             # o PROMPT de cada skill
+```
+
+Ingerir de novo o mesmo conteúdo não refaz nada; um conteúdo diferente substitui
+os trechos do documento e sobe a versão. Com `.srt` e `.vtt`, cada trecho guarda
+o segundo do vídeo em que começa. As skills consultam só por
+`app.ia.vault.buscar(...)`, com filtro opcional por trilha, disciplina e origem.
+
+O vetor tem 1024 posições, a dimensão do `bge-m3`, fixa na coluna
+`vault_trechos.embedding`. Trocar o modelo de embedding pede uma migração nova e
+reingerir o vault.
+
+**Banco local:** o serviço `db` passou a usar a imagem `pgvector/pgvector:pg17`,
+que é Debian, no lugar da `postgres:17-alpine`. Se o volume `postgres_data` veio
+da imagem antiga e o PostgreSQL avisar de versão de collation, rode
+`REINDEX DATABASE algorise;` ou recrie o volume (`docker compose down -v`, que
+apaga os dados locais).
+
 ### Gamificação
 
-| Rota | O que faz |
-| --- | --- |
-| `GET /api/v1/gamificacao/me` | XP, nível, progresso no nível e streak |
+| Rota                               | O que faz                                   |
+| ---------------------------------- | ------------------------------------------- |
+| `GET /api/v1/gamificacao/me`       | XP, nível, progresso no nível e streak      |
 | `POST /api/v1/gamificacao/checkin` | registra o acesso do dia e devolve o streak |
 
 **A curva de níveis é quadrática**: o nível N começa em `50 * (N-1)²`. Do 1 para
@@ -444,11 +478,11 @@ acesso. Uma tela que exibe não deveria alterar a sequência de ninguém.
 
 ### Atividades e submissões
 
-| Rota | O que faz |
-| --- | --- |
-| `GET /api/v1/atividades/{id}` | enunciado, tipo, dica e tempo — **sem o gabarito** |
-| `POST /api/v1/atividades/{id}/submissoes` | envia a resposta e recebe a correção |
-| `GET /api/v1/atividades/{id}/submissoes` | as tentativas do próprio aluno |
+| Rota                                                  | O que faz                                          |
+| ----------------------------------------------------- | -------------------------------------------------- |
+| `GET /api/v1/atividades/{id}`                         | enunciado, tipo, dica e tempo — **sem o gabarito** |
+| `POST /api/v1/atividades/{id}/submissoes`             | envia a resposta e recebe a correção               |
+| `GET /api/v1/atividades/{id}/submissoes`              | as tentativas do próprio aluno                     |
 | `POST /api/v1/trilhas/{slug}/passos/{ordem}/concluir` | fecha o passo, paga o bônus e diz qual é o próximo |
 
 **A correção é do servidor.** `comando_esperado` e `resposta_esperada` nunca saem
@@ -506,7 +540,8 @@ app/
   models/        modelos SQLAlchemy (um arquivo por área do domínio)
   schemas/       schemas Pydantic (contrato da API, espelham os types do frontend)
   services/      regras de negócio (ex.: geração de trilhas, o chat)
-  ia/            provedor de IA (Ollama) e as skills, cada uso da IA com seu prompt
+  ia/            provedor de IA (Ollama), as skills (cada uso da IA com seu prompt)
+                 e o vault que elas consultam
   tarefas/       rotinas de manutenção rodadas fora da API (ex.: expurgo)
 scripts/         utilitários de linha de comando (ex.: exportar o OpenAPI)
   main.py        cria a instância do FastAPI (app) e registra as rotas

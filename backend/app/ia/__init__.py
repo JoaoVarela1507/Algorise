@@ -4,7 +4,8 @@
 - `ollama` e `eco`: os provedores, o de verdade e o de teste;
 - `provedor`: qual deles atende, conforme `IA_PROVEDOR`;
 - `skills/`: cada uso da IA, com o prompt e os limites dele. O tutor do chat é
-  a primeira; a leitura da ementa (#38) entra como outra.
+  a primeira; a leitura da ementa (#38) entra como outra;
+- `vault/`: a base de conhecimento que as skills consultam (#200).
 
 Uma skill não sabe de banco nem de rota: recebe o que precisa já em texto e
 devolve as mensagens para o modelo. Juntar os dados do aluno é do serviço que a
