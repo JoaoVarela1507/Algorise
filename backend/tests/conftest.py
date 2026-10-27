@@ -12,6 +12,7 @@ Duas decisões que valem para todos os testes:
   `redis_fora`, que faz todo comando estourar.
 """
 
+import os
 from collections.abc import Iterator
 
 import fakeredis
@@ -24,6 +25,8 @@ from sqlalchemy.pool import StaticPool
 
 from app.core import redis as nucleo_redis
 from app.core.database import get_db, get_fabrica_de_sessoes
+from app.ia import get_provedor_ia
+from app.ia.eco import Eco
 from app.main import app
 from app.models import Base, Trilha, Usuario
 from app.services import auth as servico_auth
@@ -106,12 +109,16 @@ def cliente(
     app.dependency_overrides[get_db] = get_db_de_teste
     # O trabalho em segundo plano (a leitura da ementa) abre a sessão dele.
     app.dependency_overrides[get_fabrica_de_sessoes] = lambda: sessao_factory
+    # Nenhuma rota chega à rede por acaso (a leitura da ementa chama a IA). O
+    # teste que precisa de outra resposta troca este override pelo dele.
+    app.dependency_overrides[get_provedor_ia] = Eco
     try:
         with TestClient(app, raise_server_exceptions=False) as cliente_http:
             yield cliente_http
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_fabrica_de_sessoes, None)
+        app.dependency_overrides.pop(get_provedor_ia, None)
 
 
 @pytest.fixture
@@ -154,3 +161,25 @@ def trilha(db: Session) -> Trilha:
     db.add(trilha_publicada)
     db.commit()
     return trilha_publicada
+
+
+@pytest.fixture
+def db_postgres() -> Iterator[Session]:
+    """Sessão num PostgreSQL já migrado, desfeita no fim do teste.
+
+    Tudo roda dentro de uma transação que nunca é confirmada: o teste pode usar
+    o banco do CI, que já tem o seed, sem deixar rastro nele.
+    """
+    url = os.environ.get("TESTE_POSTGRES_URL")
+    if not url:
+        pytest.skip("defina TESTE_POSTGRES_URL para rodar contra o PostgreSQL")
+    engine = create_engine(url)
+    with engine.connect() as conexao:
+        transacao = conexao.begin()
+        sessao = Session(bind=conexao, join_transaction_mode="create_savepoint")
+        try:
+            yield sessao
+        finally:
+            sessao.close()
+            transacao.rollback()
+    engine.dispose()

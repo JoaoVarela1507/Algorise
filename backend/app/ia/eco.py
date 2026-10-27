@@ -6,6 +6,7 @@ import math
 import re
 import unicodedata
 from collections.abc import AsyncGenerator, Sequence
+from typing import Any
 
 from app.ia.base import DIMENSOES_EMBEDDING, MensagemIA
 
@@ -18,7 +19,11 @@ class Eco:
     """
 
     async def gerar(
-        self, mensagens: Sequence[MensagemIA], *, max_tokens: int
+        self,
+        mensagens: Sequence[MensagemIA],
+        *,
+        max_tokens: int,
+        formato: dict[str, Any] | None = None,
     ) -> AsyncGenerator[str]:
         pergunta = next((m.conteudo for m in reversed(mensagens) if m.papel == "user"), "")
         resposta = f"Você perguntou: {pergunta}"

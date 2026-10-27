@@ -1,6 +1,80 @@
 {
   "components": {
     "schemas": {
+      "AssuntoLido": {
+        "properties": {
+          "modulo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModuloDoAssunto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "situacao": {
+            "enum": [
+              "coberto",
+              "lacuna"
+            ],
+            "title": "Situacao",
+            "type": "string"
+          },
+          "status_lacuna": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StatusLacuna"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "texto",
+          "situacao"
+        ],
+        "title": "AssuntoLido",
+        "type": "object"
+      },
+      "AssuntosDaEmenta": {
+        "description": "O que a IA leu da ementa e onde cada assunto está no catálogo (#38).",
+        "properties": {
+          "disciplinas": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplinaLida"
+            },
+            "title": "Disciplinas",
+            "type": "array"
+          },
+          "erro_assuntos": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erro Assuntos"
+          },
+          "status_assuntos": {
+            "$ref": "#/components/schemas/StatusAssuntos"
+          }
+        },
+        "required": [
+          "status_assuntos",
+          "disciplinas"
+        ],
+        "title": "AssuntosDaEmenta",
+        "type": "object"
+      },
       "AtividadeResumo": {
         "description": "Atividade sem gabarito — é o que pode ir para o cliente.",
         "properties": {
@@ -266,6 +340,49 @@
         "title": "CursoResumo",
         "type": "object"
       },
+      "DisciplinaLida": {
+        "properties": {
+          "assuntos": {
+            "items": {
+              "$ref": "#/components/schemas/AssuntoLido"
+            },
+            "title": "Assuntos",
+            "type": "array"
+          },
+          "carga_horaria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carga Horaria"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "periodo": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo"
+          }
+        },
+        "required": [
+          "nome",
+          "assuntos"
+        ],
+        "title": "DisciplinaLida",
+        "type": "object"
+      },
       "EmentaStatus": {
         "description": "Onde está o processamento. O texto extraído não sai daqui: é insumo da #38.",
         "properties": {
@@ -284,6 +401,17 @@
               }
             ],
             "title": "Erro"
+          },
+          "erro_assuntos": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erro Assuntos"
           },
           "id": {
             "title": "Id",
@@ -314,6 +442,9 @@
           "status": {
             "$ref": "#/components/schemas/StatusEmenta"
           },
+          "status_assuntos": {
+            "$ref": "#/components/schemas/StatusAssuntos"
+          },
           "tamanho_bytes": {
             "anyOf": [
               {
@@ -329,6 +460,7 @@
         "required": [
           "id",
           "status",
+          "status_assuntos",
           "criado_em"
         ],
         "title": "EmentaStatus",
@@ -622,6 +754,29 @@
           "titulo"
         ],
         "title": "ModuloDetalhe",
+        "type": "object"
+      },
+      "ModuloDoAssunto": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "trilha_id": {
+            "title": "Trilha Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "trilha_id"
+        ],
+        "title": "ModuloDoAssunto",
         "type": "object"
       },
       "NivelExperiencia": {
@@ -1354,6 +1509,17 @@
         "title": "Sessao",
         "type": "object"
       },
+      "StatusAssuntos": {
+        "description": "Leitura das disciplinas e dos assuntos da ementa pela IA (#38).\n\nVem depois da extração do texto e tem status próprio: a ementa pode estar\n`processada` (o texto existe) com os assuntos ainda na fila, ou com a IA\nfora do ar.",
+        "enum": [
+          "pendente",
+          "processando",
+          "prontos",
+          "falhou"
+        ],
+        "title": "StatusAssuntos",
+        "type": "string"
+      },
       "StatusEmenta": {
         "description": "Processamento do PDF enviado no onboarding (telas 14 e 15).",
         "enum": [
@@ -1363,6 +1529,17 @@
           "falhou"
         ],
         "title": "StatusEmenta",
+        "type": "string"
+      },
+      "StatusLacuna": {
+        "description": "Assunto de ementa que o catálogo ainda não cobre (#38).\n\n`pendente` espera a busca de conteúdo (#207); `em_preparacao` já tem vídeo\nsendo transcrito; `coberta` virou módulo; `sem_conteudo` a busca não achou\nnada aproveitável.",
+        "enum": [
+          "pendente",
+          "em_preparacao",
+          "coberta",
+          "sem_conteudo"
+        ],
+        "title": "StatusLacuna",
         "type": "string"
       },
       "StatusProgresso": {
@@ -2588,7 +2765,7 @@
     },
     "/api/v1/ementas": {
       "post": {
-        "description": "Responde na hora com status `pendente`; o texto é extraído em segundo plano. Acompanhe por `GET /ementas/{id}`.",
+        "description": "Responde na hora com status `pendente`; o texto é extraído em segundo plano, e depois a IA lê as disciplinas e os assuntos (`status_assuntos`). Acompanhe por `GET /ementas/{id}`.",
         "operationId": "enviarEmenta",
         "requestBody": {
           "content": {
@@ -2695,6 +2872,120 @@
           }
         ],
         "summary": "Status da leitura da ementa",
+        "tags": [
+          "ementas"
+        ]
+      }
+    },
+    "/api/v1/ementas/{ementa_id}/assuntos": {
+      "get": {
+        "description": "Cada assunto vem `coberto`, com o módulo do catálogo que o cobre, ou como `lacuna`, com o status da busca de conteúdo. A lista fica vazia até `status_assuntos` chegar a `prontos`.",
+        "operationId": "obterAssuntos",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ementa_id",
+            "required": true,
+            "schema": {
+              "title": "Ementa Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssuntosDaEmenta"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Disciplinas e assuntos lidos da ementa",
+        "tags": [
+          "ementas"
+        ]
+      },
+      "post": {
+        "description": "Para quando a leitura falhou (a IA estava fora do ar) ou o catálogo cresceu. Só depois do texto extraído e fora de uma leitura em andamento; senão, 409.",
+        "operationId": "relerAssuntos",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ementa_id",
+            "required": true,
+            "schema": {
+              "title": "Ementa Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmentaStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Lê os assuntos da ementa de novo",
         "tags": [
           "ementas"
         ]

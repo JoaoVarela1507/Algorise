@@ -6,17 +6,19 @@ O fluxo tem duas metades, separadas de propósito:
    linha com status `pendente`. Responde 202 na hora: ler um PDF de 30 páginas
    não pode segurar a tela do onboarding.
 2. **Depois da resposta** (`processar`): abre o PDF, extrai o texto e marca
-   `processada` ou `falhou`, com o motivo. É o texto que a #38 vai transformar em
-   disciplinas e trilha; aqui só se garante que ele existe.
+   `processada` ou `falhou`, com o motivo. Com o texto pronto, a IA lê as
+   disciplinas e os assuntos e os liga ao catálogo (`services/assuntos_ementa.py`,
+   #38), com status próprio (`status_assuntos`).
 
 O arquivo vai para `diretorio_midia/ementas/<aluno>/`, fora de
 `/media/avatares` — a única pasta servida publicamente. Ementa não tem URL.
 
 A mesma ementa enviada de novo (pelo mesmo aluno ou por um colega do mesmo
 curso) é reconhecida pelo SHA-256 e reaproveita o texto já extraído, sem passar
-pelo PDF outra vez.
+pelo PDF outra vez, e as disciplinas já lidas, sem chamar a IA.
 """
 
+import asyncio
 import hashlib
 import logging
 import shutil
@@ -30,7 +32,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
-from app.models import Ementa, StatusEmenta, Usuario
+from app.ia import ProvedorIA
+from app.models import Ementa, StatusAssuntos, StatusEmenta, Usuario
+from app.services import assuntos_ementa
 
 logger = logging.getLogger(__name__)
 
@@ -101,34 +105,68 @@ def obter_do_aluno(db: Session, usuario: Usuario, ementa_id: int) -> Ementa | No
     return ementa if ementa is not None and ementa.usuario_id == usuario.id else None
 
 
-def processar(fabrica: sessionmaker[Session], ementa_id: int) -> None:
-    """Extrai o texto da ementa. Roda depois da resposta, com sessão própria.
+def precisa_processar(ementa: Ementa) -> bool:
+    """Falta extrair o texto ou ler os assuntos."""
+    return ementa.status is StatusEmenta.pendente or (
+        ementa.status is StatusEmenta.processada
+        and ementa.status_assuntos is StatusAssuntos.pendente
+    )
+
+
+def reler_assuntos(db: Session, ementa: Ementa) -> bool:
+    """Põe a leitura dos assuntos de volta na fila. `False` se ela não pode ser refeita agora.
+
+    Serve para a IA que estava fora do ar e para o catálogo que cresceu desde
+    a leitura. Só depois do texto extraído e fora de uma leitura em andamento.
+    """
+    if ementa.status is not StatusEmenta.processada:
+        return False
+    if ementa.status_assuntos is StatusAssuntos.processando:
+        return False
+    ementa.status_assuntos = StatusAssuntos.pendente
+    ementa.erro_assuntos = None
+    db.commit()
+    return True
+
+
+def processar(fabrica: sessionmaker[Session], provedor: ProvedorIA, ementa_id: int) -> None:
+    """Extrai o texto da ementa e lê os assuntos. Roda depois da resposta, com sessão própria.
 
     Nunca levanta: um erro aqui não tem para quem subir (a resposta já foi), então
     ele vira `falhou` com o motivo, que é o que o aluno consulta.
     """
     with fabrica() as db:
         ementa = db.get(Ementa, ementa_id)
-        if ementa is None or ementa.status is not StatusEmenta.pendente:
+        if ementa is None:
             return
+        if ementa.status is StatusEmenta.pendente:
+            _extrair(db, ementa)
+        if (
+            ementa.status is StatusEmenta.processada
+            and ementa.status_assuntos is StatusAssuntos.pendente
+        ):
+            # A tarefa em segundo plano roda numa thread, sem event loop.
+            asyncio.run(assuntos_ementa.processar(db, provedor, ementa))
 
-        ementa.status = StatusEmenta.processando
-        db.commit()
 
-        try:
-            texto, paginas = _extrair_texto(Path(settings.diretorio_midia) / ementa.arquivo_path)
-        except EmentaInvalida as erro:
-            ementa.status = StatusEmenta.falhou
-            ementa.erro = str(erro)
-        except Exception:
-            logger.exception("Falha inesperada ao ler a ementa %s", ementa_id)
-            ementa.status = StatusEmenta.falhou
-            ementa.erro = "Não foi possível ler o PDF. Tente enviar outro arquivo."
-        else:
-            ementa.status = StatusEmenta.processada
-            ementa.texto_extraido = texto
-            ementa.paginas = paginas
-        db.commit()
+def _extrair(db: Session, ementa: Ementa) -> None:
+    ementa.status = StatusEmenta.processando
+    db.commit()
+
+    try:
+        texto, paginas = _extrair_texto(Path(settings.diretorio_midia) / ementa.arquivo_path)
+    except EmentaInvalida as erro:
+        ementa.status = StatusEmenta.falhou
+        ementa.erro = str(erro)
+    except Exception:
+        logger.exception("Falha inesperada ao ler a ementa %s", ementa.id)
+        ementa.status = StatusEmenta.falhou
+        ementa.erro = "Não foi possível ler o PDF. Tente enviar outro arquivo."
+    else:
+        ementa.status = StatusEmenta.processada
+        ementa.texto_extraido = texto
+        ementa.paginas = paginas
+    db.commit()
 
 
 def apagar_do_aluno(usuario_id: int) -> None:

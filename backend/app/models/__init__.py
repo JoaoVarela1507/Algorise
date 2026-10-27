@@ -4,7 +4,14 @@ Todos são importados aqui para que `Base.metadata` fique completo — é disso 
 o Alembic depende para detectar as tabelas.
 """
 
-from app.models.academico import Curso, Ementa, Instituicao
+from app.models.academico import (
+    AssuntoEmenta,
+    Curso,
+    DisciplinaEmenta,
+    Ementa,
+    Instituicao,
+    Lacuna,
+)
 from app.models.base import Base, TimestampMixin
 from app.models.chat import Conversa, MensagemChat
 from app.models.enums import (
@@ -13,7 +20,9 @@ from app.models.enums import (
     OrigemVault,
     OrigemXP,
     PapelMensagem,
+    StatusAssuntos,
     StatusEmenta,
+    StatusLacuna,
     StatusProgresso,
     TamanhoFonte,
     TipoAtividade,
@@ -26,6 +35,7 @@ from app.models.usuario import Consentimento, ContaOAuth, Usuario
 from app.models.vault import DocumentoVault, TrechoVault
 
 __all__ = [
+    "AssuntoEmenta",
     "Atividade",
     "Base",
     "Certificado",
@@ -33,9 +43,11 @@ __all__ = [
     "ContaOAuth",
     "Conversa",
     "Curso",
+    "DisciplinaEmenta",
     "DocumentoVault",
     "Ementa",
     "Instituicao",
+    "Lacuna",
     "MensagemChat",
     "ModoResposta",
     "Modulo",
@@ -45,7 +57,9 @@ __all__ = [
     "PapelMensagem",
     "ProgressoUsuario",
     "RespostaUsuario",
+    "StatusAssuntos",
     "StatusEmenta",
+    "StatusLacuna",
     "StatusProgresso",
     "Streak",
     "TamanhoFonte",

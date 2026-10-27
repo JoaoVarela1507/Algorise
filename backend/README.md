@@ -360,6 +360,8 @@ fica no volume `midia`.
 | `POST /api/v1/onboarding`              | grava nível, modo de trilha, instituição, curso e período              |
 | `POST /api/v1/ementas`                 | sobe o PDF da ementa (multipart, campo `arquivo`); responde 202        |
 | `GET /api/v1/ementas/{id}`             | status da leitura: `pendente`, `processando`, `processada` ou `falhou` |
+| `GET /api/v1/ementas/{id}/assuntos`    | disciplinas e assuntos lidos pela IA, cada um `coberto` ou `lacuna`    |
+| `POST /api/v1/ementas/{id}/assuntos`   | lê os assuntos de novo (IA estava fora, catálogo cresceu); responde 202 |
 
 O catálogo (`python -m app.seeds`) traz a UFRPE com o Bacharelado em Sistemas de
 Informação e as outras instituições de Recife. **Só o que é verificado aparece
@@ -379,6 +381,28 @@ resposta, com o pypdf, e fica em `ementas.texto_extraido` para a #38. PDF sem
 texto (escaneado), com senha, corrompido ou com mais de `MAXIMO_PAGINAS_EMENTA`
 páginas termina em `falhou`, com o motivo escrito para o aluno. O mesmo PDF
 enviado de novo é reconhecido pelo SHA-256 e reaproveita o texto.
+
+Com o texto pronto, a IA lê as disciplinas e os assuntos do conteúdo programático
+(#38, `app/services/assuntos_ementa.py`), com status próprio em `status_assuntos`:
+a IA fora do ar não invalida um PDF que foi lido.
+
+1. **Leitura:** a skill `ler_ementa` recebe o texto em partes de 4000 caracteres
+   e pede ao modelo um JSON no formato de `Leitura` (o `format` do Ollama). A
+   mesma disciplina partida entre duas partes vira uma só. Uma resposta que não
+   valida é descartada inteira, e o aluno vê o motivo em `erro_assuntos`. O
+   mesmo PDF já lido copia as disciplinas, sem chamar a IA.
+2. **Mapeamento:** cada assunto é buscado no vault entre o que aponta para um
+   módulo. Os módulos do catálogo entram no vault pelo título, pela descrição e
+   pela disciplina da trilha (`registrar-modulos`, que roda sozinho antes de
+   cada leitura e só pede embedding do que mudou). Abaixo de
+   `EMENTA_DISTANCIA_MAXIMA` (distância de cosseno, 0,35 por padrão), o assunto
+   está coberto pelo módulo; acima, vira uma **lacuna**.
+
+A lacuna é uma só para todas as ementas que pedem o mesmo assunto da mesma
+disciplina (a chave ignora acento, caixa e pontuação), para a busca de conteúdo
+(#207) rodar uma vez por assunto. A distância até o módulo mais próximo fica em
+`ementa_assuntos.distancia`, coberto ou não: é o que se olha para calibrar o
+limite com ementas reais.
 
 ### Chat com IA
 
@@ -402,16 +426,16 @@ A IA mora em `app/ia/`, separada de quem a usa:
 
 | Arquivo       | O que tem                                                                                                   |
 | ------------- | ----------------------------------------------------------------------------------------------------------- |
-| `base.py`     | o contrato: `ProvedorIA.gerar(mensagens, max_tokens)` devolve os pedaços, e `embeddings(textos)` os vetores |
+| `base.py`     | o contrato: `ProvedorIA.gerar(mensagens, max_tokens, formato)` devolve os pedaços, e `embeddings(textos)` os vetores |
 | `ollama.py`   | o cliente do Ollama (`httpx2`), com timeout e nova tentativa só antes do primeiro pedaço                    |
 | `eco.py`      | provedor de teste: devolve a pergunta, sem rede, e um embedding falso de palavras                           |
 | `provedor.py` | qual dos dois atende, conforme `IA_PROVEDOR`                                                                |
-| `skills/`     | cada uso da IA com o seu prompt e os seus limites; o tutor do chat é o primeiro                             |
+| `skills/`     | cada uso da IA com o seu prompt e os seus limites: o tutor do chat e a leitura da ementa                    |
 | `vault/`      | a base de conhecimento das skills, consultada como um RAG (ver abaixo)                                      |
 
 Uma skill não recebe `Session` nem `Usuario`, só o que precisa já em texto. Assim
 o prompt muda num lugar só, e o teste dele não precisa de banco. Uma skill nova
-(a leitura da ementa da #38, por exemplo) é um arquivo novo em `skills/`.
+é um arquivo novo em `skills/`.
 
 **Ollama na máquina:** instale o Ollama, rode `ollama pull llama3.2` e deixe o
 `.env` como no `.env.example`. No `docker compose up`, o serviço `ollama-modelo`
@@ -425,13 +449,14 @@ Toolkit, acrescente ao serviço `ollama` um
 ### Vault das skills
 
 O vault (#200) guarda o que as skills consultam: as transcrições dos vídeos dos
-módulos e os prompts das skills. O texto é dividido em trechos de cerca de 800
+módulos, o texto dos módulos do catálogo e os prompts das skills. O texto é dividido em trechos de cerca de 800
 caracteres, cortados em fim de frase, e cada trecho ganha um embedding do
 `bge-m3` (`OLLAMA_MODELO_EMBEDDING`, baixado pelo `ollama-modelo`). A busca usa
 a distância de cosseno do pgvector, com índice HNSW.
 
 ```powershell
 python -m app.ia.vault ingerir --modulo 3 aula.vtt   # .srt, .vtt ou .txt, em UTF-8
+python -m app.ia.vault registrar-modulos             # título e descrição de cada módulo
 python -m app.ia.vault registrar-prompts             # o PROMPT de cada skill
 ```
 

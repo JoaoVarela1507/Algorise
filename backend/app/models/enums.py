@@ -56,6 +56,34 @@ class StatusEmenta(str, Enum):
     falhou = "falhou"
 
 
+class StatusAssuntos(str, Enum):
+    """Leitura das disciplinas e dos assuntos da ementa pela IA (#38).
+
+    Vem depois da extração do texto e tem status próprio: a ementa pode estar
+    `processada` (o texto existe) com os assuntos ainda na fila, ou com a IA
+    fora do ar.
+    """
+
+    pendente = "pendente"
+    processando = "processando"
+    prontos = "prontos"
+    falhou = "falhou"
+
+
+class StatusLacuna(str, Enum):
+    """Assunto de ementa que o catálogo ainda não cobre (#38).
+
+    `pendente` espera a busca de conteúdo (#207); `em_preparacao` já tem vídeo
+    sendo transcrito; `coberta` virou módulo; `sem_conteudo` a busca não achou
+    nada aproveitável.
+    """
+
+    pendente = "pendente"
+    em_preparacao = "em_preparacao"
+    coberta = "coberta"
+    sem_conteudo = "sem_conteudo"
+
+
 class OrigemXP(str, Enum):
     atividade = "atividade"
     modulo = "modulo"
@@ -83,3 +111,6 @@ class OrigemVault(str, Enum):
 
     transcricao = "transcricao"
     prompt = "prompt"
+    # Título e descrição de um módulo do catálogo: é o que deixa a ementa (#38)
+    # achar um módulo que ainda não tem transcrição.
+    modulo = "modulo"

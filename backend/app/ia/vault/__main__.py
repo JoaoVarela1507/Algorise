@@ -7,7 +7,13 @@ from pathlib import Path
 
 from app.core.database import SessionLocal
 from app.ia import IAIndisponivel, get_provedor_ia
-from app.ia.vault import Ingestao, ModuloNaoEncontrado, ingerir_transcricao, registrar_prompts
+from app.ia.vault import (
+    Ingestao,
+    ModuloNaoEncontrado,
+    ingerir_transcricao,
+    registrar_modulos,
+    registrar_prompts,
+)
 
 
 def main(argumentos: list[str] | None = None) -> int:
@@ -18,6 +24,7 @@ def main(argumentos: list[str] | None = None) -> int:
     ingerir.add_argument("--modulo", type=int, required=True, help="id do módulo")
     ingerir.add_argument("arquivo", type=Path, help=".srt, .vtt ou .txt, em UTF-8")
 
+    comandos.add_parser("registrar-modulos", help="grava o texto dos módulos do catálogo")
     comandos.add_parser("registrar-prompts", help="grava os prompts das skills")
 
     args = parser.parse_args(argumentos)
@@ -41,7 +48,10 @@ async def _executar(args: argparse.Namespace) -> int:
             )
             _relatar(ingestao)
         else:
-            for ingestao in await registrar_prompts(sessao, provedor):
+            registrar = (
+                registrar_modulos if args.comando == "registrar-modulos" else registrar_prompts
+            )
+            for ingestao in await registrar(sessao, provedor):
                 _relatar(ingestao)
     return 0
 
