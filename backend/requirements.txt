@@ -14,3 +14,7 @@ email-validator==2.3.0
 itsdangerous==2.2.0
 # O Authlib 1.8 usa o httpx2 e marca o httpx antigo como obsoleto.
 httpx2==2.13.1
+# Upload da foto do perfil: o FastAPI precisa do multipart para ler o arquivo,
+# e o Pillow reprocessa a imagem (tira o EXIF, padroniza o tamanho).
+python-multipart==0.0.32
+pillow==12.3.0

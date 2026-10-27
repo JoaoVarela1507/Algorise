@@ -90,6 +90,13 @@ class Settings(BaseSettings):
     # o PDF da ementa; cada rota de upload aplica o seu limite, menor que este.
     tamanho_maximo_requisicao: int = 10 * 1024 * 1024
 
+    # Onde ficam os arquivos enviados pelos alunos, fora do banco. Só a
+    # subpasta `avatares` é servida publicamente (em `/media/avatares`).
+    diretorio_midia: str = "media"
+
+    # Teto da foto do perfil, em bytes. Acima disso nem chega a ser aberta.
+    tamanho_maximo_avatar: int = 2 * 1024 * 1024
+
     # Versão dos termos de uso e da política de privacidade. Mudar a versão é o
     # que faz um consentimento antigo deixar de valer.
     versao_termos: str = "2026-09-29"
