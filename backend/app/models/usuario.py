@@ -38,8 +38,11 @@ class Usuario(Base, TimestampMixin):
         DateTime(timezone=True), index=True
     )
 
+    # Com o cascade, apagar a conta apaga o streak. Sem ele, o ORM tentava
+    # zerar `streaks.usuario_id` antes do DELETE, e o expurgo de quem já tinha
+    # aberto o app estourava no NOT NULL.
     streak: Mapped["Streak | None"] = relationship(  # noqa: F821
-        back_populates="usuario", uselist=False
+        back_populates="usuario", uselist=False, cascade="all, delete-orphan"
     )
     contas_oauth: Mapped[list["ContaOAuth"]] = relationship(
         back_populates="usuario", cascade="all, delete-orphan"
