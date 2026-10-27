@@ -41,10 +41,12 @@ describe('trilha disponível', () => {
     expect(screen.getByText('30%')).toBeInTheDocument()
   })
 
-  it('leva para a trilha', () => {
+  it('leva para o mapa da trilha, não direto para a atividade', () => {
+    // O card abre a tela da trilha (o mapa de módulos); é de lá que o aluno
+    // escolhe o passo.
     montar()
 
-    expect(screen.getByRole('link')).toHaveAttribute('href', '/trilhas/introducao-python/questao/1')
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/trilhas/introducao-python')
   })
 
   it('arredonda a porcentagem', () => {
