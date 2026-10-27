@@ -1,10 +1,19 @@
-"""Instituição, curso e ementa — o que o onboarding coleta (telas 14 e 15)."""
+"""Instituição, curso e ementa — o que o onboarding coleta (telas 14 e 15).
+
+A ementa vira disciplinas e assuntos (#38). Cada assunto aponta para o módulo
+do catálogo que o cobre ou para a lacuna que ainda falta preencher.
+"""
+
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String, Text, UniqueConstraint, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
-from app.models.enums import StatusEmenta
+from app.models.enums import StatusAssuntos, StatusEmenta, StatusLacuna
+
+if TYPE_CHECKING:
+    from app.models.trilha import Modulo
 
 
 class Instituicao(Base, TimestampMixin):
@@ -63,3 +72,84 @@ class Ementa(Base, TimestampMixin):
     # Guardado para não reprocessar o mesmo PDF a cada tentativa.
     texto_extraido: Mapped[str | None] = mapped_column(Text)
     erro: Mapped[str | None] = mapped_column(Text)
+    # A leitura dos assuntos pela IA vem depois do texto, com status e erro
+    # próprios: a IA fora do ar não invalida um PDF que foi lido.
+    status_assuntos: Mapped[StatusAssuntos] = mapped_column(
+        default=StatusAssuntos.pendente, server_default=StatusAssuntos.pendente.value
+    )
+    erro_assuntos: Mapped[str | None] = mapped_column(Text)
+
+    disciplinas: Mapped[list["DisciplinaEmenta"]] = relationship(
+        back_populates="ementa", cascade="all, delete-orphan", order_by="DisciplinaEmenta.ordem"
+    )
+
+
+class DisciplinaEmenta(Base):
+    """Uma disciplina lida da ementa, na ordem em que aparece no documento."""
+
+    __tablename__ = "ementa_disciplinas"
+    __table_args__ = (
+        UniqueConstraint("ementa_id", "ordem", name="uq_ementa_disciplinas_ementa_ordem"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ementa_id: Mapped[int] = mapped_column(ForeignKey("ementas.id", ondelete="CASCADE"), index=True)
+    ordem: Mapped[int]
+    nome: Mapped[str] = mapped_column(String(200))
+    periodo: Mapped[int | None]
+    carga_horaria: Mapped[int | None]
+
+    ementa: Mapped[Ementa] = relationship(back_populates="disciplinas")
+    assuntos: Mapped[list["AssuntoEmenta"]] = relationship(
+        back_populates="disciplina", cascade="all, delete-orphan", order_by="AssuntoEmenta.ordem"
+    )
+
+
+class AssuntoEmenta(Base):
+    """Um assunto do conteúdo programático e onde ele está no catálogo.
+
+    Coberto, aponta para o módulo; senão, para a lacuna. Nunca para os dois.
+    """
+
+    __tablename__ = "ementa_assuntos"
+    __table_args__ = (
+        UniqueConstraint("disciplina_id", "ordem", name="uq_ementa_assuntos_disciplina_ordem"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    disciplina_id: Mapped[int] = mapped_column(
+        ForeignKey("ementa_disciplinas.id", ondelete="CASCADE"), index=True
+    )
+    ordem: Mapped[int]
+    texto: Mapped[str] = mapped_column(String(300))
+    # Apagar o módulo não apaga o assunto: ele só deixa de estar coberto.
+    modulo_id: Mapped[int | None] = mapped_column(
+        ForeignKey("modulos.id", ondelete="SET NULL"), index=True
+    )
+    lacuna_id: Mapped[int | None] = mapped_column(
+        ForeignKey("lacunas.id", ondelete="SET NULL"), index=True
+    )
+    # Distância de cosseno até o módulo mais próximo no vault, coberto ou não.
+    # É o que se olha para calibrar `ementa_distancia_maxima`.
+    distancia: Mapped[float | None]
+
+    disciplina: Mapped[DisciplinaEmenta] = relationship(back_populates="assuntos")
+    modulo: Mapped["Modulo | None"] = relationship()
+    lacuna: Mapped["Lacuna | None"] = relationship()
+
+
+class Lacuna(Base, TimestampMixin):
+    """Assunto que nenhum módulo cobre, um só para todas as ementas que o pedem.
+
+    Dois alunos com "Recursão" em Algoritmos geram uma lacuna, e a busca de
+    conteúdo (#207) roda uma vez. A `chave` é a disciplina e o assunto
+    normalizados (sem acento, caixa e espaços extras).
+    """
+
+    __tablename__ = "lacunas"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    chave: Mapped[str] = mapped_column(String(520), unique=True)
+    disciplina: Mapped[str] = mapped_column(String(200))
+    assunto: Mapped[str] = mapped_column(String(300))
+    status: Mapped[StatusLacuna] = mapped_column(default=StatusLacuna.pendente, index=True)

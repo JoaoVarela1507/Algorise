@@ -272,7 +272,7 @@ export interface paths {
         put?: never;
         /**
          * Envia a ementa em PDF
-         * @description Responde na hora com status `pendente`; o texto é extraído em segundo plano. Acompanhe por `GET /ementas/{id}`.
+         * @description Responde na hora com status `pendente`; o texto é extraído em segundo plano, e depois a IA lê as disciplinas e os assuntos (`status_assuntos`). Acompanhe por `GET /ementas/{id}`.
          */
         post: operations["enviarEmenta"];
         delete?: never;
@@ -292,6 +292,30 @@ export interface paths {
         get: operations["obterEmenta"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ementas/{ementa_id}/assuntos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Disciplinas e assuntos lidos da ementa
+         * @description Cada assunto vem `coberto`, com o módulo do catálogo que o cobre, ou como `lacuna`, com o status da busca de conteúdo. A lista fica vazia até `status_assuntos` chegar a `prontos`.
+         */
+        get: operations["obterAssuntos"];
+        put?: never;
+        /**
+         * Lê os assuntos da ementa de novo
+         * @description Para quando a leitura falhou (a IA estava fora do ar) ou o catálogo cresceu. Só depois do texto extraído e fora de uma leitura em andamento; senão, 409.
+         */
+        post: operations["relerAssuntos"];
         delete?: never;
         options?: never;
         head?: never;
@@ -733,6 +757,29 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AssuntoLido */
+        AssuntoLido: {
+            modulo?: components["schemas"]["ModuloDoAssunto"] | null;
+            /**
+             * Situacao
+             * @enum {string}
+             */
+            situacao: "coberto" | "lacuna";
+            status_lacuna?: components["schemas"]["StatusLacuna"] | null;
+            /** Texto */
+            texto: string;
+        };
+        /**
+         * AssuntosDaEmenta
+         * @description O que a IA leu da ementa e onde cada assunto está no catálogo (#38).
+         */
+        AssuntosDaEmenta: {
+            /** Disciplinas */
+            disciplinas: components["schemas"]["DisciplinaLida"][];
+            /** Erro Assuntos */
+            erro_assuntos?: string | null;
+            status_assuntos: components["schemas"]["StatusAssuntos"];
+        };
         /**
          * AtividadeResumo
          * @description Atividade sem gabarito — é o que pode ir para o cliente.
@@ -825,6 +872,17 @@ export interface components {
             /** Total Periodos */
             total_periodos: number;
         };
+        /** DisciplinaLida */
+        DisciplinaLida: {
+            /** Assuntos */
+            assuntos: components["schemas"]["AssuntoLido"][];
+            /** Carga Horaria */
+            carga_horaria?: number | null;
+            /** Nome */
+            nome: string;
+            /** Periodo */
+            periodo?: number | null;
+        };
         /**
          * EmentaStatus
          * @description Onde está o processamento. O texto extraído não sai daqui: é insumo da #38.
@@ -837,6 +895,8 @@ export interface components {
             criado_em: string;
             /** Erro */
             erro?: string | null;
+            /** Erro Assuntos */
+            erro_assuntos?: string | null;
             /** Id */
             id: number;
             /** Nome Original */
@@ -844,6 +904,7 @@ export interface components {
             /** Paginas */
             paginas?: number | null;
             status: components["schemas"]["StatusEmenta"];
+            status_assuntos: components["schemas"]["StatusAssuntos"];
             /** Tamanho Bytes */
             tamanho_bytes?: number | null;
         };
@@ -982,6 +1043,15 @@ export interface components {
             titulo: string;
             /** Video Url */
             video_url?: string | null;
+        };
+        /** ModuloDoAssunto */
+        ModuloDoAssunto: {
+            /** Id */
+            id: number;
+            /** Titulo */
+            titulo: string;
+            /** Trilha Id */
+            trilha_id: number;
         };
         /**
          * NivelExperiencia
@@ -1306,11 +1376,31 @@ export interface components {
             usuario: components["schemas"]["UsuarioAutenticado"];
         };
         /**
+         * StatusAssuntos
+         * @description Leitura das disciplinas e dos assuntos da ementa pela IA (#38).
+         *
+         *     Vem depois da extração do texto e tem status próprio: a ementa pode estar
+         *     `processada` (o texto existe) com os assuntos ainda na fila, ou com a IA
+         *     fora do ar.
+         * @enum {string}
+         */
+        StatusAssuntos: "pendente" | "processando" | "prontos" | "falhou";
+        /**
          * StatusEmenta
          * @description Processamento do PDF enviado no onboarding (telas 14 e 15).
          * @enum {string}
          */
         StatusEmenta: "pendente" | "processando" | "processada" | "falhou";
+        /**
+         * StatusLacuna
+         * @description Assunto de ementa que o catálogo ainda não cobre (#38).
+         *
+         *     `pendente` espera a busca de conteúdo (#207); `em_preparacao` já tem vídeo
+         *     sendo transcrito; `coberta` virou módulo; `sem_conteudo` a busca não achou
+         *     nada aproveitável.
+         * @enum {string}
+         */
+        StatusLacuna: "pendente" | "em_preparacao" | "coberta" | "sem_conteudo";
         /**
          * StatusProgresso
          * @enum {string}
@@ -2165,6 +2255,86 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmentaStatus"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterAssuntos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ementa_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssuntosDaEmenta"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    relerAssuntos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ementa_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };

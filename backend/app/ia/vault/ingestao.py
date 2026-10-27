@@ -1,4 +1,4 @@
-"""Entrada de conteúdo no vault: transcrições dos vídeos e prompts das skills."""
+"""Entrada de conteúdo no vault: transcrições, módulos do catálogo e prompts das skills."""
 
 import hashlib
 import importlib
@@ -6,12 +6,12 @@ import pkgutil
 from dataclasses import dataclass
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.ia import skills
 from app.ia.base import ProvedorIA
 from app.ia.vault.trechos import Fala, Trecho, dividir, ler_transcricao
-from app.models import DocumentoVault, Modulo, OrigemVault, TrechoVault
+from app.models import DocumentoVault, Modulo, OrigemVault, TrechoVault, Trilha
 
 # Quantos trechos vão num pedido de embedding. Uma transcrição longa num pedido
 # só pode passar do timeout de leitura do Ollama.
@@ -46,6 +46,41 @@ async def ingerir_transcricao(
         trechos=dividir(ler_transcricao(conteudo, nome_arquivo)),
         modulo_id=modulo_id,
     )
+
+
+async def registrar_modulos(sessao: Session, provedor: ProvedorIA) -> list[Ingestao]:
+    """Grava no vault o texto de cada módulo do catálogo: disciplina, trilha, título e descrição.
+
+    É o que deixa um assunto de ementa (#38) achar o módulo que o cobre antes de
+    o vídeo dele ser transcrito. Só o módulo novo ou alterado pede embedding, e
+    o documento de um módulo apagado vai junto com ele (cascade).
+    """
+    modulos = sessao.scalars(
+        select(Modulo).join(Modulo.trilha).options(selectinload(Modulo.trilha)).order_by(Modulo.id)
+    ).all()
+    ingestoes = []
+    for modulo in modulos:
+        conteudo = texto_do_modulo(modulo.trilha, modulo)
+        ingestoes.append(
+            await _ingerir(
+                sessao,
+                provedor,
+                chave=f"descricao:modulo:{modulo.id}",
+                origem=OrigemVault.modulo,
+                titulo=modulo.titulo,
+                conteudo=conteudo,
+                trechos=dividir([Fala(conteudo)]),
+                modulo_id=modulo.id,
+            )
+        )
+    return ingestoes
+
+
+def texto_do_modulo(trilha: Trilha, modulo: Modulo) -> str:
+    linhas = [f"{trilha.disciplina}: {trilha.nome}", modulo.titulo]
+    if modulo.descricao:
+        linhas.append(modulo.descricao)
+    return "\n".join(linhas)
 
 
 async def registrar_prompts(sessao: Session, provedor: ProvedorIA) -> list[Ingestao]:

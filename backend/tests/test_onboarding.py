@@ -546,13 +546,14 @@ def test_processar_ignora_ementa_que_ja_saiu_de_pendente(
     sessao_factory, db: Session, usuario: Usuario, midia: Path
 ) -> None:
     """Chamar duas vezes (um retry, uma tarefa duplicada) não refaz a leitura."""
+    from app.ia.eco import Eco
     from app.services import ementas
 
     ementa = Ementa(usuario_id=usuario.id, arquivo_path="x.pdf", status=StatusEmenta.falhou)
     db.add(ementa)
     db.commit()
 
-    ementas.processar(sessao_factory, ementa.id)
+    ementas.processar(sessao_factory, Eco(), ementa.id)
 
     db.refresh(ementa)
     assert ementa.status is StatusEmenta.falhou

@@ -34,11 +34,31 @@ async def buscar(
 ) -> list[Resultado]:
     """Os `limite` trechos mais próximos de `texto`, do mais para o menos parecido.
 
-    `trilha_id` e `disciplina` valem para as transcrições, que estão ligadas a
-    um módulo; filtrar por eles deixa os prompts de fora.
+    `trilha_id` e `disciplina` valem para o que está ligado a um módulo
+    (transcrições e módulos do catálogo); filtrar por eles deixa os prompts de
+    fora.
     """
     [vetor] = await provedor.embeddings([texto])
+    return buscar_por_vetor(
+        sessao, vetor, trilha_id=trilha_id, disciplina=disciplina, origem=origem, limite=limite
+    )
 
+
+def buscar_por_vetor(
+    sessao: Session,
+    vetor: list[float],
+    *,
+    trilha_id: int | None = None,
+    disciplina: str | None = None,
+    origem: OrigemVault | None = None,
+    com_modulo: bool = False,
+    limite: int = 5,
+) -> list[Resultado]:
+    """O mesmo que `buscar`, com o vetor já calculado.
+
+    Para quem busca muitos textos de uma vez e pede os embeddings num lote só.
+    `com_modulo` deixa só o que aponta para um módulo, sem os prompts.
+    """
     consulta = select(TrechoVault, DocumentoVault).join(TrechoVault.documento)
     if trilha_id is not None or disciplina is not None:
         consulta = consulta.join(Modulo, DocumentoVault.modulo_id == Modulo.id)
@@ -50,6 +70,8 @@ async def buscar(
         )
     if origem is not None:
         consulta = consulta.where(DocumentoVault.origem == origem)
+    if com_modulo:
+        consulta = consulta.where(DocumentoVault.modulo_id.is_not(None))
 
     if sessao.get_bind().dialect.name == "postgresql":
         linhas = _no_pgvector(sessao, consulta, vetor, limite)

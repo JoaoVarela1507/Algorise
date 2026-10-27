@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     # Embedding do vault das skills (#200). Multilíngue, porque o conteúdo é em
     # português; a dimensão dele (1024) está fixa na tabela `vault_trechos`.
     ollama_modelo_embedding: str = "bge-m3"
+    # Distância de cosseno até o módulo mais próximo no vault abaixo da qual um
+    # assunto da ementa conta como coberto (#38). Acima, vira lacuna. Ponto de
+    # partida a calibrar com ementas reais: a distância de cada assunto fica
+    # gravada em `ementa_assuntos.distancia`.
+    ementa_distancia_maxima: float = 0.35
 
     # Segundos. A leitura é o intervalo máximo entre dois pedaços da resposta, e
     # não o tempo total: o primeiro pedaço demora quando o Ollama ainda está
