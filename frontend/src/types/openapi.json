@@ -468,6 +468,51 @@
         "title": "Pagina[Trilha]",
         "type": "object"
       },
+      "Painel": {
+        "description": "XP, nível e streak do aluno, como as telas mostram.",
+        "properties": {
+          "maior_streak": {
+            "minimum": 0.0,
+            "title": "Maior Streak",
+            "type": "integer"
+          },
+          "nivel": {
+            "minimum": 1.0,
+            "title": "Nivel",
+            "type": "integer"
+          },
+          "streak_dias": {
+            "minimum": 0.0,
+            "title": "Streak Dias",
+            "type": "integer"
+          },
+          "xp_no_nivel": {
+            "minimum": 0.0,
+            "title": "Xp No Nivel",
+            "type": "integer"
+          },
+          "xp_para_o_proximo": {
+            "minimum": 0.0,
+            "title": "Xp Para O Proximo",
+            "type": "integer"
+          },
+          "xp_total": {
+            "minimum": 0.0,
+            "title": "Xp Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "xp_total",
+          "nivel",
+          "xp_no_nivel",
+          "xp_para_o_proximo",
+          "streak_dias",
+          "maior_streak"
+        ],
+        "title": "Painel",
+        "type": "object"
+      },
       "PassoConcluido": {
         "description": "O que volta ao fechar um passo.",
         "properties": {
@@ -1929,6 +1974,100 @@
         "summary": "Iniciar Login Social",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/gamificacao/checkin": {
+      "post": {
+        "description": "Chamar várias vezes no mesmo dia conta uma vez só.",
+        "operationId": "registrarCheckin",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Painel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Registra o acesso do dia e devolve o streak atualizado",
+        "tags": [
+          "gamificacao"
+        ]
+      }
+    },
+    "/api/v1/gamificacao/me": {
+      "get": {
+        "description": "Só leitura: não registra acesso nem mexe no streak.",
+        "operationId": "obterPainel",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Painel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "XP, nível e streak do aluno",
+        "tags": [
+          "gamificacao"
         ]
       }
     },
