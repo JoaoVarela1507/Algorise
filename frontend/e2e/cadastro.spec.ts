@@ -45,8 +45,8 @@ test('cadastro, onboarding e chegada na home', async ({ page }) => {
   await page.getByRole('button', { name: 'Continuar' }).click()
 
   // Passo 3: dados acadêmicos. Na trilha guiada a grade curricular é
-  // obrigatória — sem ela o "Continuar" fica desabilitado. O arquivo vai em
-  // memória para não precisar de fixture no repositório.
+  // obrigatória: sem ela o "Continuar" mostra o erro e não segue. O arquivo vai
+  // em memória para não precisar de fixture no repositório.
   await expect(page.getByText('Passo 3 de 3')).toBeVisible()
   await page.locator('#grade-curricular').setInputFiles({
     name: 'grade.pdf',

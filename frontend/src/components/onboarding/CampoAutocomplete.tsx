@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import { Check, Loader2 } from 'lucide-react'
+import { ErroCampo } from '@/components/ui/erro-campo'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
@@ -26,6 +27,8 @@ export function CampoAutocomplete({
   onChange,
   sugestoes,
   carregando = false,
+  erro,
+  inputRef,
 }: {
   id: string
   rotulo: string
@@ -34,6 +37,9 @@ export function CampoAutocomplete({
   onChange: (valor: Escolha) => void
   sugestoes: Sugestao[]
   carregando?: boolean
+  erro?: string
+  /** Para o formulário focar o campo quando ele é o primeiro com erro. */
+  inputRef?: React.Ref<HTMLInputElement>
 }) {
   const idLista = useId()
   const [aberto, setAberto] = useState(false)
@@ -70,7 +76,10 @@ export function CampoAutocomplete({
       <div className="relative">
         <Input
           id={id}
+          ref={inputRef}
           role="combobox"
+          aria-invalid={!!erro}
+          aria-describedby={erro ? `${id}-erro` : undefined}
           autoComplete="off"
           aria-autocomplete="list"
           aria-expanded={expandido}
@@ -129,6 +138,7 @@ export function CampoAutocomplete({
           </li>
         ))}
       </ul>
+      <ErroCampo id={`${id}-erro`} mensagem={erro} />
     </div>
   )
 }

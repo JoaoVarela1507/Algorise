@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Controller, useForm, type Resolver } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CircleCheck, Upload } from 'lucide-react'
 import { CampoAutocomplete } from '@/components/onboarding/CampoAutocomplete'
 import { Button } from '@/components/ui/button'
+import { ErroCampo } from '@/components/ui/erro-campo'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -16,10 +19,31 @@ import { niveis, trilhas, type OpcaoPerfil } from '@/components/onboarding/opcoe
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCursos, useInstituicoes } from '@/hooks/useAcademico'
+import {
+  configuracaoTrilhaSchema,
+  type ConfiguracaoTrilhaValues,
+} from '@/lib/validation/onboarding'
 import { enviarEmenta, type Escolha } from '@/services/onboarding'
 import type { NivelExperiencia, TipoTrilha } from '@/types/usuario'
 
 const periodos = [1, 2, 3, 4, 5, 6, 7, 8] as const
+
+interface ContextoConfiguracao {
+  ementaObrigatoria: boolean
+}
+
+// O schema depende da trilha escolhida no passo 2. O `context` do React Hook
+// Form é lido a cada validação, então ele chega aqui sempre atualizado.
+const resolverConfiguracao: Resolver<ConfiguracaoTrilhaValues, ContextoConfiguracao> = (
+  valores,
+  contexto,
+  opcoes,
+) =>
+  zodResolver(configuracaoTrilhaSchema(contexto?.ementaObrigatoria ?? false))(
+    valores,
+    contexto,
+    opcoes,
+  )
 
 function EtapaSelecao<T extends string>({
   opcoes,
@@ -106,12 +130,31 @@ export function OnboardingWizard({
   const [trilha, setTrilha] = useState<TipoTrilha | null>(
     rascunho?.trilha ?? usuario?.tipoTrilha ?? null,
   )
-  const [instituicao, setInstituicao] = useState<Escolha>(
-    rascunho?.instituicao ?? { texto: '', id: null },
-  )
-  const [curso, setCurso] = useState<Escolha>(rascunho?.curso ?? { texto: '', id: null })
   // A ementa já subiu: tentar de novo depois de um erro não a envia duas vezes.
   const [ementaEnviada, setEmentaEnviada] = useState<File | null>(null)
+
+  // Na trilha guiada o plano de estudos parte da ementa, então o upload é
+  // obrigatório; nas outras duas (livre e mista) é só um extra opcional.
+  const ementaObrigatoria = trilha === 'guiada'
+
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    trigger,
+    watch,
+    formState: { errors },
+  } = useForm<ConfiguracaoTrilhaValues, ContextoConfiguracao>({
+    resolver: resolverConfiguracao,
+    context: { ementaObrigatoria },
+    defaultValues: {
+      instituicao: rascunho?.instituicao ?? { texto: '', id: null },
+      curso: rascunho?.curso ?? { texto: '', id: null },
+      periodo: rascunho?.periodo ?? '',
+      ementa: rascunho?.ementa ?? null,
+    },
+  })
+  const [instituicao, curso, periodo, ementa] = watch(['instituicao', 'curso', 'periodo', 'ementa'])
 
   const instituicoes = useInstituicoes(instituicao.id === null ? instituicao.texto : '')
   const cursos = useCursos(instituicao.id)
@@ -119,18 +162,35 @@ export function OnboardingWizard({
   const sugestoesDeCurso = (cursos.data ?? [])
     .filter((c) => c.nome.toLowerCase().includes(textoDoCurso))
     .map((c) => ({ id: c.id, rotulo: c.nome }))
-  const [periodo, setPeriodo] = useState(rascunho?.periodo ?? '')
-  const [ementa, setEmenta] = useState<File | null>(rascunho?.ementa ?? null)
 
+  // As dependências são os valores soltos, não os objetos: o rascunho volta
+  // para o pai a cada mudança, e um objeto novo a cada render faria um laço.
+  const { texto: textoInstituicao, id: idInstituicao } = instituicao
+  const { texto: textoCurso, id: idCurso } = curso
   useEffect(() => {
-    onRascunhoChange?.({ passo, nivel, trilha, instituicao, curso, periodo, ementa })
-  }, [passo, nivel, trilha, instituicao, curso, periodo, ementa, onRascunhoChange])
+    onRascunhoChange?.({
+      passo,
+      nivel,
+      trilha,
+      instituicao: { texto: textoInstituicao, id: idInstituicao },
+      curso: { texto: textoCurso, id: idCurso },
+      periodo,
+      ementa,
+    })
+  }, [
+    passo,
+    nivel,
+    trilha,
+    textoInstituicao,
+    idInstituicao,
+    textoCurso,
+    idCurso,
+    periodo,
+    ementa,
+    onRascunhoChange,
+  ])
 
-  // Na trilha guiada o plano de estudos parte da ementa, então o upload é
-  // obrigatório; nas outras duas (livre e mista) é só um extra opcional.
-  const ementaObrigatoria = trilha === 'guiada'
-
-  async function finalizar() {
+  async function finalizar({ instituicao, curso, periodo, ementa }: ConfiguracaoTrilhaValues) {
     // Os passos 1 e 2 só deixam avançar com os dois escolhidos.
     if (!nivel || !trilha) return
     setSalvando(true)
@@ -243,66 +303,101 @@ export function OnboardingWizard({
                 Trilha {trilhas.find((t) => t.valor === trilha)?.titulo}
               </p>
 
-              <label
-                htmlFor="grade-curricular"
-                className={cn(
-                  'flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-6 text-center text-sm transition-colors',
-                  ementa
-                    ? 'border-primary/50 text-foreground'
-                    : 'border-border text-muted-foreground hover:border-primary/50',
-                )}
-              >
-                {ementa ? (
-                  <CircleCheck className="size-6 text-primary" />
-                ) : (
-                  <Upload className="size-6" />
-                )}
-                {ementa ? ementa.name : 'Faça o upload da sua grade curricular'}
-                <span className="text-xs">
-                  {ementaObrigatoria
-                    ? 'PDF de até 5 MB (obrigatório)'
-                    : 'PDF de até 5 MB (opcional)'}
-                </span>
-                <input
-                  id="grade-curricular"
-                  type="file"
-                  className="hidden"
-                  accept="application/pdf"
-                  onChange={(event) => setEmenta(event.target.files?.[0] ?? null)}
-                />
-              </label>
+              <div className="flex flex-col gap-1">
+                <label
+                  htmlFor="grade-curricular"
+                  className={cn(
+                    'flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-6 text-center text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
+                    errors.ementa
+                      ? 'border-destructive text-foreground'
+                      : ementa
+                        ? 'border-primary/50 text-foreground'
+                        : 'border-border text-muted-foreground hover:border-primary/50',
+                  )}
+                >
+                  {ementa ? (
+                    <CircleCheck className="size-6 text-primary" />
+                  ) : (
+                    <Upload className="size-6" />
+                  )}
+                  {ementa ? ementa.name : 'Faça o upload da sua grade curricular'}
+                  <span className="text-xs">
+                    {ementaObrigatoria
+                      ? 'PDF de até 5 MB (obrigatório)'
+                      : 'PDF de até 5 MB (opcional)'}
+                  </span>
+                  <Controller
+                    control={control}
+                    name="ementa"
+                    render={({ field }) => (
+                      // `sr-only`, não `hidden`: o campo continua alcançável pelo
+                      // teclado e pode receber o foco quando a ementa tem erro.
+                      <input
+                        id="grade-curricular"
+                        ref={field.ref}
+                        type="file"
+                        className="sr-only"
+                        accept="application/pdf"
+                        aria-invalid={!!errors.ementa}
+                        aria-describedby={errors.ementa ? 'grade-curricular-erro' : undefined}
+                        onChange={(event) => {
+                          field.onChange(event.target.files?.[0] ?? null)
+                          // O arquivo errado aparece na hora, não só no "Continuar".
+                          void trigger('ementa')
+                        }}
+                      />
+                    )}
+                  />
+                </label>
+                <ErroCampo id="grade-curricular-erro" mensagem={errors.ementa?.message} />
+              </div>
 
-              <CampoAutocomplete
-                id="instituicao"
-                rotulo="Qual é a sua universidade/faculdade?"
-                placeholder="Informe sua instituição de ensino"
-                valor={instituicao}
-                onChange={(nova) => {
-                  // Curso é da instituição: trocar uma invalida o curso escolhido.
-                  if (nova.id !== instituicao.id) setCurso((atual) => ({ ...atual, id: null }))
-                  setInstituicao(nova)
-                }}
-                carregando={instituicoes.isFetching}
-                sugestoes={(instituicoes.data ?? []).map((i) => ({
-                  id: i.id,
-                  rotulo: i.nome,
-                  detalhe: i.sigla ?? undefined,
-                }))}
+              <Controller
+                control={control}
+                name="instituicao"
+                render={({ field }) => (
+                  <CampoAutocomplete
+                    id="instituicao"
+                    rotulo="Qual é a sua universidade/faculdade?"
+                    placeholder="Informe sua instituição de ensino"
+                    inputRef={field.ref}
+                    valor={field.value}
+                    onChange={(nova: Escolha) => {
+                      // Curso é da instituição: trocar uma invalida o curso escolhido.
+                      if (nova.id !== field.value.id) setValue('curso', { ...curso, id: null })
+                      field.onChange(nova)
+                    }}
+                    erro={errors.instituicao?.message}
+                    carregando={instituicoes.isFetching}
+                    sugestoes={(instituicoes.data ?? []).map((i) => ({
+                      id: i.id,
+                      rotulo: i.nome,
+                      detalhe: i.sigla ?? undefined,
+                    }))}
+                  />
+                )}
               />
 
-              <CampoAutocomplete
-                id="curso"
-                rotulo="Qual é o seu curso de graduação?"
-                placeholder="Informe o seu curso"
-                valor={curso}
-                onChange={setCurso}
-                carregando={cursos.isFetching}
-                sugestoes={sugestoesDeCurso}
+              <Controller
+                control={control}
+                name="curso"
+                render={({ field }) => (
+                  <CampoAutocomplete
+                    id="curso"
+                    rotulo="Qual é o seu curso de graduação?"
+                    placeholder="Informe o seu curso"
+                    inputRef={field.ref}
+                    valor={field.value}
+                    onChange={field.onChange}
+                    carregando={cursos.isFetching}
+                    sugestoes={sugestoesDeCurso}
+                  />
+                )}
               />
 
               <div className="flex flex-col gap-1">
                 <Label htmlFor="periodo">Selecione seu período/semestre atual</Label>
-                <Select value={periodo} onValueChange={setPeriodo}>
+                <Select value={periodo} onValueChange={(valor) => setValue('periodo', valor)}>
                   <SelectTrigger id="periodo" aria-label="Período">
                     <SelectValue placeholder="Selecione o período" />
                   </SelectTrigger>
@@ -329,8 +424,8 @@ export function OnboardingWizard({
                 <Button
                   className="flex-1"
                   size="lg"
-                  disabled={!instituicao.texto.trim() || (ementaObrigatoria && !ementa) || salvando}
-                  onClick={finalizar}
+                  disabled={salvando}
+                  onClick={handleSubmit(finalizar)}
                 >
                   {salvando ? 'Salvando…' : 'Continuar'}
                 </Button>
