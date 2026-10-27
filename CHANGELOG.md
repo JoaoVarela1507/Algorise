@@ -14,6 +14,13 @@ O tipo do commit define o bump:
 - `feat!: ...` ou `BREAKING CHANGE:` no corpo — major (**1**.0.0)
 - `chore:`, `docs:`, `test:` — não geram release
 
+## [0.16.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.15.0...v0.16.0) (2026-10-27)
+
+
+### Adicionado
+
+* formularios com React Hook Form e Zod, com erros acessiveis ([#197](https://github.com/JoaoVarela1507/Algorise/issues/197)) ([a7b6d8a](https://github.com/JoaoVarela1507/Algorise/commit/a7b6d8a9e47fad1517fb4a7229ae7cb33edb2d30))
+
 ## [0.15.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.14.0...v0.15.0) (2026-10-27)
 
 
