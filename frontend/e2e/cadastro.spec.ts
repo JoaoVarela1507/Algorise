@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { API, EMENTA_DE_TESTE, pdfComTexto } from './apoio'
 
 /**
  * O caminho que todo aluno percorre uma vez: criar conta, responder o
@@ -50,13 +51,48 @@ test('cadastro, onboarding e chegada na home', async ({ page }) => {
   await page.locator('#grade-curricular').setInputFiles({
     name: 'grade.pdf',
     mimeType: 'application/pdf',
-    buffer: Buffer.from('%PDF-1.4 grade de teste'),
+    buffer: pdfComTexto(EMENTA_DE_TESTE),
   })
-  await page.getByLabel(/universidade\/faculdade/i).fill('UFRPE')
-  await page.getByLabel(/curso de graduação/i).fill('Ciência da Computação')
+
+  // Instituição e curso pelo autocomplete, que vem do catálogo do seed. A busca
+  // tolera o jeito que o aluno digita: sem acento e incompleto.
+  await page.getByRole('combobox', { name: /universidade\/faculdade/i }).fill('rural pern')
+  await page.getByRole('option', { name: /Rural de Pernambuco/ }).click()
+  await page.getByRole('combobox', { name: /curso de graduação/i }).click()
+  await page.getByRole('option', { name: /Sistemas de Informação/ }).click()
+
+  const ementaEnviada = page.waitForResponse(
+    (resposta) => resposta.url().endsWith('/api/v1/ementas') && resposta.status() === 202,
+  )
   await page.getByRole('button', { name: 'Continuar' }).click()
+  const { id: ementaId } = (await (await ementaEnviada).json()) as { id: number }
 
   await expect(page).toHaveURL('/')
+
+  // O que a tela mandou chegou ao perfil, com os nomes do catálogo.
+  const login = await page.request.post(`${API}/auth/login`, {
+    data: { email: novo.email, senha: novo.senha },
+  })
+  const { access_token } = (await login.json()) as { access_token: string }
+  const perfil = await page.request.get(`${API}/usuarios/me`, {
+    headers: { Authorization: `Bearer ${access_token}` },
+  })
+  expect(await perfil.json()).toMatchObject({
+    instituicao: 'Universidade Federal Rural de Pernambuco',
+    curso: 'Bacharelado em Sistemas de Informação',
+    tipo_trilha: 'guiada',
+  })
+
+  // A leitura do PDF roda depois da resposta, no servidor de verdade: é o único
+  // teste que a exercita com a sessão do banco que a API usa em produção.
+  await expect
+    .poll(async () => {
+      const ementa = await page.request.get(`${API}/ementas/${ementaId}`, {
+        headers: { Authorization: `Bearer ${access_token}` },
+      })
+      return ((await ementa.json()) as { status: string }).status
+    })
+    .toBe('processada')
 })
 
 test('cadastro com e-mail repetido mostra a mensagem da API', async ({ page, request }) => {
