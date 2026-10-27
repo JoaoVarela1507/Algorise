@@ -8,6 +8,7 @@ import { AccessibilityProvider, useAccessibility } from '@/contexts/Accessibilit
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AppRoutes } from '@/routes/AppRoutes'
+import { PreferenciasDaConta } from '@/components/configuracoes/PreferenciasDaConta'
 import { Toaster } from '@/components/ui/toaster'
 
 /**
@@ -33,6 +34,7 @@ function App() {
           <AccessibilityProvider>
             <ConfiguracaoAnimacoes>
               <AuthProvider>
+                <PreferenciasDaConta />
                 <AppRoutes />
                 <Toaster />
               </AuthProvider>

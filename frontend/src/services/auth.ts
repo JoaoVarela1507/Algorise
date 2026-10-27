@@ -7,6 +7,7 @@
  *   fechar o navegador) e no `sessionStorage` sem (morre com a aba).
  */
 import {
+  API_URL,
   API_V1,
   ApiError,
   apiFetch,
@@ -15,7 +16,14 @@ import {
   apiPost,
   definirAccessToken,
 } from '@/services/api'
-import type { AtualizacaoPerfil, NivelExperiencia, TipoTrilha, Usuario } from '@/types/usuario'
+import type {
+  AtualizacaoPerfil,
+  NivelExperiencia,
+  Preferencias,
+  TamanhoFonte,
+  TipoTrilha,
+  Usuario,
+} from '@/types/usuario'
 
 export type Provedor = 'github' | 'google'
 
@@ -244,6 +252,30 @@ interface PerfilApi extends UsuarioApi {
   instituicao: string | null
   curso: string | null
   periodo: number | null
+  preferencias: PreferenciasApi
+}
+
+interface PreferenciasApi {
+  tamanho_fonte: TamanhoFonte
+  alto_contraste: boolean
+  reduzir_animacoes: boolean
+}
+
+/**
+ * A foto enviada pelo aluno vem como caminho da API (`/media/avatares/...`), e a
+ * API mora em outra origem. A do GitHub ou do Google já vem completa.
+ */
+export function urlDoAvatar(url: string | null | undefined): string | undefined {
+  if (!url) return undefined
+  return url.startsWith('/') ? `${API_URL}${url}` : url
+}
+
+function preferenciasDaApi(api: PreferenciasApi): Preferencias {
+  return {
+    tamanhoFonte: api.tamanho_fonte,
+    altoContraste: api.alto_contraste,
+    reduzirAnimacoes: api.reduzir_animacoes,
+  }
 }
 
 function perfilParaUsuario(api: PerfilApi): Usuario {
@@ -252,7 +284,7 @@ function perfilParaUsuario(api: PerfilApi): Usuario {
     nome: api.nome_exibicao,
     username: api.username,
     email: api.email,
-    avatarUrl: api.avatar_url ?? undefined,
+    avatarUrl: urlDoAvatar(api.avatar_url),
     temSenha: api.tem_senha,
     xp: api.xp_total,
     streakDias: api.streak_dias,
@@ -261,6 +293,7 @@ function perfilParaUsuario(api: PerfilApi): Usuario {
     instituicao: api.instituicao ?? undefined,
     curso: api.curso ?? undefined,
     periodo: api.periodo ?? undefined,
+    preferencias: preferenciasDaApi(api.preferencias),
   }
 }
 
@@ -288,6 +321,35 @@ export async function atualizarPerfil(dados: AtualizacaoPerfil): Promise<Usuario
     periodo: dados.periodo,
   })
   return perfilParaUsuario(perfil)
+}
+
+/** Troca Guiada/Livre/Mista. O que está liberado nas trilhas muda junto. */
+export async function trocarModoTrilha(modo: TipoTrilha): Promise<Usuario> {
+  return perfilParaUsuario(await apiPatch<PerfilApi>('/usuarios/me/trilha', { tipo_trilha: modo }))
+}
+
+/** Salva na conta só as preferências enviadas. */
+export async function salvarPreferencias(dados: Partial<Preferencias>): Promise<Preferencias> {
+  return preferenciasDaApi(
+    await apiPatch<PreferenciasApi>('/usuarios/me/preferencias', {
+      tamanho_fonte: dados.tamanhoFonte,
+      alto_contraste: dados.altoContraste,
+      reduzir_animacoes: dados.reduzirAnimacoes,
+    }),
+  )
+}
+
+export async function enviarAvatar(arquivo: File): Promise<Usuario> {
+  const corpo = new FormData()
+  corpo.append('arquivo', arquivo)
+  // Sem `Content-Type`: o navegador põe o multipart com o boundary certo.
+  return perfilParaUsuario(
+    await apiFetch<PerfilApi>('/usuarios/me/avatar', { method: 'PUT', body: corpo }),
+  )
+}
+
+export async function removerAvatar(): Promise<Usuario> {
+  return perfilParaUsuario(await apiFetch<PerfilApi>('/usuarios/me/avatar', { method: 'DELETE' }))
 }
 
 /**
@@ -329,7 +391,7 @@ function paraUsuario(api: UsuarioApi): Usuario {
     nome: api.nome_exibicao,
     username: api.username,
     email: api.email,
-    avatarUrl: api.avatar_url ?? undefined,
+    avatarUrl: urlDoAvatar(api.avatar_url),
     temSenha: api.tem_senha,
     xp: api.xp_total,
     // O streak entra quando a API passar a devolvê-lo.
