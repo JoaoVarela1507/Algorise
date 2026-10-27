@@ -17,6 +17,8 @@ export interface Conversa {
   mensagens: Mensagem[]
   atualizadaEm: number
   grupoId?: string
+  /** Id da conversa na API: é com ele que o tutor lembra do que já foi dito. */
+  servidorId?: number
 }
 
 export interface GrupoConversas {

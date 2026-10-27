@@ -213,6 +213,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chat/mensagens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Envia uma mensagem ao tutor e recebe a resposta em streaming
+         * @description Responde em `text/event-stream`, um evento por pedaço da resposta:
+         *
+         *     | Evento | Dados | Quando |
+         *     | --- | --- | --- |
+         *     | `chat.conversa` | `conversa_id`, `titulo`, `mensagem_id` | primeiro, com a pergunta já gravada |
+         *     | `chat.token` | `texto` | a cada pedaço da resposta |
+         *     | `chat.fim` | `mensagem_id` | resposta completa e gravada |
+         *     | `chat.erro` | `code`, `message`, `mensagem_id` | a IA parou no meio; o parcial fica gravado |
+         *
+         *     A IA fora do ar **antes** do primeiro pedaço responde 503 no formato de erro da
+         *     API, sem gravar a pergunta: o aluno tenta de novo sem deixar pergunta órfã no
+         *     histórico.
+         */
+        post: operations["enviarMensagem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cursos/{curso_id}/periodos": {
         parameters: {
             query?: never;
@@ -916,6 +947,12 @@ export interface components {
             /** Senha */
             senha: string;
         };
+        /**
+         * ModoResposta
+         * @description Quanto o tutor se aprofunda (seletor do campo de mensagem, tela 21).
+         * @enum {string}
+         */
+        ModoResposta: "rapido" | "medio" | "detalhado";
         /** ModuloDetalhe */
         ModuloDetalhe: {
             /**
@@ -952,6 +989,24 @@ export interface components {
          * @enum {string}
          */
         NivelExperiencia: "baixo" | "medio" | "alto";
+        /** NovaMensagem */
+        NovaMensagem: {
+            /**
+             * Conteudo
+             * @description A pergunta do aluno
+             */
+            conteudo: string;
+            /**
+             * Conversa Id
+             * @description Conversa em que a mensagem entra. Sem ele, abre uma nova.
+             */
+            conversa_id?: number | null;
+            /**
+             * @description Quanto o tutor se aprofunda na resposta
+             * @default medio
+             */
+            modo: components["schemas"]["ModoResposta"];
+        };
         /**
          * Onboarding
          * @description O fim do onboarding, numa chamada só (telas 7 a 15).
@@ -1937,6 +1992,75 @@ export interface operations {
             };
             /** @description Erro inesperado */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    enviarMensagem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NovaMensagem"];
+            };
+        };
+        responses: {
+            /** @description Resposta em streaming */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": unknown;
+                };
+            };
+            /** @description Conversa não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Mensagens demais em pouco tempo */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description IA fora do ar */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

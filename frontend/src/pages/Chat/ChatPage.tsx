@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { saudacaoDoHorario } from '@/lib/tempo'
 import { conversasIniciais, gruposIniciais } from '@/mocks/chat'
-import { CHAVE_HISTORICO_CHAT, enviarMensagem } from '@/services/chat'
+import { ApiError } from '@/services/api'
+import { CHAVE_HISTORICO_CHAT, perguntarAoTutor } from '@/services/chat'
 import type { Conversa, GrupoConversas, Mensagem, ModoResposta } from '@/types/chat'
 import mascotePolvo from '@/assets/images/mascote-polvo.png'
 
@@ -23,7 +24,7 @@ interface EstadoChat {
   grupos: GrupoConversas[]
 }
 
-// Enquanto não há backend, o histórico fica só neste navegador.
+// A lista de conversas fica neste navegador até a #33 trazê-la da API.
 function carregarEstado(): EstadoChat {
   try {
     const salvo = localStorage.getItem(CHAVE_HISTORICO_CHAT)
@@ -135,18 +136,17 @@ export function ChatPage() {
   async function enviar(texto: string, anexo?: string) {
     const mensagem = novaMensagem({ autor: 'usuario', conteudo: texto, anexo })
     let conversaId = ativaId
-    let historico: Mensagem[]
+    // O histórico vai pela API, que já tem a conversa: aqui basta o id dela.
+    const servidorId = conversaAtiva?.servidorId
 
     if (conversaAtiva && conversaId) {
-      historico = [...conversaAtiva.mensagens, mensagem]
       adicionarMensagem(conversaId, mensagem)
     } else {
       conversaId = crypto.randomUUID()
-      historico = [mensagem]
       const nova: Conversa = {
         id: conversaId,
         titulo: tituloDe(texto),
-        mensagens: historico,
+        mensagens: [mensagem],
         atualizadaEm: mensagem.criadaEm,
       }
       setEstado((atual) => ({ ...atual, conversas: [nova, ...atual.conversas] }))
@@ -155,16 +155,36 @@ export function ChatPage() {
 
     setAguardandoId(conversaId)
     try {
-      const resposta = await enviarMensagem(historico, { modo, anexo })
-      const doAssistente = novaMensagem({ autor: 'assistente', conteudo: resposta })
+      const doTutor = await perguntarAoTutor({ conversaId: servidorId, conteudo: texto, modo })
+      const local = conversaId
+      setEstado((atual) => ({
+        ...atual,
+        conversas: atual.conversas.map((c) =>
+          c.id === local ? { ...c, servidorId: doTutor.conversaId } : c,
+        ),
+      }))
+      const doAssistente = novaMensagem({
+        autor: 'assistente',
+        conteudo: doTutor.incompleta
+          ? `${doTutor.resposta}
+
+_A resposta foi interrompida. Tente perguntar de novo._`
+          : doTutor.resposta,
+        erro: doTutor.incompleta && !doTutor.resposta,
+      })
       adicionarMensagem(conversaId, doAssistente)
       setDigitandoMensagemId(doAssistente.id)
-    } catch {
+    } catch (erro) {
       adicionarMensagem(
         conversaId,
         novaMensagem({
           autor: 'assistente',
-          conteudo: 'Não consegui responder agora. Tente de novo em instantes.',
+          // A API diz o motivo (limite de mensagens, tutor fora do ar) em
+          // português; o texto genérico fica para quando nem houve resposta.
+          conteudo:
+            erro instanceof ApiError && erro.status !== 0
+              ? erro.message
+              : 'Não consegui responder agora. Tente de novo em instantes.',
           erro: true,
         }),
       )

@@ -68,8 +68,24 @@ interface Opcoes {
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
-  { autenticar = true, renovar = true }: Opcoes = {},
+  opcoes?: Opcoes,
 ): Promise<T> {
+  const resposta = await apiResposta(path, init, opcoes)
+
+  // 204 e 202 sem corpo não têm JSON para ler.
+  const texto = await resposta.text()
+  return (texto ? JSON.parse(texto) : undefined) as T
+}
+
+/**
+ * A resposta crua, já com o token, a renovação da sessão e o erro tratados.
+ * Para quem lê o corpo aos poucos (o streaming do chat), em vez de JSON.
+ */
+export async function apiResposta(
+  path: string,
+  init: RequestInit = {},
+  { autenticar = true, renovar = true }: Opcoes = {},
+): Promise<Response> {
   let resposta = await enviar(path, init, autenticar)
 
   // Access token vencido (vale 15 minutos): renova uma vez e repete. Se a
@@ -87,10 +103,7 @@ export async function apiFetch<T>(
   if (!resposta.ok) {
     throw await lerErro(resposta)
   }
-
-  // 204 e 202 sem corpo não têm JSON para ler.
-  const texto = await resposta.text()
-  return (texto ? JSON.parse(texto) : undefined) as T
+  return resposta
 }
 
 export function apiGet<T>(path: string, opcoes?: Opcoes): Promise<T> {

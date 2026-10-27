@@ -60,6 +60,9 @@ export default defineConfig({
         // limite de produção (20 por minuto), a suíte esbarra nele no meio. O
         // rate limit tem os testes dele no pytest.
         RATE_LIMIT_AUTH_REQUISICOES: '1000',
+        // O CI não tem o Ollama: o provedor de teste responde sem IA, e o E2E
+        // do chat confere o caminho até a tela, não a resposta do modelo.
+        IA_PROVEDOR: 'eco',
       },
     },
     {
