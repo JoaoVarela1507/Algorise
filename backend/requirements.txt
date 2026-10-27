@@ -20,3 +20,5 @@ python-multipart==0.0.32
 pillow==13.0.0
 # Texto da ementa em PDF (#28). Puro Python: não pede nada instalado no sistema.
 pypdf==6.21.2
+# Coluna `vector` do vault das skills (#200) no SQLAlchemy.
+pgvector==0.5.1

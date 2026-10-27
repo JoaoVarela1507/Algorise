@@ -57,7 +57,8 @@ jobs:
       # Banco descartável: as migrações rodam contra um PostgreSQL de verdade,
       # não contra SQLite, senão o CI não pega erro específico do Postgres.
       postgres:
-        image: postgres:17-alpine
+        # Com a extensão `vector`, como o compose: o vault (#200) depende dela.
+        image: pgvector/pgvector:pg17
         env:
           POSTGRES_USER: algorise
           POSTGRES_PASSWORD: algorise
@@ -173,7 +174,11 @@ jobs:
 
       # A suíte usa SQLite e `fakeredis`, então não depende dos serviços acima;
       # eles continuam existindo para as migrações e o smoke.
+      # `TESTE_POSTGRES_URL` liga os testes marcados `postgres`, que conferem
+      # no banco de verdade o que o SQLite não tem (a busca do pgvector).
       - name: Testes (Pytest)
+        env:
+          TESTE_POSTGRES_URL: postgresql+psycopg://algorise:algorise@localhost:5432/algorise
         run: pytest --cov=app --cov-report=term --cov-fail-under=80
 
   e2e:

@@ -10,6 +10,7 @@ from app.models.chat import Conversa, MensagemChat
 from app.models.enums import (
     ModoResposta,
     NivelExperiencia,
+    OrigemVault,
     OrigemXP,
     PapelMensagem,
     StatusEmenta,
@@ -22,6 +23,7 @@ from app.models.gamificacao import Certificado, Streak, XPEvento
 from app.models.progresso import ProgressoUsuario, RespostaUsuario
 from app.models.trilha import Atividade, Modulo, Trilha
 from app.models.usuario import Consentimento, ContaOAuth, Usuario
+from app.models.vault import DocumentoVault, TrechoVault
 
 __all__ = [
     "Atividade",
@@ -31,12 +33,14 @@ __all__ = [
     "ContaOAuth",
     "Conversa",
     "Curso",
+    "DocumentoVault",
     "Ementa",
     "Instituicao",
     "MensagemChat",
     "ModoResposta",
     "Modulo",
     "NivelExperiencia",
+    "OrigemVault",
     "OrigemXP",
     "PapelMensagem",
     "ProgressoUsuario",
@@ -48,6 +52,7 @@ __all__ = [
     "TimestampMixin",
     "TipoAtividade",
     "TipoTrilha",
+    "TrechoVault",
     "Trilha",
     "Usuario",
     "XPEvento",

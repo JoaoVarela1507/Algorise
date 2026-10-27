@@ -41,6 +41,11 @@ testpaths = ["tests"]
 # `-q` porque a saída longa esconde o que falhou; `--strict-markers` para um
 # marcador com erro de digitação falhar em vez de ser ignorado.
 addopts = "-q --strict-markers"
+markers = [
+    # Só roda com `TESTE_POSTGRES_URL` apontando para um PostgreSQL com pgvector
+    # (o CI liga); fora dele, o teste é pulado.
+    "postgres: precisa de um PostgreSQL de verdade",
+]
 filterwarnings = [
     # Aviso vira erro: é assim que um `datetime.utcnow()` novo aparece antes de
     # virar problema. As exceções abaixo são de dependência, fora do nosso

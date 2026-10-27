@@ -7,6 +7,10 @@ mexer em `app/ia/`, não em quem a usa.
 A resposta vem em pedaços (`gerar` é um gerador assíncrono), na ordem em que o
 modelo produz. Quem consome decide o que fazer com eles: o chat repassa um a um,
 uma extração junta tudo no fim.
+
+`embeddings` transforma textos em vetores para a busca por similaridade do
+vault das skills (#200). O vetor tem sempre `DIMENSOES_EMBEDDING` posições, a
+dimensão da coluna no banco.
 """
 
 from collections.abc import AsyncGenerator, Sequence
@@ -14,6 +18,10 @@ from dataclasses import dataclass
 from typing import Literal, Protocol
 
 Papel = Literal["system", "user", "assistant"]
+
+# A do `bge-m3`. Está fixa na coluna `vault_trechos.embedding`: um modelo com
+# outra dimensão pede migração nova e reingerir o vault.
+DIMENSOES_EMBEDDING = 1024
 
 
 @dataclass(frozen=True)
@@ -33,4 +41,8 @@ class IAIndisponivel(Exception):
 class ProvedorIA(Protocol):
     def gerar(self, mensagens: Sequence[MensagemIA], *, max_tokens: int) -> AsyncGenerator[str]:
         """Os pedaços da resposta, na ordem. Levanta `IAIndisponivel` se o provedor falhar."""
+        ...
+
+    async def embeddings(self, textos: Sequence[str]) -> list[list[float]]:
+        """Um vetor por texto, na mesma ordem. Levanta `IAIndisponivel` se o provedor falhar."""
         ...
