@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/select'
 import { niveis, trilhas, type OpcaoPerfil } from '@/components/onboarding/opcoes'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { useOnboardingStore } from '@/stores/useOnboardingStore'
 import { useCursos, useInstituicoes } from '@/hooks/useAcademico'
 import {
   configuracaoTrilhaSchema,
@@ -90,45 +91,35 @@ function EtapaSelecao<T extends string>({
   )
 }
 
-export interface RascunhoOnboarding {
-  passo: number
-  nivel: NivelExperiencia | null
-  trilha: TipoTrilha | null
-  instituicao: Escolha
-  curso: Escolha
-  periodo: string
-  ementa: File | null
-}
-
 /**
  * Passos de nível + trilha + dados da instituição para completar o cadastro.
  * Usado tanto na rota /onboarding quanto embutido na BoasVindasPage.
  *
- * Aceita um rascunho controlado de fora para sobreviver a idas e vindas (ex.:
- * voltar pro cadastro e retornar) sem perder o que já foi preenchido.
+ * O que foi preenchido vai para o `useOnboardingStore` a cada mudança: sobrevive
+ * a idas e vindas (ex.: voltar pro cadastro e retornar) e a recarregar a página.
  */
 export function OnboardingWizard({
   onConcluir,
   onVoltarInicio,
-  rascunho,
-  onRascunhoChange,
 }: {
   onConcluir?: () => void
   onVoltarInicio?: () => void
-  rascunho?: RascunhoOnboarding
-  onRascunhoChange?: (rascunho: RascunhoOnboarding) => void
 }) {
-  const { usuario, concluirOnboarding } = useAuth()
+  const usuario = useAuthStore((estado) => estado.usuario)
+  const concluirOnboarding = useAuthStore((estado) => estado.concluirOnboarding)
   const [salvando, setSalvando] = useState(false)
   const [erroApi, setErroApi] = useState<string | null>(null)
   const navigate = useNavigate()
+  const salvarRascunho = useOnboardingStore((estado) => estado.salvarRascunho)
+  // Só o ponto de partida: daqui em diante quem manda é o estado da tela.
+  const [rascunho] = useState(() => useOnboardingStore.getState().rascunho)
 
-  const [passo, setPasso] = useState(rascunho?.passo ?? 1)
+  const [passo, setPasso] = useState(rascunho.passo)
   const [nivel, setNivel] = useState<NivelExperiencia | null>(
-    rascunho?.nivel ?? usuario?.nivelExperiencia ?? null,
+    rascunho.nivel ?? usuario?.nivelExperiencia ?? null,
   )
   const [trilha, setTrilha] = useState<TipoTrilha | null>(
-    rascunho?.trilha ?? usuario?.tipoTrilha ?? null,
+    rascunho.trilha ?? usuario?.tipoTrilha ?? null,
   )
   // A ementa já subiu: tentar de novo depois de um erro não a envia duas vezes.
   const [ementaEnviada, setEmentaEnviada] = useState<File | null>(null)
@@ -148,10 +139,10 @@ export function OnboardingWizard({
     resolver: resolverConfiguracao,
     context: { ementaObrigatoria },
     defaultValues: {
-      instituicao: rascunho?.instituicao ?? { texto: '', id: null },
-      curso: rascunho?.curso ?? { texto: '', id: null },
-      periodo: rascunho?.periodo ?? '',
-      ementa: rascunho?.ementa ?? null,
+      instituicao: rascunho.instituicao,
+      curso: rascunho.curso,
+      periodo: rascunho.periodo,
+      ementa: rascunho.ementa,
     },
   })
   const [instituicao, curso, periodo, ementa] = watch(['instituicao', 'curso', 'periodo', 'ementa'])
@@ -163,12 +154,12 @@ export function OnboardingWizard({
     .filter((c) => c.nome.toLowerCase().includes(textoDoCurso))
     .map((c) => ({ id: c.id, rotulo: c.nome }))
 
-  // As dependências são os valores soltos, não os objetos: o rascunho volta
-  // para o pai a cada mudança, e um objeto novo a cada render faria um laço.
+  // As dependências são os valores soltos, não os objetos: o rascunho vai
+  // para o store a cada mudança, e um objeto novo a cada render faria um laço.
   const { texto: textoInstituicao, id: idInstituicao } = instituicao
   const { texto: textoCurso, id: idCurso } = curso
   useEffect(() => {
-    onRascunhoChange?.({
+    salvarRascunho({
       passo,
       nivel,
       trilha,
@@ -187,7 +178,7 @@ export function OnboardingWizard({
     idCurso,
     periodo,
     ementa,
-    onRascunhoChange,
+    salvarRascunho,
   ])
 
   async function finalizar({ instituicao, curso, periodo, ementa }: ConfiguracaoTrilhaValues) {

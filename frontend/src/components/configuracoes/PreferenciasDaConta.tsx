@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import { useAccessibility } from '@/contexts/AccessibilityContext'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { useAccessibilityStore } from '@/stores/useAccessibilityStore'
 
 /**
  * Ao entrar, aplica a acessibilidade guardada na conta.
@@ -12,12 +12,13 @@ import { useAuth } from '@/contexts/AuthContext'
  * aluno.
  */
 export function PreferenciasDaConta() {
-  const { usuario } = useAuth()
-  const { setTamanhoFonte, setAltoContraste, setReduzirAnimacoes } = useAccessibility()
+  const usuario = useAuthStore((estado) => estado.usuario)
   const preferencias = usuario?.preferencias
 
   useEffect(() => {
     if (!preferencias) return
+    const { setTamanhoFonte, setAltoContraste, setReduzirAnimacoes } =
+      useAccessibilityStore.getState()
     setTamanhoFonte(preferencias.tamanhoFonte)
     setAltoContraste(preferencias.altoContraste)
     setReduzirAnimacoes(preferencias.reduzirAnimacoes)

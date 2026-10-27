@@ -8,13 +8,13 @@ import { ErroCampo } from '@/components/ui/erro-campo'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BotoesLoginSocial } from '@/components/auth/BotoesLoginSocial'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { mensagemDeErro } from '@/lib/erros'
 import { LOGIN_TESTE, loginTesteHabilitado } from '@/lib/loginTeste'
 import { loginSchema, type LoginFormValues } from '@/lib/validation/auth'
 
 export function LoginPage() {
-  const { entrar } = useAuth()
+  const entrar = useAuthStore((estado) => estado.entrar)
   const navigate = useNavigate()
   const [erro, setErro] = useState<string | null>(null)
 

@@ -2,8 +2,8 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { LogOut, Moon, Sun } from 'lucide-react'
 import { versaoCurta } from '@/lib/version'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/contexts/AuthContext'
-import { useTheme } from '@/contexts/ThemeContext'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { temaEmUso, useThemeStore } from '@/stores/useThemeStore'
 import logoAlgorise from '@/assets/images/logo-algorise.png'
 
 const links = [
@@ -15,8 +15,9 @@ const links = [
 ]
 
 export function Sidebar() {
-  const { logout } = useAuth()
-  const { tema, alternarTema } = useTheme()
+  const logout = useAuthStore((estado) => estado.logout)
+  const tema = useThemeStore(temaEmUso)
+  const alternarTema = useThemeStore((estado) => estado.alternarTema)
   const navigate = useNavigate()
 
   function handleSair() {

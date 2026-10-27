@@ -7,15 +7,12 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LoginPage } from '@/pages/Auth/LoginPage'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 const entrar = vi.fn()
 const navegar = vi.fn()
-
-vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: () => ({ entrar }),
-}))
 
 vi.mock('react-router-dom', async () => {
   const real = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
@@ -33,6 +30,13 @@ function montar() {
 beforeEach(() => {
   entrar.mockReset().mockResolvedValue(undefined)
   navegar.mockReset()
+  // O store de verdade, só com o login trocado: a tela não fala com a API.
+  useAuthStore.setState({ entrar })
+})
+
+// O store vive no módulo, entre um teste e outro: volta ao começo.
+afterEach(() => {
+  useAuthStore.setState(useAuthStore.getInitialState(), true)
 })
 
 describe('validação', () => {

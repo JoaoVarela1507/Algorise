@@ -8,12 +8,12 @@ import { ErroCampo } from '@/components/ui/erro-campo'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BotoesLoginSocial } from '@/components/auth/BotoesLoginSocial'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { mensagemDeErro } from '@/lib/erros'
 import { cadastroSchema, type CadastroFormValues } from '@/lib/validation/auth'
 
 export function CadastroPage() {
-  const { cadastrar } = useAuth()
+  const cadastrar = useAuthStore((estado) => estado.cadastrar)
   const navigate = useNavigate()
   const [erro, setErro] = useState<string | null>(null)
 

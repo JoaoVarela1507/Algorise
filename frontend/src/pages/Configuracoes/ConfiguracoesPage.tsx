@@ -30,8 +30,8 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toaster'
-import { useAuth } from '@/contexts/AuthContext'
-import { useTheme, type PreferenciaTema } from '@/contexts/ThemeContext'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { useThemeStore, type PreferenciaTema } from '@/stores/useThemeStore'
 import { appVersion } from '@/lib/version'
 import { cn } from '@/lib/utils'
 import { solicitarRedefinicao } from '@/services/auth'
@@ -55,7 +55,7 @@ const temas: { valor: PreferenciaTema; rotulo: string; icone: typeof Sun }[] = [
 ]
 
 function SecaoConta({ usuario }: { usuario: Usuario }) {
-  const { atualizarPerfil } = useAuth()
+  const atualizarPerfil = useAuthStore((estado) => estado.atualizarPerfil)
   const [nome, setNome] = useState(usuario.nome)
   const [salvandoNome, setSalvandoNome] = useState(false)
   const [enviandoLink, setEnviandoLink] = useState(false)
@@ -128,7 +128,8 @@ function SecaoConta({ usuario }: { usuario: Usuario }) {
 }
 
 function SecaoAparencia() {
-  const { preferencia, setPreferencia } = useTheme()
+  const preferencia = useThemeStore((estado) => estado.preferencia)
+  const setPreferencia = useThemeStore((estado) => estado.setPreferencia)
 
   return (
     <Secao icone={Palette} titulo="Aparência">
@@ -216,7 +217,7 @@ function SecaoDados() {
 }
 
 function SecaoSobre() {
-  const { logout } = useAuth()
+  const logout = useAuthStore((estado) => estado.logout)
   const navigate = useNavigate()
   // Em desenvolvimento o build pode vir vazio ou fora do formato ISO.
   const dataBuild = appVersion.build ? new Date(appVersion.build) : null
@@ -251,7 +252,7 @@ function SecaoSobre() {
 }
 
 export function ConfiguracoesPage() {
-  const { usuario } = useAuth()
+  const usuario = useAuthStore((estado) => estado.usuario)
   if (!usuario) return null
 
   return (

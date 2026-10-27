@@ -93,3 +93,15 @@ test('sem instituição nem ementa na guiada, o passo 3 diz o que falta', async 
     'Envie a ementa em PDF.',
   )
 })
+
+test('recarregar no meio do onboarding volta para onde parou', async ({ page, request }) => {
+  await entrar(page, await criarConta(request))
+  await irParaOPasso3(page, /^Livre/)
+  const instituicao = page.getByRole('combobox', { name: /universidade\/faculdade/i })
+  await instituicao.fill('UFRPE')
+
+  await page.reload()
+
+  await expect(page.getByText('Passo 3 de 3')).toBeVisible()
+  await expect(instituicao).toHaveValue('UFRPE')
+})

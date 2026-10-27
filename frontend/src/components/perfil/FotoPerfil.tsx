@@ -3,7 +3,7 @@ import { Camera, Loader2, Trash2 } from 'lucide-react'
 import { AvatarIniciais } from '@/components/home/AvatarIniciais'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from '@/components/ui/toaster'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 import type { Usuario } from '@/types/usuario'
 
 /** O mesmo teto do backend (`tamanho_maximo_avatar`), para avisar antes de enviar. */
@@ -18,7 +18,8 @@ const TIPOS_ACEITOS = 'image/png,image/jpeg,image/webp'
  * recusa o que não for PNG, JPEG ou WebP de verdade.
  */
 export function FotoPerfil({ usuario }: { usuario: Usuario }) {
-  const { enviarAvatar, removerAvatar } = useAuth()
+  const enviarAvatar = useAuthStore((estado) => estado.enviarAvatar)
+  const removerAvatar = useAuthStore((estado) => estado.removerAvatar)
   const entrada = useRef<HTMLInputElement>(null)
   const [enviando, setEnviando] = useState(false)
 

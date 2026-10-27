@@ -1,8 +1,9 @@
 import { Opcao } from '@/components/configuracoes/Secao'
 import { Segmentado } from '@/components/perfil/Segmentado'
 import { toast } from '@/components/ui/toaster'
-import { useAccessibility } from '@/contexts/AccessibilityContext'
-import { useAuth } from '@/contexts/AuthContext'
+import { useShallow } from 'zustand/react/shallow'
+import { useAccessibilityStore } from '@/stores/useAccessibilityStore'
+import { useAuthStore } from '@/stores/useAuthStore'
 import type { Preferencias } from '@/types/usuario'
 
 const simNao = [
@@ -25,8 +26,9 @@ export function OpcoesAcessibilidade() {
     setTamanhoFonte,
     setAltoContraste,
     setReduzirAnimacoes,
-  } = useAccessibility()
-  const { usuario, salvarPreferencias } = useAuth()
+  } = useAccessibilityStore(useShallow((estado) => estado))
+  const usuario = useAuthStore((estado) => estado.usuario)
+  const salvarPreferencias = useAuthStore((estado) => estado.salvarPreferencias)
 
   function levarParaConta(dados: Partial<Preferencias>) {
     if (!usuario) return

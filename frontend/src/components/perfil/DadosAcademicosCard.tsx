@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from '@/components/ui/toaster'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 import type { Usuario } from '@/types/usuario'
 
 const periodos = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -46,7 +46,7 @@ function Linha({
 }
 
 export function DadosAcademicosCard({ usuario }: { usuario: Usuario }) {
-  const { atualizarPerfil } = useAuth()
+  const atualizarPerfil = useAuthStore((estado) => estado.atualizarPerfil)
   const [editando, setEditando] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [instituicao, setInstituicao] = useState(usuario.instituicao ?? '')

@@ -1,8 +1,9 @@
 import { Navigate, Outlet } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 export function RequireAuth() {
-  const { usuario, carregando } = useAuth()
+  const usuario = useAuthStore((estado) => estado.usuario)
+  const carregando = useAuthStore((estado) => estado.carregando)
 
   // Ao recarregar, a sessão guardada ainda está sendo restaurada: mandar para
   // o login agora expulsaria um aluno que está logado.

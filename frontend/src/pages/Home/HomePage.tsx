@@ -7,7 +7,7 @@ import { SaudacaoCard } from '@/components/home/SaudacaoCard'
 import { StreakCard } from '@/components/home/StreakCard'
 import { TrilhaAtualCard } from '@/components/home/TrilhaAtualCard'
 import { Carregando, ErroAoCarregar } from '@/components/ui/estados'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { useCheckin, usePainel } from '@/hooks/useGamificacao'
 import { useRanking } from '@/hooks/useRanking'
 import { conquistasMock, metaDiariaMock, trilhaAtualMock } from '@/mocks/home'
@@ -23,7 +23,7 @@ const secao: Variants = {
 }
 
 export function HomePage() {
-  const { usuario } = useAuth()
+  const usuario = useAuthStore((estado) => estado.usuario)
   // `usuario_id` para a API devolver a posição do aluno mesmo quando ela cai
   // fora da primeira página.
   const ranking = useRanking({ limite: 8, usuarioId: Number(usuario?.id) || undefined })
