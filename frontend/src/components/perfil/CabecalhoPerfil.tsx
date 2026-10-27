@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion'
 import { Flame, Star, Trophy } from 'lucide-react'
-import { AvatarIniciais } from '@/components/home/AvatarIniciais'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { FotoPerfil } from '@/components/perfil/FotoPerfil'
 import { useContagem } from '@/hooks/useContagem'
 import { calcularNivel } from '@/lib/nivel'
 import type { Usuario } from '@/types/usuario'
@@ -51,17 +50,7 @@ export function CabecalhoPerfil({ usuario }: { usuario: Usuario }) {
           transition={{ type: 'spring', stiffness: 260, damping: 18 }}
           className="relative shrink-0"
         >
-          {usuario.avatarUrl ? (
-            <Avatar className="size-24 ring-4 ring-primary/30">
-              <AvatarImage src={usuario.avatarUrl} alt="" />
-              <AvatarFallback>{usuario.nome[0]}</AvatarFallback>
-            </Avatar>
-          ) : (
-            <AvatarIniciais
-              nome={usuario.nome}
-              className="size-24 text-3xl ring-4 ring-primary/30"
-            />
-          )}
+          <FotoPerfil usuario={usuario} />
           <span className="absolute -bottom-1 -right-1 rounded-full bg-primary px-2 py-0.5 font-display text-xs font-bold text-primary-foreground shadow">
             Nv. {nivel}
           </span>
