@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
+import { ErroCampo } from '@/components/ui/erro-campo'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { mensagemDeErro } from '@/lib/erros'
@@ -70,13 +71,10 @@ export function RedefinirSenhaPage() {
             type="password"
             placeholder="Crie uma senha"
             aria-invalid={!!errors.senha}
+            aria-describedby={errors.senha ? 'nova-senha-erro' : undefined}
             {...register('senha')}
           />
-          {errors.senha && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.senha.message}
-            </p>
-          )}
+          <ErroCampo id="nova-senha-erro" mensagem={errors.senha?.message} />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -86,13 +84,10 @@ export function RedefinirSenhaPage() {
             type="password"
             placeholder="Repita a senha"
             aria-invalid={!!errors.confirmarSenha}
+            aria-describedby={errors.confirmarSenha ? 'nova-senha-confirmar-erro' : undefined}
             {...register('confirmarSenha')}
           />
-          {errors.confirmarSenha && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.confirmarSenha.message}
-            </p>
-          )}
+          <ErroCampo id="nova-senha-confirmar-erro" mensagem={errors.confirmarSenha?.message} />
         </div>
 
         {erro && (

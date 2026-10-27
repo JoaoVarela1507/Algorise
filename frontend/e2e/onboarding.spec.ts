@@ -65,3 +65,31 @@ test('ementa que não é PDF mostra o motivo e não perde o preenchido', async (
   await page.getByRole('button', { name: 'Continuar' }).click()
   await expect(page).toHaveURL('/')
 })
+
+test('sem instituição nem ementa na guiada, o passo 3 diz o que falta', async ({
+  page,
+  request,
+}) => {
+  await entrar(page, await criarConta(request))
+  await irParaOPasso3(page, /^Guiada/)
+
+  await page.getByRole('button', { name: 'Continuar' }).click()
+
+  // O foco vai para o primeiro campo com erro na ordem da tela, que é a ementa,
+  // e cada erro fica ligado ao seu campo.
+  const instituicao = page.getByRole('combobox', { name: /universidade\/faculdade/i })
+  await expect(page.locator('#grade-curricular')).toBeFocused()
+  await expect(page.locator('#grade-curricular')).toHaveAccessibleDescription(/envie a ementa/i)
+  await expect(instituicao).toHaveAccessibleDescription('Informe sua instituição de ensino.')
+  await expect(page).toHaveURL('/onboarding')
+
+  // Arquivo que não é PDF: o aviso vem na hora, antes de qualquer envio.
+  await page.locator('#grade-curricular').setInputFiles({
+    name: 'grade.docx',
+    mimeType: 'application/msword',
+    buffer: Buffer.from('docx'),
+  })
+  await expect(page.locator('#grade-curricular')).toHaveAccessibleDescription(
+    'Envie a ementa em PDF.',
+  )
+})

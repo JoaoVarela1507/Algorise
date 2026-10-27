@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ErroCampo } from '@/components/ui/erro-campo'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BotoesLoginSocial } from '@/components/auth/BotoesLoginSocial'
@@ -222,13 +223,10 @@ function EntrarView({
             type="email"
             placeholder="voce@exemplo.com"
             aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? 'login-email-erro' : undefined}
             {...register('email')}
           />
-          {errors.email && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.email.message}
-            </p>
-          )}
+          <ErroCampo id="login-email-erro" mensagem={errors.email?.message} />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -238,13 +236,10 @@ function EntrarView({
             type="password"
             placeholder="Digite sua senha"
             aria-invalid={!!errors.senha}
+            aria-describedby={errors.senha ? 'login-senha-erro' : undefined}
             {...register('senha')}
           />
-          {errors.senha && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.senha.message}
-            </p>
-          )}
+          <ErroCampo id="login-senha-erro" mensagem={errors.senha?.message} />
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -371,13 +366,10 @@ function CadastroView({
             id="cadastro-username"
             placeholder="seu_usuario"
             aria-invalid={!!errors.username}
+            aria-describedby={errors.username ? 'cadastro-username-erro' : undefined}
             {...register('username')}
           />
-          {errors.username && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.username.message}
-            </p>
-          )}
+          <ErroCampo id="cadastro-username-erro" mensagem={errors.username?.message} />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -387,13 +379,10 @@ function CadastroView({
             type="email"
             placeholder="voce@exemplo.com"
             aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? 'cadastro-email-erro' : undefined}
             {...register('email')}
           />
-          {errors.email && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.email.message}
-            </p>
-          )}
+          <ErroCampo id="cadastro-email-erro" mensagem={errors.email?.message} />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -403,13 +392,10 @@ function CadastroView({
             type="password"
             placeholder="Crie uma senha"
             aria-invalid={!!errors.senha}
+            aria-describedby={errors.senha ? 'cadastro-senha-erro' : undefined}
             {...register('senha')}
           />
-          {errors.senha && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.senha.message}
-            </p>
-          )}
+          <ErroCampo id="cadastro-senha-erro" mensagem={errors.senha?.message} />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -419,13 +405,10 @@ function CadastroView({
             type="password"
             placeholder="Repita a senha"
             aria-invalid={!!errors.confirmarSenha}
+            aria-describedby={errors.confirmarSenha ? 'cadastro-confirmar-senha-erro' : undefined}
             {...register('confirmarSenha')}
           />
-          {errors.confirmarSenha && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.confirmarSenha.message}
-            </p>
-          )}
+          <ErroCampo id="cadastro-confirmar-senha-erro" mensagem={errors.confirmarSenha?.message} />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -436,8 +419,11 @@ function CadastroView({
               render={({ field }) => (
                 <Checkbox
                   id="cadastro-termos"
+                  ref={field.ref}
                   checked={field.value}
                   onCheckedChange={field.onChange}
+                  aria-invalid={!!errors.termos}
+                  aria-describedby={errors.termos ? 'cadastro-termos-erro' : undefined}
                   className="mt-0.5"
                 />
               )}
@@ -455,11 +441,7 @@ function CadastroView({
               .
             </Label>
           </div>
-          {errors.termos && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.termos.message}
-            </p>
-          )}
+          <ErroCampo id="cadastro-termos-erro" mensagem={errors.termos?.message} />
         </div>
 
         {erro && (
@@ -559,13 +541,10 @@ function EsqueciSenhaView({
             type="email"
             placeholder="voce@exemplo.com"
             aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? 'esqueci-email-erro' : undefined}
             {...register('email')}
           />
-          {errors.email && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.email.message}
-            </p>
-          )}
+          <ErroCampo id="esqueci-email-erro" mensagem={errors.email?.message} />
         </div>
 
         {erro && (

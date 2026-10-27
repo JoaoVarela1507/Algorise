@@ -4,6 +4,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ErroCampo } from '@/components/ui/erro-campo'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BotoesLoginSocial } from '@/components/auth/BotoesLoginSocial'
@@ -53,13 +54,10 @@ export function CadastroPage() {
             id="username"
             placeholder="seu_usuario"
             aria-invalid={!!errors.username}
+            aria-describedby={errors.username ? 'username-erro' : undefined}
             {...register('username')}
           />
-          {errors.username && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.username.message}
-            </p>
-          )}
+          <ErroCampo id="username-erro" mensagem={errors.username?.message} />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -69,13 +67,10 @@ export function CadastroPage() {
             type="email"
             placeholder="voce@exemplo.com"
             aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? 'email-erro' : undefined}
             {...register('email')}
           />
-          {errors.email && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.email.message}
-            </p>
-          )}
+          <ErroCampo id="email-erro" mensagem={errors.email?.message} />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -85,13 +80,10 @@ export function CadastroPage() {
             type="password"
             placeholder="Crie uma senha"
             aria-invalid={!!errors.senha}
+            aria-describedby={errors.senha ? 'senha-erro' : undefined}
             {...register('senha')}
           />
-          {errors.senha && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.senha.message}
-            </p>
-          )}
+          <ErroCampo id="senha-erro" mensagem={errors.senha?.message} />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -101,13 +93,10 @@ export function CadastroPage() {
             type="password"
             placeholder="Repita a senha"
             aria-invalid={!!errors.confirmarSenha}
+            aria-describedby={errors.confirmarSenha ? 'confirmarSenha-erro' : undefined}
             {...register('confirmarSenha')}
           />
-          {errors.confirmarSenha && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.confirmarSenha.message}
-            </p>
-          )}
+          <ErroCampo id="confirmarSenha-erro" mensagem={errors.confirmarSenha?.message} />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -118,8 +107,11 @@ export function CadastroPage() {
               render={({ field }) => (
                 <Checkbox
                   id="termos"
+                  ref={field.ref}
                   checked={field.value}
                   onCheckedChange={field.onChange}
+                  aria-invalid={!!errors.termos}
+                  aria-describedby={errors.termos ? 'termos-erro' : undefined}
                   className="mt-0.5"
                 />
               )}
@@ -137,11 +129,7 @@ export function CadastroPage() {
               .
             </Label>
           </div>
-          {errors.termos && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.termos.message}
-            </p>
-          )}
+          <ErroCampo id="termos-erro" mensagem={errors.termos?.message} />
         </div>
 
         {erro && (
