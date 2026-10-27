@@ -36,6 +36,10 @@ class Usuario(Base, TimestampMixin):
     alto_contraste: Mapped[bool] = mapped_column(default=False, server_default=false())
     reduzir_animacoes: Mapped[bool] = mapped_column(default=False, server_default=false())
 
+    # Quando o aluno terminou o onboarding pela primeira vez (#28). Nulo é quem
+    # ainda não passou por ele: o frontend usa isso para decidir se mostra.
+    onboarding_concluido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     # Saldo desnormalizado: a verdade são os registros em `xp_eventos`. Existe
     # para o ranking não somar a tabela inteira a cada consulta.
     xp_total: Mapped[int] = mapped_column(default=0, index=True)
