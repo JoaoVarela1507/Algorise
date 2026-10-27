@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/toaster'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { mensagemDeErro } from '@/lib/erros'
 import { USUARIO_TESTE } from '@/lib/loginTeste'
 import { baixarMeusDados, excluirConta } from '@/services/auth'
@@ -24,7 +24,8 @@ const CONFIRMACAO = 'EXCLUIR'
 
 /** Direitos do titular (LGPD, #40): baixar os dados e excluir a conta. */
 export function SecaoPrivacidade() {
-  const { usuario, logout } = useAuth()
+  const usuario = useAuthStore((estado) => estado.usuario)
+  const logout = useAuthStore((estado) => estado.logout)
   const navigate = useNavigate()
   const [baixando, setBaixando] = useState(false)
   const [dialogoAberto, setDialogoAberto] = useState(false)

@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, ArrowRight, Award, Hourglass, Info, Lock } from 'lucide-react'
 import { PERIODOS, coresPeriodo } from '@/components/trilhas/periodos'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { cn } from '@/lib/utils'
 import { trilhasMock } from '@/mocks/trilhas'
 import type { TrilhaResumo } from '@/types/trilha'
@@ -74,7 +74,7 @@ function ItemCertificado({ trilha, indice }: { trilha: TrilhaResumo; indice: num
 }
 
 export function CertificadosPage() {
-  const { usuario } = useAuth()
+  const usuario = useAuthStore((estado) => estado.usuario)
   const navigate = useNavigate()
 
   const periodosComTrilha = PERIODOS.filter((p) => trilhasMock.some((t) => t.periodo === p))

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { TrilhaCard } from '@/components/trilhas/TrilhaCard'
 import { PERIODOS, coresPeriodo } from '@/components/trilhas/periodos'
 import { Carregando, ErroAoCarregar } from '@/components/ui/estados'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useCatalogoDeTrilhas } from '@/hooks/useTrilhas'
 import { cn } from '@/lib/utils'
@@ -29,7 +29,7 @@ const item: Variants = {
 const doisDigitos = (n: number) => String(n).padStart(2, '0')
 
 export function TrilhasPage() {
-  const { usuario } = useAuth()
+  const usuario = useAuthStore((estado) => estado.usuario)
   const [busca, setBusca] = useState('')
   const [periodos, setPeriodos] = useState<number[]>([])
   const [filtroAberto, setFiltroAberto] = useState(false)

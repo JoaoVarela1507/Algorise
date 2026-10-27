@@ -4,13 +4,14 @@ import { Check, Loader2 } from 'lucide-react'
 import { niveis, trilhas } from '@/components/onboarding/opcoes'
 import { Segmentado } from '@/components/perfil/Segmentado'
 import { toast } from '@/components/ui/toaster'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { cn } from '@/lib/utils'
 import type { Usuario } from '@/types/usuario'
 
 /** Modo de trilha (o dropdown "MODO TRILHA GUIADA" do protótipo) e nível. */
 export function CaminhoCard({ usuario }: { usuario: Usuario }) {
-  const { atualizarPerfil, trocarModoTrilha } = useAuth()
+  const atualizarPerfil = useAuthStore((estado) => estado.atualizarPerfil)
+  const trocarModoTrilha = useAuthStore((estado) => estado.trocarModoTrilha)
   const [salvando, setSalvando] = useState<'tipoTrilha' | 'nivelExperiencia' | null>(null)
 
   async function salvar(

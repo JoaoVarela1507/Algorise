@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from '@/components/ui/toaster'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { mensagemDeErro } from '@/lib/erros'
 
 // Códigos que o backend manda em `?erro=` (ver `app/api/routes/oauth.py`).
@@ -17,7 +17,7 @@ const MENSAGENS: Record<string, string> = {
  * (`#access_token=...&refresh_token=...`), erro com `?erro=<código>`.
  */
 export function OAuthCallbackPage() {
-  const { concluirLoginSocial } = useAuth()
+  const concluirLoginSocial = useAuthStore((estado) => estado.concluirLoginSocial)
   const navigate = useNavigate()
   const [erro, setErro] = useState<string | null>(null)
   // O StrictMode monta duas vezes em desenvolvimento, e o fragmento já foi

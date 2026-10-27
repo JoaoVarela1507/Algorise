@@ -10,8 +10,9 @@ import { ErroCampo } from '@/components/ui/erro-campo'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BotoesLoginSocial } from '@/components/auth/BotoesLoginSocial'
-import { OnboardingWizard, type RascunhoOnboarding } from '@/components/onboarding/OnboardingWizard'
-import { useAuth } from '@/contexts/AuthContext'
+import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { temProgresso, useOnboardingStore } from '@/stores/useOnboardingStore'
 import { LOGIN_TESTE, loginTesteHabilitado } from '@/lib/loginTeste'
 import { mensagemDeErro } from '@/lib/erros'
 import { cn } from '@/lib/utils'
@@ -173,7 +174,7 @@ function EntrarView({
   rascunho: Partial<LoginFormValues>
   onRascunhoChange: (valores: Partial<LoginFormValues>) => void
 }) {
-  const { entrar } = useAuth()
+  const entrar = useAuthStore((estado) => estado.entrar)
   const navigate = useNavigate()
   const [erro, setErro] = useState<string | null>(null)
 
@@ -311,7 +312,7 @@ function CadastroView({
   rascunho: Partial<CadastroFormValues>
   onRascunhoChange: (valores: Partial<CadastroFormValues>) => void
 }) {
-  const { cadastrar } = useAuth()
+  const cadastrar = useAuthStore((estado) => estado.cadastrar)
   const [erro, setErro] = useState<string | null>(null)
 
   const {
@@ -561,24 +562,19 @@ function EsqueciSenhaView({
   )
 }
 
-const RASCUNHO_ONBOARDING_INICIAL: RascunhoOnboarding = {
-  passo: 1,
-  nivel: null,
-  trilha: null,
-  instituicao: { texto: '', id: null },
-  curso: { texto: '', id: null },
-  periodo: '',
-  ementa: null,
-}
-
 export function BoasVindasPage() {
   const [modo, setModo] = useState<Modo>('escolha')
   const [rascunhoEntrar, setRascunhoEntrar] = useState<Partial<LoginFormValues>>({})
   const [rascunhoCadastro, setRascunhoCadastro] = useState<Partial<CadastroFormValues>>({})
   const [rascunhoEsqueci, setRascunhoEsqueci] = useState<Partial<EsqueciSenhaFormValues>>({})
-  const [rascunhoOnboarding, setRascunhoOnboarding] = useState<RascunhoOnboarding>(
-    RASCUNHO_ONBOARDING_INICIAL,
-  )
+  const usuarioId = useAuthStore((estado) => estado.usuario?.id)
+
+  // Recarregou no meio do onboarding: assim que a sessão volta, volta também
+  // para o wizard, que retoma o rascunho de onde parou.
+  useEffect(() => {
+    const { usuarioId: dono, rascunho } = useOnboardingStore.getState()
+    if (usuarioId && usuarioId === dono && temProgresso(rascunho)) setModo('onboarding')
+  }, [usuarioId])
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
@@ -621,11 +617,7 @@ export function BoasVindasPage() {
                 />
               )}
               {modo === 'onboarding' && (
-                <OnboardingWizard
-                  onVoltarInicio={() => setModo('cadastro')}
-                  rascunho={rascunhoOnboarding}
-                  onRascunhoChange={setRascunhoOnboarding}
-                />
+                <OnboardingWizard onVoltarInicio={() => setModo('cadastro')} />
               )}
             </motion.div>
           </AnimatePresence>

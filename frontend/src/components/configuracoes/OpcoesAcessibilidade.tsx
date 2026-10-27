@@ -3,7 +3,7 @@ import { Segmentado } from '@/components/perfil/Segmentado'
 import { toast } from '@/components/ui/toaster'
 import { useShallow } from 'zustand/react/shallow'
 import { useAccessibilityStore } from '@/stores/useAccessibilityStore'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 import type { Preferencias } from '@/types/usuario'
 
 const simNao = [
@@ -27,7 +27,8 @@ export function OpcoesAcessibilidade() {
     setAltoContraste,
     setReduzirAnimacoes,
   } = useAccessibilityStore(useShallow((estado) => estado))
-  const { usuario, salvarPreferencias } = useAuth()
+  const usuario = useAuthStore((estado) => estado.usuario)
+  const salvarPreferencias = useAuthStore((estado) => estado.salvarPreferencias)
 
   function levarParaConta(dados: Partial<Preferencias>) {
     if (!usuario) return

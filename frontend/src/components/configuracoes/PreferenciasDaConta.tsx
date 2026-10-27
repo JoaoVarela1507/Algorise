@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { useAccessibilityStore } from '@/stores/useAccessibilityStore'
 
 /**
@@ -12,7 +12,7 @@ import { useAccessibilityStore } from '@/stores/useAccessibilityStore'
  * aluno.
  */
 export function PreferenciasDaConta() {
-  const { usuario } = useAuth()
+  const usuario = useAuthStore((estado) => estado.usuario)
   const preferencias = usuario?.preferencias
 
   useEffect(() => {

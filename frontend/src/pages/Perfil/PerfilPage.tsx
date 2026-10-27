@@ -5,7 +5,7 @@ import { CabecalhoPerfil } from '@/components/perfil/CabecalhoPerfil'
 import { CaminhoCard } from '@/components/perfil/CaminhoCard'
 import { DadosAcademicosCard } from '@/components/perfil/DadosAcademicosCard'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 const container: Variants = {
   oculto: {},
@@ -107,7 +107,7 @@ function CertificadosCard() {
 }
 
 export function PerfilPage() {
-  const { usuario } = useAuth()
+  const usuario = useAuthStore((estado) => estado.usuario)
   // A rota fica atrás do RequireAuth, então o usuário sempre existe aqui.
   if (!usuario) return null
 

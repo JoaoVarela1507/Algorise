@@ -5,7 +5,7 @@ import { Composer } from '@/components/chat/Composer'
 import { IndicadorDigitando, MensagemChat } from '@/components/chat/MensagemChat'
 import { PainelConversas } from '@/components/chat/PainelConversas'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { saudacaoDoHorario } from '@/lib/tempo'
 import { conversasIniciais, gruposIniciais } from '@/mocks/chat'
 import { ApiError } from '@/services/api'
@@ -103,7 +103,7 @@ function ListaMensagens({
 }
 
 export function ChatPage() {
-  const { usuario } = useAuth()
+  const usuario = useAuthStore((estado) => estado.usuario)
   const [estado, setEstado] = useState(carregarEstado)
   const [ativaId, setAtivaId] = useState<string | null>(null)
   const [modo, setModo] = useState<ModoResposta>('medio')
