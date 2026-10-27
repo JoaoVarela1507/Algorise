@@ -45,6 +45,18 @@ describe('validação', () => {
     expect(entrar).not.toHaveBeenCalled()
   })
 
+  it('liga a mensagem ao campo e foca o primeiro inválido', async () => {
+    montar()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    const email = screen.getByLabelText('Email')
+    await waitFor(() => expect(email).toHaveFocus())
+    // O leitor de tela lê a mensagem junto com o campo, não só quando ela aparece.
+    expect(email).toHaveAccessibleDescription('Informe seu email.')
+    expect(email).toHaveAttribute('aria-invalid', 'true')
+  })
+
   it('recusa e-mail malformado', async () => {
     montar()
 

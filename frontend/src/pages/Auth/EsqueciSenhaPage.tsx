@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
+import { ErroCampo } from '@/components/ui/erro-campo'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { mensagemDeErro } from '@/lib/erros'
@@ -61,13 +62,10 @@ export function EsqueciSenhaPage() {
             type="email"
             placeholder="voce@exemplo.com"
             aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? 'email-erro' : undefined}
             {...register('email')}
           />
-          {errors.email && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.email.message}
-            </p>
-          )}
+          <ErroCampo id="email-erro" mensagem={errors.email?.message} />
         </div>
 
         {erro && (
