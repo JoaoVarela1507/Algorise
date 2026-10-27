@@ -18,3 +18,5 @@ httpx2==2.13.1
 # e o Pillow reprocessa a imagem (tira o EXIF, padroniza o tamanho).
 python-multipart==0.0.32
 pillow==13.0.0
+# Texto da ementa em PDF (#28). Puro Python: não pede nada instalado no sistema.
+pypdf==6.21.2

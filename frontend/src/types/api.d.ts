@@ -213,6 +213,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cursos/{curso_id}/periodos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Períodos do curso e as disciplinas que o Algorise cobre em cada um */
+        get: operations["listarPeriodos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ementas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Envia a ementa em PDF
+         * @description Responde na hora com status `pendente`; o texto é extraído em segundo plano. Acompanhe por `GET /ementas/{id}`.
+         */
+        post: operations["enviarEmenta"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ementas/{ementa_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status da leitura da ementa */
+        get: operations["obterEmenta"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gamificacao/checkin": {
         parameters: {
             query?: never;
@@ -247,6 +301,63 @@ export interface paths {
         get: operations["obterPainel"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instituicoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Autocomplete de instituições
+         * @description Tolera acento, caixa e erro de digitação. Casa com o nome ou a sigla.
+         */
+        get: operations["buscarInstituicoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instituicoes/{instituicao_id}/cursos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar Cursos */
+        get: operations["listarCursos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grava nível, modo de trilha, instituição, curso e período
+         * @description Instituição e curso pelo `id` do catálogo ou pelo nome digitado. Pode ser refeito; `onboarding_concluido_em` guarda a primeira conclusão.
+         */
+        post: operations["concluirOnboarding"];
         delete?: never;
         options?: never;
         head?: never;
@@ -648,6 +759,14 @@ export interface components {
              */
             arquivo: string;
         };
+        /** Body_enviarEmenta */
+        Body_enviarEmenta: {
+            /**
+             * Arquivo
+             * @description PDF de até 5 MB
+             */
+            arquivo: string;
+        };
         /**
          * Correcao
          * @description A resposta da submissão.
@@ -665,6 +784,37 @@ export interface components {
             xp_ganho: number;
             /** Xp Total */
             xp_total: number;
+        };
+        /** CursoResumo */
+        CursoResumo: {
+            /** Id */
+            id: number;
+            /** Nome */
+            nome: string;
+            /** Total Periodos */
+            total_periodos: number;
+        };
+        /**
+         * EmentaStatus
+         * @description Onde está o processamento. O texto extraído não sai daqui: é insumo da #38.
+         */
+        EmentaStatus: {
+            /**
+             * Criado Em
+             * Format: date-time
+             */
+            criado_em: string;
+            /** Erro */
+            erro?: string | null;
+            /** Id */
+            id: number;
+            /** Nome Original */
+            nome_original?: string | null;
+            /** Paginas */
+            paginas?: number | null;
+            status: components["schemas"]["StatusEmenta"];
+            /** Tamanho Bytes */
+            tamanho_bytes?: number | null;
         };
         /**
          * EntradaRanking
@@ -740,6 +890,17 @@ export interface components {
             /** Senha */
             senha?: string | null;
         };
+        /** InstituicaoResumo */
+        InstituicaoResumo: {
+            /** Id */
+            id: number;
+            /** Nome */
+            nome: string;
+            /** Sigla */
+            sigla?: string | null;
+            /** Uf */
+            uf?: string | null;
+        };
         /** Login */
         Login: {
             /**
@@ -791,6 +952,31 @@ export interface components {
          * @enum {string}
          */
         NivelExperiencia: "baixo" | "medio" | "alto";
+        /**
+         * Onboarding
+         * @description O fim do onboarding, numa chamada só (telas 7 a 15).
+         *
+         *     Instituição e curso vêm de um de dois jeitos: pelo `id`, quando o aluno
+         *     escolheu uma sugestão do autocomplete, ou pelo nome, quando digitou algo
+         *     que não está no catálogo. O texto livre não trava o fluxo: vira um registro
+         *     do aluno, que só não aparece como sugestão para os outros.
+         *
+         *     É o retrato completo do onboarding: o que não vier fica vazio no perfil.
+         */
+        Onboarding: {
+            /** Curso */
+            curso?: string | null;
+            /** Curso Id */
+            curso_id?: number | null;
+            /** Instituicao */
+            instituicao?: string | null;
+            /** Instituicao Id */
+            instituicao_id?: number | null;
+            nivel_experiencia: components["schemas"]["NivelExperiencia"];
+            /** Periodo */
+            periodo?: number | null;
+            tipo_trilha: components["schemas"]["TipoTrilha"];
+        };
         /** Pagina[Trilha] */
         Pagina_Trilha_: {
             /** Itens */
@@ -916,6 +1102,8 @@ export interface components {
             nivel_experiencia: components["schemas"]["NivelExperiencia"];
             /** Nome Exibicao */
             nome_exibicao: string;
+            /** Onboarding Concluido Em */
+            onboarding_concluido_em?: string | null;
             /** Periodo */
             periodo?: number | null;
             preferencias?: components["schemas"]["Preferencias"];
@@ -968,6 +1156,13 @@ export interface components {
             username: string;
             /** Xp Total */
             xp_total: number;
+        };
+        /** PeriodoCurso */
+        PeriodoCurso: {
+            /** Disciplinas */
+            disciplinas: string[];
+            /** Numero */
+            numero: number;
         };
         /**
          * Preferencias
@@ -1055,6 +1250,12 @@ export interface components {
             token_type: string;
             usuario: components["schemas"]["UsuarioAutenticado"];
         };
+        /**
+         * StatusEmenta
+         * @description Processamento do PDF enviado no onboarding (telas 14 e 15).
+         * @enum {string}
+         */
+        StatusEmenta: "pendente" | "processando" | "processada" | "falhou";
         /**
          * StatusProgresso
          * @enum {string}
@@ -1745,6 +1946,128 @@ export interface operations {
             };
         };
     };
+    listarPeriodos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                curso_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeriodoCurso"][];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    enviarEmenta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_enviarEmenta"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmentaStatus"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterEmenta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ementa_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmentaStatus"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
     registrarCheckin: {
         parameters: {
             query?: never;
@@ -1799,6 +2122,129 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Painel"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    buscarInstituicoes: {
+        parameters: {
+            query?: {
+                busca?: string;
+                limite?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstituicaoResumo"][];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    listarCursos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                instituicao_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CursoResumo"][];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    concluirOnboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Onboarding"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Perfil"];
                 };
             };
             /** @description Dados inválidos */
