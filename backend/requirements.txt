@@ -1,19 +1,19 @@
-fastapi==0.141.1
-uvicorn[standard]==0.53.0
-pydantic==2.13.5
-pydantic-settings==2.15.0
-python-dotenv==1.2.3
-sqlalchemy==2.0.54
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+pydantic==2.14.1
+pydantic-settings==2.16.1
+python-dotenv==1.2.4
+sqlalchemy==2.1.6
 psycopg[binary]==3.3.6
-alembic==1.20.0
+alembic==1.20.1
 redis[hiredis]==8.1.0
 pyjwt[crypto]==2.15.1
 bcrypt==5.0.0
-authlib==1.8.0
+authlib==1.9.1
 email-validator==2.3.0
 itsdangerous==2.2.0
 # O Authlib 1.8 usa o httpx2 e marca o httpx antigo como obsoleto.
-httpx2==2.13.1
+httpx2==2.16.0
 # Upload da foto do perfil: o FastAPI precisa do multipart para ler o arquivo,
 # e o Pillow reprocessa a imagem (tira o EXIF, padroniza o tamanho).
 python-multipart==0.0.32
