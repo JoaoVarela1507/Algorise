@@ -26,6 +26,8 @@ export interface Usuario {
   periodo?: number
   /** Ausente quando o perfil não veio da API (login de teste, API fora). */
   preferencias?: Preferencias
+  /** Se o aluno já passou pelo onboarding (telas 7 a 15). Ausente fora da API. */
+  onboardingConcluido?: boolean
 }
 
 /** Campos que o aluno pode alterar (perfil e fim do onboarding). */
