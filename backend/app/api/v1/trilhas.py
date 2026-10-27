@@ -111,9 +111,7 @@ def obter_trilha(
     slug: str, usuario: UsuarioOpcional, db: Session = Depends(get_db)
 ) -> TrilhaDetalhe:
     trilha = _buscar(db, slug)
-    estados = servico_progresso.estados_dos_passos(
-        db, usuario_id=usuario.id if usuario else None, trilha=trilha
-    )
+    estados = servico_progresso.estados_dos_passos(db, usuario=usuario, trilha=trilha)
 
     detalhe = TrilhaDetalhe.model_validate(trilha)
     detalhe.modulos = [_com_estado(modulo, estados[modulo.id]) for modulo in detalhe.modulos]
@@ -136,11 +134,10 @@ def obter_passo(
     slug: str, ordem: int, usuario: UsuarioOpcional, db: Session = Depends(get_db)
 ) -> PassoDetalhe:
     trilha = _buscar(db, slug)
-    usuario_id = usuario.id if usuario else None
 
     try:
         modulo = servico_progresso.conteudo_do_passo(
-            db, usuario_id=usuario_id, trilha=trilha, ordem=ordem
+            db, usuario=usuario, trilha=trilha, ordem=ordem
         )
     except LookupError as erro:
         raise ErroDeNegocio(
@@ -157,7 +154,7 @@ def obter_passo(
             details={"trilha": slug, "ordem": ordem},
         ) from erro
 
-    estados = servico_progresso.estados_dos_passos(db, usuario_id=usuario_id, trilha=trilha)
+    estados = servico_progresso.estados_dos_passos(db, usuario=usuario, trilha=trilha)
     ordens = sorted(m.ordem for m in trilha.modulos)
 
     # `model_validate` direto não serve: `PassoDetalhe` pede campos que não
@@ -213,7 +210,7 @@ def concluir_passo(
 
     try:
         modulo = servico_progresso.conteudo_do_passo(
-            db, usuario_id=usuario.id, trilha=trilha, ordem=ordem
+            db, usuario=usuario, trilha=trilha, ordem=ordem
         )
     except LookupError as erro:
         raise ErroDeNegocio(

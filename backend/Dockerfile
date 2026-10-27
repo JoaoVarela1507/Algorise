@@ -19,8 +19,9 @@ COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini .
 
-# A API não precisa de root para servir HTTP.
-RUN useradd --create-home --uid 1000 algorise && chown -R algorise:algorise /app
+# A API não precisa de root para servir HTTP. A pasta das fotos do perfil nasce
+# aqui para o volume do compose herdar o dono e o usuário sem root poder gravar.
+RUN mkdir -p /app/media/avatares     && useradd --create-home --uid 1000 algorise && chown -R algorise:algorise /app
 USER algorise
 
 EXPOSE 8000

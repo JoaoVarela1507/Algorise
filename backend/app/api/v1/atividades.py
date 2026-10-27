@@ -114,7 +114,7 @@ def _atividade_liberada(
     trilha = modulo.trilha
 
     try:
-        progresso.conteudo_do_passo(db, usuario_id=usuario.id, trilha=trilha, ordem=modulo.ordem)
+        progresso.conteudo_do_passo(db, usuario=usuario, trilha=trilha, ordem=modulo.ordem)
     except progresso.PassoBloqueado as erro:
         raise ErroDeNegocio(
             status_code=status.HTTP_403_FORBIDDEN,

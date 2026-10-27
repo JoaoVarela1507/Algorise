@@ -56,6 +56,10 @@ export default defineConfig({
         DATABASE_URL: 'sqlite:///./e2e.db',
         REDIS_URL: process.env.REDIS_URL ?? 'redis://127.0.0.1:6379/1',
         FRONTEND_ORIGIN: `http://127.0.0.1:${PORTA_WEB}`,
+        // Todo teste cria a própria conta, e todos saem do mesmo IP: com o
+        // limite de produção (20 por minuto), a suíte esbarra nele no meio. O
+        // rate limit tem os testes dele no pytest.
+        RATE_LIMIT_AUTH_REQUISICOES: '1000',
       },
     },
     {
