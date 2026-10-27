@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     ia_provedor: str = "ollama"
     ollama_url: str = "http://localhost:11434"
     ollama_modelo: str = "llama3.2"
+    # Embedding do vault das skills (#200). Multilíngue, porque o conteúdo é em
+    # português; a dimensão dele (1024) está fixa na tabela `vault_trechos`.
+    ollama_modelo_embedding: str = "bge-m3"
 
     # Segundos. A leitura é o intervalo máximo entre dois pedaços da resposta, e
     # não o tempo total: o primeiro pedaço demora quando o Ollama ainda está
