@@ -375,6 +375,47 @@ texto (escaneado), com senha, corrompido ou com mais de `MAXIMO_PAGINAS_EMENTA`
 páginas termina em `falhou`, com o motivo escrito para o aluno. O mesmo PDF
 enviado de novo é reconhecido pelo SHA-256 e reaproveita o texto.
 
+### Chat com IA
+
+`POST /api/v1/chat/mensagens` recebe `{conteudo, conversa_id?, modo}` e responde
+em `text/event-stream`: `chat.conversa` (com a pergunta já gravada), um
+`chat.token` por pedaço e `chat.fim`, ou `chat.erro` se a IA parar no meio. A
+tabela de eventos está no `/docs`.
+
+- **IA fora antes do primeiro pedaço:** 503 `ia_indisponivel`, no formato de erro de
+  sempre, e nada é gravado. É por isso que a rota espera o primeiro pedaço antes
+  de responder.
+- **IA fora no meio, ou o aluno fecha a aba:** o que já foi gerado fica gravado
+  com `incompleta = true`.
+- **Contexto:** o prompt do tutor leva o nível, o curso, o período e a trilha em
+  andamento do aluno, e as últimas `CHAT_JANELA_HISTORICO` mensagens da conversa.
+- **Limites:** o modo (`rapido`, `medio`, `detalhado`) muda a instrução e o teto de
+  tokens. A mensagem tem até `CHAT_MAXIMO_CARACTERES`, e o aluno tem o
+  `RATE_LIMIT_CHAT_*` por janela.
+
+A IA mora em `app/ia/`, separada de quem a usa:
+
+| Arquivo | O que tem |
+| --- | --- |
+| `base.py` | o contrato: `ProvedorIA.gerar(mensagens, max_tokens)` devolve os pedaços |
+| `ollama.py` | o cliente do Ollama (`httpx2`), com timeout e nova tentativa só antes do primeiro pedaço |
+| `eco.py` | provedor de teste: devolve a pergunta, sem rede |
+| `provedor.py` | qual dos dois atende, conforme `IA_PROVEDOR` |
+| `skills/` | cada uso da IA com o seu prompt e os seus limites; o tutor do chat é o primeiro |
+
+Uma skill não recebe `Session` nem `Usuario`, só o que precisa já em texto. Assim
+o prompt muda num lugar só, e o teste dele não precisa de banco. Uma skill nova
+(a leitura da ementa da #38, por exemplo) é um arquivo novo em `skills/`.
+
+**Ollama na máquina:** instale o Ollama, rode `ollama pull llama3.2` e deixe o
+`.env` como no `.env.example`. No `docker compose up`, o serviço `ollama-modelo`
+baixa o modelo de `OLLAMA_MODELO` uma vez, no volume `ollama_data`. Sem o Ollama,
+`IA_PROVEDOR=eco` deixa o chat funcionando com a resposta de teste.
+
+**GPU:** o Ollama no Docker roda na CPU. Com GPU NVIDIA e o NVIDIA Container
+Toolkit, acrescente ao serviço `ollama` um
+`deploy.resources.reservations.devices` com `capabilities: [gpu]`.
+
 ### Gamificação
 
 | Rota | O que faz |
@@ -464,7 +505,8 @@ app/
   core/          configuração, conexões (PostgreSQL, Redis) e cache
   models/        modelos SQLAlchemy (um arquivo por área do domínio)
   schemas/       schemas Pydantic (contrato da API, espelham os types do frontend)
-  services/      regras de negócio (ex.: geração de trilhas, integração com IA)
+  services/      regras de negócio (ex.: geração de trilhas, o chat)
+  ia/            provedor de IA (Ollama) e as skills, cada uso da IA com seu prompt
   tarefas/       rotinas de manutenção rodadas fora da API (ex.: expurgo)
 scripts/         utilitários de linha de comando (ex.: exportar o OpenAPI)
   main.py        cria a instância do FastAPI (app) e registra as rotas

@@ -7,6 +7,8 @@ from app import __version__
 # a subir com ele (ver `_conferir_segredo`).
 SEGREDO_DE_DESENVOLVIMENTO = "inseguro-so-para-desenvolvimento"
 
+PROVEDORES_DE_IA = ("ollama", "eco")
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -48,6 +50,27 @@ class Settings(BaseSettings):
     # Janela e teto do rate limit do chat, que custa chamada de IA por request.
     rate_limit_chat_requisicoes: int = 20
     rate_limit_chat_janela: int = 60
+
+    # IA do chat (#11): um modelo só, servido pelo Ollama. `eco` é o provedor de
+    # teste, que responde sem rede — para o E2E e para rodar sem o Ollama; em
+    # produção a aplicação não sobe com ele.
+    ia_provedor: str = "ollama"
+    ollama_url: str = "http://localhost:11434"
+    ollama_modelo: str = "llama3.2"
+
+    # Segundos. A leitura é o intervalo máximo entre dois pedaços da resposta, e
+    # não o tempo total: o primeiro pedaço demora quando o Ollama ainda está
+    # carregando o modelo na memória.
+    ia_timeout_conexao: float = 5
+    ia_timeout_leitura: float = 120
+    # Tentativas contra o Ollama fora, só antes do primeiro pedaço: depois dele,
+    # tentar de novo repetiria o texto que o aluno já viu.
+    ia_tentativas: int = 2
+
+    # Teto da mensagem do aluno, em caracteres, e quantas mensagens anteriores
+    # da conversa vão como contexto para o modelo.
+    chat_maximo_caracteres: int = 4000
+    chat_janela_historico: int = 20
 
     # O refresh token vive no Redis e expira sozinho. O prazo longo é o do
     # "manter-se conectado" da tela 5; sem marcar, vale uma semana.
@@ -139,6 +162,13 @@ class Settings(BaseSettings):
         # credenciais entrega a API para qualquer site que o aluno abrir.
         if self.environment == "production" and "*" in self.frontend_origin:
             raise ValueError("FRONTEND_ORIGIN não pode ter '*' em produção")
+
+        if self.ia_provedor not in PROVEDORES_DE_IA:
+            raise ValueError(f"IA_PROVEDOR precisa ser um de: {', '.join(PROVEDORES_DE_IA)}")
+        # O `eco` devolve a pergunta do aluno: em produção, seria um chat que
+        # finge responder.
+        if self.environment == "production" and self.ia_provedor != "ollama":
+            raise ValueError("Em produção, IA_PROVEDOR precisa ser 'ollama'")
         return self
 
 

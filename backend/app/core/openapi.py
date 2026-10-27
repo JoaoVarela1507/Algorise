@@ -26,6 +26,7 @@ TAGS = [
     {"name": "ranking", "description": "Pódio e classificação por XP."},
     {"name": "academico", "description": "Instituições, cursos e períodos do onboarding."},
     {"name": "ementas", "description": "Upload da ementa em PDF e o status da leitura."},
+    {"name": "chat", "description": "Chat com o tutor de IA, com a resposta em streaming."},
     {"name": "health", "description": "Vivo e pronto para servir. Fora do contrato versionado."},
     {"name": "version", "description": "Versão, commit e ambiente da API."},
 ]

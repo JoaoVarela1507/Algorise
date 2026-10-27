@@ -547,6 +547,16 @@
         "title": "Login",
         "type": "object"
       },
+      "ModoResposta": {
+        "description": "Quanto o tutor se aprofunda (seletor do campo de mensagem, tela 21).",
+        "enum": [
+          "rapido",
+          "medio",
+          "detalhado"
+        ],
+        "title": "ModoResposta",
+        "type": "string"
+      },
       "ModuloDetalhe": {
         "properties": {
           "atividades": {
@@ -623,6 +633,39 @@
         ],
         "title": "NivelExperiencia",
         "type": "string"
+      },
+      "NovaMensagem": {
+        "properties": {
+          "conteudo": {
+            "description": "A pergunta do aluno",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Conteudo",
+            "type": "string"
+          },
+          "conversa_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Conversa em que a mensagem entra. Sem ele, abre uma nova.",
+            "title": "Conversa Id"
+          },
+          "modo": {
+            "$ref": "#/components/schemas/ModoResposta",
+            "default": "medio",
+            "description": "Quanto o tutor se aprofunda na resposta"
+          }
+        },
+        "required": [
+          "conteudo"
+        ],
+        "title": "NovaMensagem",
+        "type": "object"
       },
       "Onboarding": {
         "description": "O fim do onboarding, numa chamada só (telas 7 a 15).\n\nInstituição e curso vêm de um de dois jeitos: pelo `id`, quando o aluno\nescolheu uma sugestão do autocomplete, ou pelo nome, quando digitou algo\nque não está no catálogo. O texto livre não trava o fluxo: vira um registro\ndo aluno, que só não aparece como sugestão para os outros.\n\nÉ o retrato completo do onboarding: o que não vier fica vazio no perfil.",
@@ -2404,6 +2447,89 @@
         ]
       }
     },
+    "/api/v1/chat/mensagens": {
+      "post": {
+        "description": "Responde em `text/event-stream`, um evento por pedaço da resposta:\n\n| Evento | Dados | Quando |\n| --- | --- | --- |\n| `chat.conversa` | `conversa_id`, `titulo`, `mensagem_id` | primeiro, com a pergunta já gravada |\n| `chat.token` | `texto` | a cada pedaço da resposta |\n| `chat.fim` | `mensagem_id` | resposta completa e gravada |\n| `chat.erro` | `code`, `message`, `mensagem_id` | a IA parou no meio; o parcial fica gravado |\n\nA IA fora do ar **antes** do primeiro pedaço responde 503 no formato de erro da\nAPI, sem gravar a pergunta: o aluno tenta de novo sem deixar pergunta órfã no\nhistórico.",
+        "operationId": "enviarMensagem",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NovaMensagem"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {}
+            },
+            "description": "Resposta em streaming"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Conversa não encontrada"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Mensagens demais em pouco tempo"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "IA fora do ar"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Envia uma mensagem ao tutor e recebe a resposta em streaming",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
     "/api/v1/cursos/{curso_id}/periodos": {
       "get": {
         "operationId": "listarPeriodos",
@@ -4037,6 +4163,10 @@
     {
       "description": "Upload da ementa em PDF e o status da leitura.",
       "name": "ementas"
+    },
+    {
+      "description": "Chat com o tutor de IA, com a resposta em streaming.",
+      "name": "chat"
     },
     {
       "description": "Vivo e pronto para servir. Fora do contrato versionado.",
