@@ -11,6 +11,7 @@ from app.models.enums import (
     OrigemXP,
     StatusEmenta,
     StatusProgresso,
+    TamanhoFonte,
     TipoAtividade,
     TipoTrilha,
 )
@@ -36,6 +37,7 @@ __all__ = [
     "StatusEmenta",
     "StatusProgresso",
     "Streak",
+    "TamanhoFonte",
     "TimestampMixin",
     "TipoAtividade",
     "TipoTrilha",

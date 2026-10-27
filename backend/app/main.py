@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api import infra, v1
@@ -8,6 +9,7 @@ from app.core.erros import registrar_handlers
 from app.core.openapi import RESPOSTAS_PADRAO, TAGS, gerar_operation_id
 from app.core.protecao_http import ProtecaoHTTP
 from app.core.rastreio import Rastreio
+from app.services import avatar
 
 app = FastAPI(
     title=settings.app_name,
@@ -63,3 +65,8 @@ registrar_handlers(app)
 
 app.include_router(infra.router)
 app.include_router(v1.router)
+
+# Fotos do perfil. Só a pasta dos avatares, e não `diretorio_midia` inteiro: o
+# que mais for parar lá (a ementa em PDF, #28) não é público.
+avatar.diretorio().mkdir(parents=True, exist_ok=True)
+app.mount("/media/avatares", StaticFiles(directory=avatar.diretorio()), name="avatares")

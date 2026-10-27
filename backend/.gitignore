@@ -13,3 +13,6 @@ e2e.db
 .coverage
 coverage.xml
 htmlcov/
+
+# Arquivos enviados pelos alunos (foto do perfil). Ver `diretorio_midia`.
+media/

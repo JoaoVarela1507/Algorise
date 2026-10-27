@@ -211,10 +211,12 @@ python -m app.tarefas.expurgo
 ```
 
 Ele é idempotente, e atrasar um dia só adia o expurgo. Não há nada para
-anonimizar hoje: todas as tabelas com dado do aluno apagam em cascata. **Toda
-tabela nova com `usuario_id` entra na exportação sozinha** (ela é descoberta pelo
-mapeamento), mas precisa de `ondelete="CASCADE"` para sair no expurgo, e de RLS
-na migração.
+anonimizar hoje: todas as tabelas com dado do aluno apagam em cascata, e a foto
+do perfil sai do disco logo depois. **Toda tabela nova com `usuario_id` entra na
+exportação sozinha** (ela é descoberta pelo mapeamento), mas precisa de
+`ondelete="CASCADE"` para sair no expurgo, e de RLS na migração. Se ela tiver
+`relationship` a partir de `Usuario`, ele precisa de `cascade="all, delete-orphan"`:
+sem isso o ORM tenta zerar o `usuario_id` antes do `DELETE`, e o expurgo estoura.
 
 ## Testes
 
@@ -300,13 +302,48 @@ devolve 422 dizendo quais valem — o valor vira nome de coluna, então a lista 
 **Quem decide o que está liberado é o servidor.** O cadeado da tela 26 é
 decoração: `app/services/progresso.py` calcula o estado de cada passo a partir do
 que está em `progresso_usuario`, e pedir um passo bloqueado direto na API
-responde 403. O primeiro passo nasce aberto; o passo N abre quando o N-1 fecha.
+responde 403. Quanto abre depende do modo de trilha do aluno:
+
+| Modo | O que fica liberado |
+| --- | --- |
+| guiada | o primeiro passo; o passo N abre quando o N-1 fecha |
+| livre | todos os passos, na ordem que o aluno quiser |
+| mista | em ordem nas trilhas do período do aluno, livre nas demais (sem período, em ordem) |
+
+O estado é calculado a cada leitura, então trocar de modo não grava nem apaga
+nada: o que foi concluído continua concluído, inclusive o que o aluno fechou fora
+de ordem no modo livre.
 
 O progresso **não entra no cache do catálogo**. A página fica num cache
 compartilhado, igual para todo mundo, e o "3/10" de cada aluno é sobreposto no
 request, com uma consulta só para a página inteira. Assim não existe uma cópia do
 catálogo por aluno, e concluir um passo aparece na hora, sem esperar TTL nem
 invalidação.
+
+### Perfil
+
+| Rota | O que faz |
+| --- | --- |
+| `GET /api/v1/usuarios/me` | perfil completo, com nível, streak e preferências |
+| `PATCH /api/v1/usuarios/me` | nome, nível em programação e dados do onboarding |
+| `PATCH /api/v1/usuarios/me/preferencias` | tamanho da fonte, alto contraste e animações |
+| `PATCH /api/v1/usuarios/me/trilha` | troca entre guiada, livre e mista |
+| `PUT /api/v1/usuarios/me/avatar` | troca a foto (multipart, campo `arquivo`) |
+| `DELETE /api/v1/usuarios/me/avatar` | volta para as iniciais |
+| `GET /api/v1/usuarios/{username}` | perfil reduzido de outro aluno, para o ranking |
+
+Toda escrita é sobre `/me`: não existe rota que receba o id de outra pessoa para
+alterar. O perfil público traz só o que o ranking já mostra, mais nível e
+streak; e-mail, instituição e curso ficam de fora, e conta com exclusão agendada
+responde 404.
+
+A foto **nunca é gravada como chegou** (`app/services/avatar.py`): o Pillow abre o
+arquivo, recusa o que não for PNG, JPEG ou WebP pelo conteúdo (e não pela
+extensão), recorta em 256×256 e salva de novo em WebP. Com isso o EXIF da
+original, que pode ter a localização GPS, fica para trás. O teto é
+`TAMANHO_MAXIMO_AVATAR` (2 MB). O arquivo vai para `DIRETORIO_MIDIA/avatares`
+e é servido em `/media/avatares`; só essa subpasta é pública. No compose ela
+fica no volume `midia`.
 
 ### Gamificação
 
