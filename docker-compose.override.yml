@@ -26,6 +26,15 @@ services:
   frontend:
     build:
       target: dev
+    # O `node_modules` mora num volume nomeado (ver abaixo), que o Docker
+    # popula **uma vez** e nunca mais atualiza: `up --build` reconstrói a imagem
+    # e o container continua vendo as dependências antigas. O sintoma aparece
+    # longe daqui — "Failed to resolve import" numa biblioteca que está no
+    # package.json. Reconciliar na subida custa segundos e evita isso.
+    #
+    # `--no-save` para a instalação não reescrever o `package-lock.json` que
+    # está montado do host.
+    command: sh -c "npm install --no-save && npm run dev -- --host 0.0.0.0"
     ports: !override
       - '5173:5173'
     environment:

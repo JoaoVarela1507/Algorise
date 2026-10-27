@@ -26,7 +26,18 @@ docker compose up
 - Redis: `localhost:6379`
 
 Editar arquivos em `frontend/src` ou `backend/app` recarrega sozinho. Depois de
-mudar `package.json` ou `requirements.txt`, rode `docker compose up --build`.
+mudar `requirements.txt`, rode `docker compose up --build`.
+
+Dependência nova no `frontend/package.json` o container resolve sozinho: ele roda
+`npm install` ao subir. Se ainda assim aparecer um **"Failed to resolve import"**
+de uma biblioteca que está no `package.json`, é o volume de `node_modules` com
+conteúdo antigo — apague-o e suba de novo:
+
+```bash
+docker compose down
+docker volume rm algorise_frontend_node_modules
+docker compose up --build
+```
 
 Para derrubar tudo: `docker compose down` (com `-v` apaga também os dados do
 banco).

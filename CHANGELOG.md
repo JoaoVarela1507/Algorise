@@ -14,6 +14,18 @@ O tipo do commit define o bump:
 - `feat!: ...` ou `BREAKING CHANGE:` no corpo — major (**1**.0.0)
 - `chore:`, `docs:`, `test:` — não geram release
 
+## [0.13.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.12.0...v0.13.0) (2026-10-27)
+
+
+### Adicionado
+
+* perfil com preferencias, modo de trilha, avatar e perfil publico ([#183](https://github.com/JoaoVarela1507/Algorise/issues/183)) ([94aecc2](https://github.com/JoaoVarela1507/Algorise/commit/94aecc243a98716c7130209c5db56802ea5c148f))
+
+
+### Corrigido
+
+* resolver dependencia do frontend faltando no container ([#177](https://github.com/JoaoVarela1507/Algorise/issues/177)) ([6c47123](https://github.com/JoaoVarela1507/Algorise/commit/6c471231c7b4ddc905244d1e1e6cdc35128704c2))
+
 ## [0.12.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.11.0...v0.12.0) (2026-10-27)
 
 
