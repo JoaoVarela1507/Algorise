@@ -1,5 +1,6 @@
 import { Lock, Play } from 'lucide-react'
-import { useAccessibility } from '@/contexts/AccessibilityContext'
+import { useShallow } from 'zustand/react/shallow'
+import { useAccessibilityStore } from '@/stores/useAccessibilityStore'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -34,7 +35,9 @@ const periodos = [1, 2, 3, 4, 5, 6, 7, 8] as const
  * grande. É a tela que valida o critério de aceite da issue #4.
  */
 export function DesignSystemPage() {
-  const { tamanhoFonte, altoContraste, setTamanhoFonte, setAltoContraste } = useAccessibility()
+  const { tamanhoFonte, altoContraste, setTamanhoFonte, setAltoContraste } = useAccessibilityStore(
+    useShallow((estado) => estado),
+  )
 
   return (
     <div className="flex flex-col gap-8 pb-12">

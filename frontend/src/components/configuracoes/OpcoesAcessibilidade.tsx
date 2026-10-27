@@ -1,7 +1,8 @@
 import { Opcao } from '@/components/configuracoes/Secao'
 import { Segmentado } from '@/components/perfil/Segmentado'
 import { toast } from '@/components/ui/toaster'
-import { useAccessibility } from '@/contexts/AccessibilityContext'
+import { useShallow } from 'zustand/react/shallow'
+import { useAccessibilityStore } from '@/stores/useAccessibilityStore'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Preferencias } from '@/types/usuario'
 
@@ -25,7 +26,7 @@ export function OpcoesAcessibilidade() {
     setTamanhoFonte,
     setAltoContraste,
     setReduzirAnimacoes,
-  } = useAccessibility()
+  } = useAccessibilityStore(useShallow((estado) => estado))
   const { usuario, salvarPreferencias } = useAuth()
 
   function levarParaConta(dados: Partial<Preferencias>) {

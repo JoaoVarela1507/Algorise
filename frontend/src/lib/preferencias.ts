@@ -1,7 +1,8 @@
 /**
- * Preferências do aparelho (tema, fonte, contraste, animações). Ficam no
- * localStorage porque valem para o navegador, não para a conta: quem usa alto
- * contraste no notebook não necessariamente quer no celular.
+ * Lê uma preferência do aparelho (tema, fonte, contraste, animações) no
+ * formato de antes dos stores, uma chave por preferência. Hoje elas ficam no
+ * `persist` de cada store; isto só serve de valor inicial, para quem já tinha
+ * escolhido não perder a escolha.
  */
 export function lerPreferencia<T>(chave: string, padrao: T): T {
   try {
@@ -9,13 +10,5 @@ export function lerPreferencia<T>(chave: string, padrao: T): T {
     return salvo === null ? padrao : (JSON.parse(salvo) as T)
   } catch {
     return padrao
-  }
-}
-
-export function salvarPreferencia(chave: string, valor: unknown) {
-  try {
-    localStorage.setItem(`algorise:${chave}`, JSON.stringify(valor))
-  } catch {
-    // Sem armazenamento a preferência vale só até recarregar.
   }
 }

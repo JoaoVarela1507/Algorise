@@ -31,7 +31,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toaster'
 import { useAuth } from '@/contexts/AuthContext'
-import { useTheme, type PreferenciaTema } from '@/contexts/ThemeContext'
+import { useThemeStore, type PreferenciaTema } from '@/stores/useThemeStore'
 import { appVersion } from '@/lib/version'
 import { cn } from '@/lib/utils'
 import { solicitarRedefinicao } from '@/services/auth'
@@ -128,7 +128,8 @@ function SecaoConta({ usuario }: { usuario: Usuario }) {
 }
 
 function SecaoAparencia() {
-  const { preferencia, setPreferencia } = useTheme()
+  const preferencia = useThemeStore((estado) => estado.preferencia)
+  const setPreferencia = useThemeStore((estado) => estado.setPreferencia)
 
   return (
     <Secao icone={Palette} titulo="Aparência">

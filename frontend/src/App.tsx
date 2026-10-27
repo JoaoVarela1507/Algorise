@@ -4,19 +4,20 @@ import { MotionConfig } from 'framer-motion'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { criarQueryClient } from '@/lib/query'
-import { AccessibilityProvider, useAccessibility } from '@/contexts/AccessibilityContext'
 import { AuthProvider } from '@/contexts/AuthContext'
-import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AppRoutes } from '@/routes/AppRoutes'
 import { PreferenciasDaConta } from '@/components/configuracoes/PreferenciasDaConta'
 import { Toaster } from '@/components/ui/toaster'
+import { useAccessibilityStore } from '@/stores/useAccessibilityStore'
+// Aplica o tema no <html> já ao carregar, antes de qualquer tela pedir.
+import '@/stores/useThemeStore'
 
 /**
  * Animações do app inteiro: somem quando o sistema pede menos movimento
  * ("user") ou quando o aluno liga "Reduzir animações" nas Configurações.
  */
 function ConfiguracaoAnimacoes({ children }: { children: ReactNode }) {
-  const { reduzirAnimacoes } = useAccessibility()
+  const reduzirAnimacoes = useAccessibilityStore((estado) => estado.reduzirAnimacoes)
   return (
     <MotionConfig reducedMotion={reduzirAnimacoes ? 'always' : 'user'}>{children}</MotionConfig>
   )
@@ -30,17 +31,13 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <ThemeProvider>
-          <AccessibilityProvider>
-            <ConfiguracaoAnimacoes>
-              <AuthProvider>
-                <PreferenciasDaConta />
-                <AppRoutes />
-                <Toaster />
-              </AuthProvider>
-            </ConfiguracaoAnimacoes>
-          </AccessibilityProvider>
-        </ThemeProvider>
+        <ConfiguracaoAnimacoes>
+          <AuthProvider>
+            <PreferenciasDaConta />
+            <AppRoutes />
+            <Toaster />
+          </AuthProvider>
+        </ConfiguracaoAnimacoes>
       </BrowserRouter>
       {/* Só no `npm run dev`: o Vite remove isto do build de produção. */}
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
