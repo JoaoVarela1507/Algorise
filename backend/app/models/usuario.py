@@ -63,6 +63,11 @@ class Usuario(Base, TimestampMixin):
     consentimentos: Mapped[list["Consentimento"]] = relationship(
         back_populates="usuario", cascade="all, delete-orphan"
     )
+    # Mesmo motivo do streak: o expurgo da conta apaga as conversas pelo ORM,
+    # que também vale no SQLite da suíte, onde a FK não cascateia sozinha.
+    conversas: Mapped[list["Conversa"]] = relationship(  # noqa: F821
+        cascade="all, delete-orphan"
+    )
 
     @property
     def tem_senha(self) -> bool:

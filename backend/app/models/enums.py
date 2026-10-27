@@ -61,3 +61,18 @@ class OrigemXP(str, Enum):
     modulo = "modulo"
     trilha = "trilha"
     desafio = "desafio"
+
+
+class PapelMensagem(str, Enum):
+    """Quem escreveu a mensagem do chat (telas 21 a 23)."""
+
+    usuario = "usuario"
+    assistente = "assistente"
+
+
+class ModoResposta(str, Enum):
+    """Quanto o tutor se aprofunda (seletor do campo de mensagem, tela 21)."""
+
+    rapido = "rapido"
+    medio = "medio"
+    detalhado = "detalhado"

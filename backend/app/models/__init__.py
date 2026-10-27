@@ -6,9 +6,12 @@ o Alembic depende para detectar as tabelas.
 
 from app.models.academico import Curso, Ementa, Instituicao
 from app.models.base import Base, TimestampMixin
+from app.models.chat import Conversa, MensagemChat
 from app.models.enums import (
+    ModoResposta,
     NivelExperiencia,
     OrigemXP,
+    PapelMensagem,
     StatusEmenta,
     StatusProgresso,
     TamanhoFonte,
@@ -26,12 +29,16 @@ __all__ = [
     "Certificado",
     "Consentimento",
     "ContaOAuth",
+    "Conversa",
     "Curso",
     "Ementa",
     "Instituicao",
+    "MensagemChat",
+    "ModoResposta",
     "Modulo",
     "NivelExperiencia",
     "OrigemXP",
+    "PapelMensagem",
     "ProgressoUsuario",
     "RespostaUsuario",
     "StatusEmenta",

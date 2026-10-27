@@ -15,6 +15,7 @@ from app.api.v1 import (
     academico,
     atividades,
     auth,
+    chat,
     ementas,
     gamificacao,
     oauth,
@@ -38,3 +39,4 @@ router.include_router(usuarios.router)
 router.include_router(onboarding.router)
 router.include_router(academico.router)
 router.include_router(ementas.router)
+router.include_router(chat.router)
