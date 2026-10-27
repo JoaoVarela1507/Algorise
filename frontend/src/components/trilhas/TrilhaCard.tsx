@@ -116,7 +116,7 @@ export function TrilhaCard({ trilha }: { trilha: TrilhaResumo }) {
 
   return (
     <Link
-      to={`/trilhas/${trilha.id}/questao/1`}
+      to={`/trilhas/${trilha.id}`}
       className={cn(
         base,
         'hover:-translate-y-1 hover:border-primary/50 hover:shadow-md',

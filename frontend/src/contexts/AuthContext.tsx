@@ -1,9 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/components/ui/toaster'
 import { ehLoginTeste, loginTesteHabilitado, USUARIO_TESTE } from '@/lib/loginTeste'
+import { chaves } from '@/lib/query'
 import { configurarAutenticacao } from '@/services/api'
 import * as auth from '@/services/auth'
-import type { AtualizacaoPerfil, Usuario } from '@/types/usuario'
+import type { AtualizacaoPerfil, Preferencias, TipoTrilha, Usuario } from '@/types/usuario'
 
 interface AuthContextValue {
   usuario: Usuario | null
@@ -17,6 +19,12 @@ interface AuthContextValue {
   atualizarUsuario: (dados: Partial<Usuario>) => void
   /** Salva nível, trilha, instituição etc. na API (`PATCH /usuarios/me`). */
   atualizarPerfil: (dados: AtualizacaoPerfil) => Promise<void>
+  /** Guiada, Livre ou Mista (`PATCH /usuarios/me/trilha`). Recarrega as trilhas. */
+  trocarModoTrilha: (modo: TipoTrilha) => Promise<void>
+  /** Leva as preferências de acessibilidade para a conta. */
+  salvarPreferencias: (dados: Partial<Preferencias>) => Promise<void>
+  enviarAvatar: (arquivo: File) => Promise<void>
+  removerAvatar: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -29,6 +37,7 @@ function sessaoTesteGuardada() {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
   const [usuario, setUsuario] = useState<Usuario | null>(() =>
     sessaoTesteGuardada() ? USUARIO_TESTE : null,
   )
@@ -119,6 +128,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [atualizarUsuario],
   )
 
+  const trocarModoTrilha = useCallback(
+    async (modo: TipoTrilha) => {
+      if (sessaoTesteGuardada()) {
+        atualizarUsuario({ tipoTrilha: modo })
+      } else {
+        setUsuario(await auth.trocarModoTrilha(modo))
+      }
+      // Cada modo libera passos diferentes: o cadeado em cache estaria errado.
+      void queryClient.invalidateQueries({ queryKey: chaves.trilhas.todas })
+    },
+    [atualizarUsuario, queryClient],
+  )
+
+  const salvarPreferencias = useCallback(async (dados: Partial<Preferencias>) => {
+    // Sem conta de verdade, o navegador já guardou: não há para onde levar.
+    if (sessaoTesteGuardada()) return
+    const preferencias = await auth.salvarPreferencias(dados)
+    setUsuario((atual) => (atual ? { ...atual, preferencias } : atual))
+  }, [])
+
+  const enviarAvatar = useCallback(async (arquivo: File) => {
+    if (sessaoTesteGuardada()) {
+      throw new Error('A foto do perfil não está disponível no login de teste.')
+    }
+    setUsuario(await auth.enviarAvatar(arquivo))
+  }, [])
+
+  const removerAvatar = useCallback(async () => {
+    if (sessaoTesteGuardada()) return
+    setUsuario(await auth.removerAvatar())
+  }, [])
+
   return (
     <AuthContext.Provider
       value={{
@@ -130,6 +171,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         atualizarUsuario,
         atualizarPerfil,
+        trocarModoTrilha,
+        salvarPreferencias,
+        enviarAvatar,
+        removerAvatar,
       }}
     >
       {children}

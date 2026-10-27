@@ -4,6 +4,47 @@
  */
 
 export interface paths {
+    "/api/v1/atividades/{atividade_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Enunciado da atividade
+         * @description Nunca inclui o gabarito: a correção é do servidor (`POST .../submissoes`).
+         */
+        get: operations["obterAtividade"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/atividades/{atividade_id}/submissoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tentativas anteriores do aluno
+         * @description Só as do próprio aluno; serve para retomar de onde parou.
+         */
+        get: operations["listarSubmissoes"];
+        put?: never;
+        /** Envia a resposta e recebe a correção */
+        post: operations["submeter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/esqueci-senha": {
         parameters: {
             query?: never;
@@ -172,6 +213,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gamificacao/checkin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Registra o acesso do dia e devolve o streak atualizado
+         * @description Chamar várias vezes no mesmo dia conta uma vez só.
+         */
+        post: operations["registrarCheckin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gamificacao/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * XP, nível e streak do aluno
+         * @description Só leitura: não registra acesso nem mexe no streak.
+         */
+        get: operations["obterPainel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ranking": {
         parameters: {
             query?: never;
@@ -289,6 +370,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/trilhas/{slug}/passos/{ordem}/concluir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fecha o passo e concede o XP
+         * @description Exige ter acertado as atividades corrigíveis do passo. Fechar de novo não paga XP outra vez.
+         */
+        post: operations["concluirPasso"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/usuarios/me": {
         parameters: {
             query?: never;
@@ -313,6 +414,30 @@ export interface paths {
         patch: operations["atualizarPerfil"];
         trace?: never;
     };
+    "/api/v1/usuarios/me/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Enviar Avatar
+         * @description Troca a foto do perfil. A imagem é recortada em quadrado e salva sem metadados.
+         */
+        put: operations["enviarAvatar"];
+        post?: never;
+        /**
+         * Remover Avatar
+         * @description Volta para as iniciais do nome no lugar da foto.
+         */
+        delete: operations["removerAvatar"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/usuarios/me/dados": {
         parameters: {
             query?: never;
@@ -325,6 +450,72 @@ export interface paths {
          * @description Tudo o que o Algorise guarda sobre o aluno, para baixar como arquivo.
          */
         get: operations["exportarMeusDados"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/usuarios/me/preferencias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Atualizar Preferencias
+         * @description Tamanho da fonte, alto contraste e animações. Só o que for enviado muda.
+         */
+        patch: operations["atualizarPreferencias"];
+        trace?: never;
+    };
+    "/api/v1/usuarios/me/trilha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Trocar Modo Trilha
+         * @description Alterna entre Guiada, Livre e Mista sem perder progresso.
+         *
+         *     Muda o que está liberado nas trilhas a partir de agora; o que já foi
+         *     concluído continua concluído.
+         */
+        patch: operations["trocarModoTrilha"];
+        trace?: never;
+    };
+    "/api/v1/usuarios/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obter Perfil Publico
+         * @description Perfil reduzido de outro aluno: o que o ranking já mostra, mais nível e streak.
+         *
+         *     Pede login, como o resto da área do aluno: o perfil existe para quem está
+         *     no ranking, e não para varrer a base de usernames de fora.
+         */
+        get: operations["obterPerfilPublico"];
         put?: never;
         post?: never;
         delete?: never;
@@ -437,6 +628,43 @@ export interface components {
             /** Periodo */
             periodo?: number | null;
             tipo_trilha?: components["schemas"]["TipoTrilha"] | null;
+        };
+        /**
+         * AtualizacaoPreferencias
+         * @description PATCH parcial das preferências: o que não vier fica como está.
+         */
+        AtualizacaoPreferencias: {
+            /** Alto Contraste */
+            alto_contraste?: boolean | null;
+            /** Reduzir Animacoes */
+            reduzir_animacoes?: boolean | null;
+            tamanho_fonte?: components["schemas"]["TamanhoFonte"] | null;
+        };
+        /** Body_enviarAvatar */
+        Body_enviarAvatar: {
+            /**
+             * Arquivo
+             * @description PNG, JPEG ou WebP de até 2 MB
+             */
+            arquivo: string;
+        };
+        /**
+         * Correcao
+         * @description A resposta da submissão.
+         */
+        Correcao: {
+            /** Correta */
+            correta: boolean;
+            /** Em Analise */
+            em_analise: boolean;
+            /** Feedback */
+            feedback: string;
+            /** Tentativa */
+            tentativa: number;
+            /** Xp Ganho */
+            xp_ganho: number;
+            /** Xp Total */
+            xp_total: number;
         };
         /**
          * EntradaRanking
@@ -589,6 +817,36 @@ export interface components {
             total_paginas: number;
         };
         /**
+         * Painel
+         * @description XP, nível e streak do aluno, como as telas mostram.
+         */
+        Painel: {
+            /** Maior Streak */
+            maior_streak: number;
+            /** Nivel */
+            nivel: number;
+            /** Streak Dias */
+            streak_dias: number;
+            /** Xp No Nivel */
+            xp_no_nivel: number;
+            /** Xp Para O Proximo */
+            xp_para_o_proximo: number;
+            /** Xp Total */
+            xp_total: number;
+        };
+        /**
+         * PassoConcluido
+         * @description O que volta ao fechar um passo.
+         */
+        PassoConcluido: {
+            /** Proximo */
+            proximo?: number | null;
+            /** Xp Ganho */
+            xp_ganho: number;
+            /** Xp Total */
+            xp_total: number;
+        };
+        /**
          * PassoDetalhe
          * @description Conteúdo de um passo, com o bastante para a tela 26 se situar.
          */
@@ -650,11 +908,17 @@ export interface components {
             id: number;
             /** Instituicao */
             instituicao?: string | null;
+            /**
+             * Nivel
+             * @default 1
+             */
+            nivel: number;
             nivel_experiencia: components["schemas"]["NivelExperiencia"];
             /** Nome Exibicao */
             nome_exibicao: string;
             /** Periodo */
             periodo?: number | null;
+            preferencias?: components["schemas"]["Preferencias"];
             /**
              * Streak Dias
              * @default 0
@@ -669,10 +933,59 @@ export interface components {
             /** Username */
             username: string;
             /**
+             * Xp No Nivel
+             * @default 0
+             */
+            xp_no_nivel: number;
+            /**
+             * Xp Para Proximo
+             * @default 0
+             */
+            xp_para_proximo: number;
+            /**
              * Xp Total
              * @default 0
              */
             xp_total: number;
+        };
+        /**
+         * PerfilPublico
+         * @description O que um aluno vê de outro (ranking): nada além do que o ranking já mostra.
+         *
+         *     Sem e-mail, instituição, curso ou período: são dados pessoais que o aluno
+         *     informou para o próprio plano de estudos, não para exibir.
+         */
+        PerfilPublico: {
+            /** Avatar Url */
+            avatar_url?: string | null;
+            /** Nivel */
+            nivel: number;
+            /** Nome Exibicao */
+            nome_exibicao: string;
+            /** Streak Dias */
+            streak_dias: number;
+            /** Username */
+            username: string;
+            /** Xp Total */
+            xp_total: number;
+        };
+        /**
+         * Preferencias
+         * @description Acessibilidade escolhida pelo aluno, que vale em qualquer aparelho.
+         */
+        Preferencias: {
+            /**
+             * Alto Contraste
+             * @default false
+             */
+            alto_contraste: boolean;
+            /**
+             * Reduzir Animacoes
+             * @default false
+             */
+            reduzir_animacoes: boolean;
+            /** @default normal */
+            tamanho_fonte: components["schemas"]["TamanhoFonte"];
         };
         /** Ranking */
         Ranking: {
@@ -747,6 +1060,45 @@ export interface components {
          * @enum {string}
          */
         StatusProgresso: "bloqueado" | "em-andamento" | "concluido";
+        /**
+         * Submissao
+         * @description O que o aluno envia.
+         */
+        Submissao: {
+            /** Conteudo */
+            conteudo: string;
+            /** Tempo Gasto Segundos */
+            tempo_gasto_segundos?: number | null;
+        };
+        /**
+         * TamanhoFonte
+         * @description Preferência de acessibilidade das telas 18 e 19.
+         * @enum {string}
+         */
+        TamanhoFonte: "normal" | "alta";
+        /**
+         * Tentativa
+         * @description Uma tentativa já registrada.
+         */
+        Tentativa: {
+            /** Conteudo */
+            conteudo: string;
+            /** Correta */
+            correta: boolean;
+            /**
+             * Criado Em
+             * Format: date-time
+             */
+            criado_em: string;
+            /** Feedback */
+            feedback?: string | null;
+            /** Id */
+            id: number;
+            /** Tempo Gasto Segundos */
+            tempo_gasto_segundos?: number | null;
+            /** Tentativa */
+            tentativa: number;
+        };
         /**
          * TipoAtividade
          * @description Formato da atividade dentro de um módulo (telas 28 a 34).
@@ -846,6 +1198,10 @@ export interface components {
              */
             total_modulos: number;
         };
+        /** TrocaDeTrilha */
+        TrocaDeTrilha: {
+            tipo_trilha: components["schemas"]["TipoTrilha"];
+        };
         /**
          * UsuarioAutenticado
          * @description O aluno como as telas privadas o veem.
@@ -897,6 +1253,130 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    obterAtividade: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                atividade_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AtividadeResumo"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    listarSubmissoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                atividade_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tentativa"][];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    submeter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                atividade_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Submissao"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Correcao"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
     esqueciSenha: {
         parameters: {
             query?: never;
@@ -1265,6 +1745,82 @@ export interface operations {
             };
         };
     };
+    registrarCheckin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Painel"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterPainel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Painel"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
     obterRanking: {
         parameters: {
             query?: {
@@ -1522,6 +2078,47 @@ export interface operations {
             };
         };
     };
+    concluirPasso: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                ordem: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassoConcluido"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
     obterPerfil: {
         parameters: {
             query?: never;
@@ -1644,6 +2241,86 @@ export interface operations {
             };
         };
     };
+    enviarAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_enviarAvatar"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Perfil"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    removerAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Perfil"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
     exportarMeusDados: {
         parameters: {
             query?: never;
@@ -1660,6 +2337,130 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    atualizarPreferencias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AtualizacaoPreferencias"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preferencias"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    trocarModoTrilha: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrocaDeTrilha"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Perfil"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterPerfilPublico: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilPublico"];
                 };
             };
             /** @description Dados inválidos */

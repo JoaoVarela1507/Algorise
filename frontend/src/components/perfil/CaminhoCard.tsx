@@ -6,18 +6,21 @@ import { Segmentado } from '@/components/perfil/Segmentado'
 import { toast } from '@/components/ui/toaster'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
-import type { AtualizacaoPerfil, Usuario } from '@/types/usuario'
+import type { Usuario } from '@/types/usuario'
 
 /** Modo de trilha (o dropdown "MODO TRILHA GUIADA" do protótipo) e nível. */
 export function CaminhoCard({ usuario }: { usuario: Usuario }) {
-  const { atualizarPerfil } = useAuth()
-  const [salvando, setSalvando] = useState<keyof AtualizacaoPerfil | null>(null)
+  const { atualizarPerfil, trocarModoTrilha } = useAuth()
+  const [salvando, setSalvando] = useState<'tipoTrilha' | 'nivelExperiencia' | null>(null)
 
-  async function salvar(dados: AtualizacaoPerfil, mensagem: string) {
-    const campo = Object.keys(dados)[0] as keyof AtualizacaoPerfil
+  async function salvar(
+    campo: NonNullable<typeof salvando>,
+    acao: () => Promise<void>,
+    mensagem: string,
+  ) {
     setSalvando(campo)
     try {
-      await atualizarPerfil(dados)
+      await acao()
       toast.success(mensagem)
     } catch (erro) {
       toast.error(erro instanceof Error ? erro.message : 'Não foi possível salvar.')
@@ -45,7 +48,8 @@ export function CaminhoCard({ usuario }: { usuario: Usuario }) {
               onClick={() =>
                 !ativa &&
                 salvar(
-                  { tipoTrilha: opcao.valor },
+                  'tipoTrilha',
+                  () => trocarModoTrilha(opcao.valor),
                   `Modo trilha ${opcao.titulo.toLowerCase()} ativado`,
                 )
               }
@@ -89,7 +93,11 @@ export function CaminhoCard({ usuario }: { usuario: Usuario }) {
           valor={usuario.nivelExperiencia}
           desabilitado={salvando !== null}
           onChange={(valor) =>
-            salvar({ nivelExperiencia: valor }, 'Nível em programação atualizado')
+            salvar(
+              'nivelExperiencia',
+              () => atualizarPerfil({ nivelExperiencia: valor }),
+              'Nível em programação atualizado',
+            )
           }
         />
       </div>

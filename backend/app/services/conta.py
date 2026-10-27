@@ -6,7 +6,8 @@ só reativa, some do ranking) e o expurgo apaga tudo depois de
 roubou a sessão; entrar de novo antes dele cancela.
 
 O expurgo não precisa anonimizar nada hoje: todas as tabelas com dado do aluno
-apagam em cascata junto com `usuarios`, e nenhuma delas guarda algo que a lei
+apagam em cascata junto com `usuarios` (e a foto do perfil, que é arquivo, sai
+logo depois), e nenhuma delas guarda algo que a lei
 obrigue a manter. Quando entrar a validação pública de certificados (#32), é lá
 que se decide o que sobrevive à conta.
 """
@@ -21,7 +22,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.seguranca import conferir_senha
 from app.models import Base, Usuario
-from app.services import ranking, sessoes
+from app.services import avatar, ranking, sessoes
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +102,9 @@ def expurgar_vencidas(db: Session, *, agora: datetime | None = None) -> int:
         db.execute(select(Usuario).where(Usuario.exclusao_agendada_para <= agora)).scalars().all()
     )
 
+    # Lidas antes do commit: depois dele as contas apagadas saem da sessão.
+    fotos = [usuario.avatar_url for usuario in vencidas]
+
     for usuario in vencidas:
         # Redis primeiro: se o banco falhar depois, sobra uma conta desativada
         # que o próximo expurgo apaga, e não uma sessão viva de conta apagada.
@@ -109,6 +113,10 @@ def expurgar_vencidas(db: Session, *, agora: datetime | None = None) -> int:
         db.delete(usuario)
 
     db.commit()
+
+    # Depois do commit: se o banco falhar, a conta continua lá e precisa da foto.
+    for foto in fotos:
+        avatar.apagar_arquivo(foto)
     return len(vencidas)
 
 

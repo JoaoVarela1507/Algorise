@@ -11,6 +11,7 @@ from app.models.enums import (
     OrigemXP,
     StatusEmenta,
     StatusProgresso,
+    TamanhoFonte,
     TipoAtividade,
     TipoTrilha,
 )
@@ -40,6 +41,7 @@ class Base(DeclarativeBase):
         StatusProgresso: _enum(StatusProgresso),
         StatusEmenta: _enum(StatusEmenta),
         OrigemXP: _enum(OrigemXP),
+        TamanhoFonte: _enum(TamanhoFonte),
     }
 
 

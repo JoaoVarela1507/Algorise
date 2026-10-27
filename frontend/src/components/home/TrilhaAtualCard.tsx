@@ -87,7 +87,7 @@ export function TrilhaAtualCard({
 
       <div className="mt-auto pt-6">
         <Button asChild full size="lg" className="group">
-          <Link to="/trilhas">
+          <Link to={`/trilhas/${trilha.id}`}>
             {naoComecou ? 'Começar trilha' : 'Continuar trilha'}
             <ArrowRight className="transition-transform group-hover:translate-x-1" />
           </Link>

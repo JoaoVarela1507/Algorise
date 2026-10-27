@@ -1,5 +1,13 @@
 export type NivelExperiencia = 'baixo' | 'medio' | 'alto'
 export type TipoTrilha = 'guiada' | 'livre' | 'mista'
+export type TamanhoFonte = 'normal' | 'alta'
+
+/** Acessibilidade guardada na conta (`PATCH /usuarios/me/preferencias`). */
+export interface Preferencias {
+  tamanhoFonte: TamanhoFonte
+  altoContraste: boolean
+  reduzirAnimacoes: boolean
+}
 
 export interface Usuario {
   id: string
@@ -16,6 +24,8 @@ export interface Usuario {
   instituicao?: string
   curso?: string
   periodo?: number
+  /** Ausente quando o perfil não veio da API (login de teste, API fora). */
+  preferencias?: Preferencias
 }
 
 /** Campos que o aluno pode alterar (perfil e fim do onboarding). */

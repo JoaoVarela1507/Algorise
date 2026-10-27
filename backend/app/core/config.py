@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     cache_ttl_trilhas: int = 300
     cache_ttl_ranking: int = 60
 
+    # Teto de XP por janela, contra farm (#31). Generoso de propósito: o aluno
+    # dedicado passa longe disso, e um script varrendo o catálogo esbarra.
+    xp_maximo_por_janela: int = 500
+    xp_janela_segundos: int = 60 * 60
+
     # Janela e teto do rate limit do chat, que custa chamada de IA por request.
     rate_limit_chat_requisicoes: int = 20
     rate_limit_chat_janela: int = 60
@@ -84,6 +89,13 @@ class Settings(BaseSettings):
     # Teto do corpo de qualquer requisição, em bytes. O maior upload previsto é
     # o PDF da ementa; cada rota de upload aplica o seu limite, menor que este.
     tamanho_maximo_requisicao: int = 10 * 1024 * 1024
+
+    # Onde ficam os arquivos enviados pelos alunos, fora do banco. Só a
+    # subpasta `avatares` é servida publicamente (em `/media/avatares`).
+    diretorio_midia: str = "media"
+
+    # Teto da foto do perfil, em bytes. Acima disso nem chega a ser aberta.
+    tamanho_maximo_avatar: int = 2 * 1024 * 1024
 
     # Versão dos termos de uso e da política de privacidade. Mudar a versão é o
     # que faz um consentimento antigo deixar de valer.

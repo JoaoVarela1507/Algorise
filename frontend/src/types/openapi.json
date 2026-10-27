@@ -135,6 +135,99 @@
         "title": "AtualizacaoPerfil",
         "type": "object"
       },
+      "AtualizacaoPreferencias": {
+        "description": "PATCH parcial das preferências: o que não vier fica como está.",
+        "properties": {
+          "alto_contraste": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alto Contraste"
+          },
+          "reduzir_animacoes": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reduzir Animacoes"
+          },
+          "tamanho_fonte": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TamanhoFonte"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "AtualizacaoPreferencias",
+        "type": "object"
+      },
+      "Body_enviarAvatar": {
+        "properties": {
+          "arquivo": {
+            "contentMediaType": "application/octet-stream",
+            "description": "PNG, JPEG ou WebP de até 2 MB",
+            "title": "Arquivo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "arquivo"
+        ],
+        "title": "Body_enviarAvatar",
+        "type": "object"
+      },
+      "Correcao": {
+        "description": "A resposta da submissão.",
+        "properties": {
+          "correta": {
+            "title": "Correta",
+            "type": "boolean"
+          },
+          "em_analise": {
+            "title": "Em Analise",
+            "type": "boolean"
+          },
+          "feedback": {
+            "title": "Feedback",
+            "type": "string"
+          },
+          "tentativa": {
+            "title": "Tentativa",
+            "type": "integer"
+          },
+          "xp_ganho": {
+            "title": "Xp Ganho",
+            "type": "integer"
+          },
+          "xp_total": {
+            "title": "Xp Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "correta",
+          "em_analise",
+          "feedback",
+          "tentativa",
+          "xp_ganho",
+          "xp_total"
+        ],
+        "title": "Correcao",
+        "type": "object"
+      },
       "EntradaRanking": {
         "description": "Uma linha do pódio ou da lista rolável (telas 16 e 17).",
         "properties": {
@@ -429,6 +522,81 @@
         "title": "Pagina[Trilha]",
         "type": "object"
       },
+      "Painel": {
+        "description": "XP, nível e streak do aluno, como as telas mostram.",
+        "properties": {
+          "maior_streak": {
+            "minimum": 0.0,
+            "title": "Maior Streak",
+            "type": "integer"
+          },
+          "nivel": {
+            "minimum": 1.0,
+            "title": "Nivel",
+            "type": "integer"
+          },
+          "streak_dias": {
+            "minimum": 0.0,
+            "title": "Streak Dias",
+            "type": "integer"
+          },
+          "xp_no_nivel": {
+            "minimum": 0.0,
+            "title": "Xp No Nivel",
+            "type": "integer"
+          },
+          "xp_para_o_proximo": {
+            "minimum": 0.0,
+            "title": "Xp Para O Proximo",
+            "type": "integer"
+          },
+          "xp_total": {
+            "minimum": 0.0,
+            "title": "Xp Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "xp_total",
+          "nivel",
+          "xp_no_nivel",
+          "xp_para_o_proximo",
+          "streak_dias",
+          "maior_streak"
+        ],
+        "title": "Painel",
+        "type": "object"
+      },
+      "PassoConcluido": {
+        "description": "O que volta ao fechar um passo.",
+        "properties": {
+          "proximo": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proximo"
+          },
+          "xp_ganho": {
+            "title": "Xp Ganho",
+            "type": "integer"
+          },
+          "xp_total": {
+            "title": "Xp Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "xp_ganho",
+          "xp_total"
+        ],
+        "title": "PassoConcluido",
+        "type": "object"
+      },
       "PassoDetalhe": {
         "description": "Conteúdo de um passo, com o bastante para a tela 26 se situar.",
         "properties": {
@@ -568,6 +736,11 @@
             ],
             "title": "Instituicao"
           },
+          "nivel": {
+            "default": 1,
+            "title": "Nivel",
+            "type": "integer"
+          },
           "nivel_experiencia": {
             "$ref": "#/components/schemas/NivelExperiencia"
           },
@@ -586,6 +759,9 @@
             ],
             "title": "Periodo"
           },
+          "preferencias": {
+            "$ref": "#/components/schemas/Preferencias"
+          },
           "streak_dias": {
             "default": 0,
             "title": "Streak Dias",
@@ -603,6 +779,16 @@
             "title": "Username",
             "type": "string"
           },
+          "xp_no_nivel": {
+            "default": 0,
+            "title": "Xp No Nivel",
+            "type": "integer"
+          },
+          "xp_para_proximo": {
+            "default": 0,
+            "title": "Xp Para Proximo",
+            "type": "integer"
+          },
           "xp_total": {
             "default": 0,
             "title": "Xp Total",
@@ -618,6 +804,72 @@
           "tipo_trilha"
         ],
         "title": "Perfil",
+        "type": "object"
+      },
+      "PerfilPublico": {
+        "description": "O que um aluno vê de outro (ranking): nada além do que o ranking já mostra.\n\nSem e-mail, instituição, curso ou período: são dados pessoais que o aluno\ninformou para o próprio plano de estudos, não para exibir.",
+        "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "nivel": {
+            "title": "Nivel",
+            "type": "integer"
+          },
+          "nome_exibicao": {
+            "title": "Nome Exibicao",
+            "type": "string"
+          },
+          "streak_dias": {
+            "title": "Streak Dias",
+            "type": "integer"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "xp_total": {
+            "title": "Xp Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "username",
+          "nome_exibicao",
+          "nivel",
+          "xp_total",
+          "streak_dias"
+        ],
+        "title": "PerfilPublico",
+        "type": "object"
+      },
+      "Preferencias": {
+        "description": "Acessibilidade escolhida pelo aluno, que vale em qualquer aparelho.",
+        "properties": {
+          "alto_contraste": {
+            "default": false,
+            "title": "Alto Contraste",
+            "type": "boolean"
+          },
+          "reduzir_animacoes": {
+            "default": false,
+            "title": "Reduzir Animacoes",
+            "type": "boolean"
+          },
+          "tamanho_fonte": {
+            "$ref": "#/components/schemas/TamanhoFonte",
+            "default": "normal"
+          }
+        },
+        "title": "Preferencias",
         "type": "object"
       },
       "Ranking": {
@@ -810,6 +1062,101 @@
         ],
         "title": "StatusProgresso",
         "type": "string"
+      },
+      "Submissao": {
+        "description": "O que o aluno envia.",
+        "properties": {
+          "conteudo": {
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Conteudo",
+            "type": "string"
+          },
+          "tempo_gasto_segundos": {
+            "anyOf": [
+              {
+                "maximum": 21600.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo Gasto Segundos"
+          }
+        },
+        "required": [
+          "conteudo"
+        ],
+        "title": "Submissao",
+        "type": "object"
+      },
+      "TamanhoFonte": {
+        "description": "Preferência de acessibilidade das telas 18 e 19.",
+        "enum": [
+          "normal",
+          "alta"
+        ],
+        "title": "TamanhoFonte",
+        "type": "string"
+      },
+      "Tentativa": {
+        "description": "Uma tentativa já registrada.",
+        "properties": {
+          "conteudo": {
+            "title": "Conteudo",
+            "type": "string"
+          },
+          "correta": {
+            "title": "Correta",
+            "type": "boolean"
+          },
+          "criado_em": {
+            "format": "date-time",
+            "title": "Criado Em",
+            "type": "string"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "tempo_gasto_segundos": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo Gasto Segundos"
+          },
+          "tentativa": {
+            "title": "Tentativa",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "tentativa",
+          "conteudo",
+          "correta",
+          "criado_em"
+        ],
+        "title": "Tentativa",
+        "type": "object"
       },
       "TipoAtividade": {
         "description": "Formato da atividade dentro de um módulo (telas 28 a 34).",
@@ -1039,6 +1386,18 @@
         "title": "TrilhaRecomendada",
         "type": "object"
       },
+      "TrocaDeTrilha": {
+        "properties": {
+          "tipo_trilha": {
+            "$ref": "#/components/schemas/TipoTrilha"
+          }
+        },
+        "required": [
+          "tipo_trilha"
+        ],
+        "title": "TrocaDeTrilha",
+        "type": "object"
+      },
       "UsuarioAutenticado": {
         "description": "O aluno como as telas privadas o veem.",
         "properties": {
@@ -1145,6 +1504,191 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/atividades/{atividade_id}": {
+      "get": {
+        "description": "Nunca inclui o gabarito: a correção é do servidor (`POST .../submissoes`).",
+        "operationId": "obterAtividade",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "atividade_id",
+            "required": true,
+            "schema": {
+              "title": "Atividade Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtividadeResumo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Enunciado da atividade",
+        "tags": [
+          "atividades"
+        ]
+      }
+    },
+    "/api/v1/atividades/{atividade_id}/submissoes": {
+      "get": {
+        "description": "Só as do próprio aluno; serve para retomar de onde parou.",
+        "operationId": "listarSubmissoes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "atividade_id",
+            "required": true,
+            "schema": {
+              "title": "Atividade Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Tentativa"
+                  },
+                  "title": "Response Listarsubmissoes",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Tentativas anteriores do aluno",
+        "tags": [
+          "atividades"
+        ]
+      },
+      "post": {
+        "operationId": "submeter",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "atividade_id",
+            "required": true,
+            "schema": {
+              "title": "Atividade Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Submissao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Correcao"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Envia a resposta e recebe a correção",
+        "tags": [
+          "atividades"
+        ]
+      }
+    },
     "/api/v1/auth/esqueci-senha": {
       "post": {
         "description": "Começa a recuperação. Sempre 202, tenha o e-mail conta ou não.",
@@ -1589,6 +2133,100 @@
         "summary": "Iniciar Login Social",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/gamificacao/checkin": {
+      "post": {
+        "description": "Chamar várias vezes no mesmo dia conta uma vez só.",
+        "operationId": "registrarCheckin",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Painel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Registra o acesso do dia e devolve o streak atualizado",
+        "tags": [
+          "gamificacao"
+        ]
+      }
+    },
+    "/api/v1/gamificacao/me": {
+      "get": {
+        "description": "Só leitura: não registra acesso nem mexe no streak.",
+        "operationId": "obterPainel",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Painel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "XP, nível e streak do aluno",
+        "tags": [
+          "gamificacao"
         ]
       }
     },
@@ -2078,6 +2716,73 @@
         ]
       }
     },
+    "/api/v1/trilhas/{slug}/passos/{ordem}/concluir": {
+      "post": {
+        "description": "Exige ter acertado as atividades corrigíveis do passo. Fechar de novo não paga XP outra vez.",
+        "operationId": "concluirPasso",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ordem",
+            "required": true,
+            "schema": {
+              "title": "Ordem",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassoConcluido"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Fecha o passo e concede o XP",
+        "tags": [
+          "trilhas"
+        ]
+      }
+    },
     "/api/v1/usuarios/me": {
       "delete": {
         "description": "Pede a exclusão da conta: desativa agora e apaga tudo no fim do prazo.\n\n202 e não 204: o pedido foi aceito, mas a exclusão só se completa no expurgo.",
@@ -2233,6 +2938,108 @@
         ]
       }
     },
+    "/api/v1/usuarios/me/avatar": {
+      "delete": {
+        "description": "Volta para as iniciais do nome no lugar da foto.",
+        "operationId": "removerAvatar",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Perfil"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remover Avatar",
+        "tags": [
+          "usuarios"
+        ]
+      },
+      "put": {
+        "description": "Troca a foto do perfil. A imagem é recortada em quadrado e salva sem metadados.",
+        "operationId": "enviarAvatar",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_enviarAvatar"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Perfil"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Enviar Avatar",
+        "tags": [
+          "usuarios"
+        ]
+      }
+    },
     "/api/v1/usuarios/me/dados": {
       "get": {
         "description": "Tudo o que o Algorise guarda sobre o aluno, para baixar como arquivo.",
@@ -2273,6 +3080,178 @@
           }
         ],
         "summary": "Exportar Meus Dados",
+        "tags": [
+          "usuarios"
+        ]
+      }
+    },
+    "/api/v1/usuarios/me/preferencias": {
+      "patch": {
+        "description": "Tamanho da fonte, alto contraste e animações. Só o que for enviado muda.",
+        "operationId": "atualizarPreferencias",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtualizacaoPreferencias"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferencias"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Atualizar Preferencias",
+        "tags": [
+          "usuarios"
+        ]
+      }
+    },
+    "/api/v1/usuarios/me/trilha": {
+      "patch": {
+        "description": "Alterna entre Guiada, Livre e Mista sem perder progresso.\n\nMuda o que está liberado nas trilhas a partir de agora; o que já foi\nconcluído continua concluído.",
+        "operationId": "trocarModoTrilha",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrocaDeTrilha"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Perfil"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Trocar Modo Trilha",
+        "tags": [
+          "usuarios"
+        ]
+      }
+    },
+    "/api/v1/usuarios/{username}": {
+      "get": {
+        "description": "Perfil reduzido de outro aluno: o que o ranking já mostra, mais nível e streak.\n\nPede login, como o resto da área do aluno: o perfil existe para quem está\nno ranking, e não para varrer a base de usernames de fora.",
+        "operationId": "obterPerfilPublico",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "schema": {
+              "title": "Username",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilPublico"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Obter Perfil Publico",
         "tags": [
           "usuarios"
         ]
