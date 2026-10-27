@@ -7,13 +7,12 @@ que só roda com `TESTE_POSTGRES_URL` (o CI liga).
 
 import asyncio
 import json
-import os
-from collections.abc import Iterator, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 import httpx2
 import pytest
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.ia import IAIndisponivel
@@ -23,7 +22,9 @@ from app.ia.ollama import Ollama
 from app.ia.vault import (
     ModuloNaoEncontrado,
     buscar,
+    buscar_por_vetor,
     ingerir_transcricao,
+    registrar_modulos,
     registrar_prompts,
 )
 from app.ia.vault import __main__ as linha_de_comando
@@ -248,6 +249,54 @@ def test_registrar_prompts_grava_o_do_tutor_uma_vez(db: Session, provedor: Prove
     assert not any(i.alterado for i in segunda)
 
 
+def test_registrar_modulos_grava_o_texto_do_catalogo(db: Session, provedor: ProvedorContado):
+    lacos, _, _ = criar_modulos(db)
+    lacos.descricao = "Repita um bloco com for e while."
+    db.commit()
+
+    primeira = asyncio.run(registrar_modulos(db, provedor))
+    segunda = asyncio.run(registrar_modulos(db, provedor))
+
+    documento = next(i.documento for i in primeira if i.documento.modulo_id == lacos.id)
+    assert (documento.chave, documento.origem) == (
+        f"descricao:modulo:{lacos.id}",
+        OrigemVault.modulo,
+    )
+    assert (
+        documento.trechos[0].texto == "Algoritmos: Python\nLaços\nRepita um bloco com for e while."
+    )
+    assert len(primeira) == 3
+    assert not any(i.alterado for i in segunda)
+    assert len(provedor.pedidos) == 3
+
+
+def test_so_o_modulo_editado_e_regravado(db: Session, provedor: ProvedorContado):
+    lacos, _, _ = criar_modulos(db)
+    asyncio.run(registrar_modulos(db, provedor))
+
+    lacos.titulo = "Laços de repetição"
+    db.commit()
+    ingestoes = asyncio.run(registrar_modulos(db, provedor))
+
+    alterados = [i.documento for i in ingestoes if i.alterado]
+    assert [(d.modulo_id, d.versao, d.titulo) for d in alterados] == [
+        (lacos.id, 2, "Laços de repetição")
+    ]
+
+
+def test_busca_com_modulo_deixa_os_prompts_de_fora(db: Session, provedor: Eco):
+    criar_modulos(db)
+    asyncio.run(registrar_modulos(db, provedor))
+    asyncio.run(registrar_prompts(db, provedor))
+    [vetor] = asyncio.run(provedor.embeddings(["tutor do Algorise"]))
+
+    resultados = buscar_por_vetor(db, vetor, com_modulo=True, limite=10)
+
+    assert resultados
+    assert all(r.modulo_id is not None for r in resultados)
+    assert {r.origem for r in resultados} == {OrigemVault.modulo}
+
+
 # --- busca -----------------------------------------------------------------------------
 
 
@@ -321,10 +370,12 @@ def test_linha_de_comando_ingere_e_registra(
     assert linha_de_comando.main(["ingerir", "--modulo", str(lacos.id), str(arquivo)]) == 0
     assert linha_de_comando.main(["ingerir", "--modulo", str(lacos.id), str(arquivo)]) == 0
     assert linha_de_comando.main(["registrar-prompts"]) == 0
+    assert linha_de_comando.main(["registrar-modulos"]) == 0
     assert linha_de_comando.main(["ingerir", "--modulo", "99", str(arquivo)]) == 1
 
     saida = capsys.readouterr()
     assert "modulo:1: versão 1, 1 trechos" in saida.out
+    assert "descricao:modulo:1: versão 1, 1 trechos" in saida.out
     assert "modulo:1: sem mudança (versão 1)" in saida.out
     assert "skill:tutor: versão 1" in saida.out
     assert "Módulo 99 não existe" in saida.err
@@ -409,28 +460,6 @@ def test_ollama_fora_no_embedding_vira_ia_indisponivel() -> None:
 
 
 # --- PostgreSQL de verdade ------------------------------------------------------------------
-
-
-@pytest.fixture
-def db_postgres() -> Iterator[Session]:
-    """Sessão num PostgreSQL já migrado, desfeita no fim do teste.
-
-    Tudo roda dentro de uma transação que nunca é confirmada: o teste pode usar
-    o banco do CI, que já tem o seed, sem deixar rastro nele.
-    """
-    url = os.environ.get("TESTE_POSTGRES_URL")
-    if not url:
-        pytest.skip("defina TESTE_POSTGRES_URL para rodar contra o PostgreSQL")
-    engine = create_engine(url)
-    with engine.connect() as conexao:
-        transacao = conexao.begin()
-        sessao = Session(bind=conexao, join_transaction_mode="create_savepoint")
-        try:
-            yield sessao
-        finally:
-            sessao.close()
-            transacao.rollback()
-    engine.dispose()
 
 
 @pytest.mark.postgres
