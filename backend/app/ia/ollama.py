@@ -8,6 +8,7 @@ import asyncio
 import json
 from collections.abc import AsyncGenerator, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 import httpx2
 
@@ -47,9 +48,13 @@ class Ollama:
         self.transport = transport
 
     async def gerar(
-        self, mensagens: Sequence[MensagemIA], *, max_tokens: int
+        self,
+        mensagens: Sequence[MensagemIA],
+        *,
+        max_tokens: int,
+        formato: dict[str, Any] | None = None,
     ) -> AsyncGenerator[str]:
-        corpo = {
+        corpo: dict[str, Any] = {
             "model": self.modelo,
             "stream": True,
             "messages": [{"role": m.papel, "content": m.conteudo} for m in mensagens],
@@ -57,6 +62,8 @@ class Ollama:
             # Ollama, em vez de deixar ele gerar e descartar aqui.
             "options": {"num_predict": max_tokens},
         }
+        if formato is not None:
+            corpo["format"] = formato
 
         for tentativa in range(1, self.tentativas + 1):
             emitiu = False

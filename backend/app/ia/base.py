@@ -6,7 +6,9 @@ mexer em `app/ia/`, não em quem a usa.
 
 A resposta vem em pedaços (`gerar` é um gerador assíncrono), na ordem em que o
 modelo produz. Quem consome decide o que fazer com eles: o chat repassa um a um,
-uma extração junta tudo no fim.
+uma extração junta tudo no fim. Uma extração passa também o `formato`, o JSON
+Schema da resposta: o Ollama restringe a geração a ele, o que um modelo pequeno
+não garante só com o pedido no prompt.
 
 `embeddings` transforma textos em vetores para a busca por similaridade do
 vault das skills (#200). O vetor tem sempre `DIMENSOES_EMBEDDING` posições, a
@@ -15,7 +17,7 @@ dimensão da coluna no banco.
 
 from collections.abc import AsyncGenerator, Sequence
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 Papel = Literal["system", "user", "assistant"]
 
@@ -39,7 +41,13 @@ class IAIndisponivel(Exception):
 
 
 class ProvedorIA(Protocol):
-    def gerar(self, mensagens: Sequence[MensagemIA], *, max_tokens: int) -> AsyncGenerator[str]:
+    def gerar(
+        self,
+        mensagens: Sequence[MensagemIA],
+        *,
+        max_tokens: int,
+        formato: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[str]:
         """Os pedaços da resposta, na ordem. Levanta `IAIndisponivel` se o provedor falhar."""
         ...
 
