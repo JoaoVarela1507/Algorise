@@ -362,6 +362,10 @@ fica no volume `midia`.
 | `GET /api/v1/ementas/{id}`             | status da leitura: `pendente`, `processando`, `processada` ou `falhou` |
 | `GET /api/v1/ementas/{id}/assuntos`    | disciplinas e assuntos lidos pela IA, cada um `coberto` ou `lacuna`    |
 | `POST /api/v1/ementas/{id}/assuntos`   | lê os assuntos de novo (IA estava fora, catálogo cresceu); responde 202 |
+| `PUT /api/v1/ementas/{id}/assuntos` | grava a revisão do aluno; só o assunto novo ou renomeado vai ao catálogo |
+| `POST /api/v1/ementas/{id}/confirmar` | faz da ementa a base da trilha guiada |
+| `GET /api/v1/ementas/atual` | a última ementa que o aluno enviou |
+| `GET /api/v1/trilha-guiada` | a trilha guiada do aluno, montada da ementa confirmada |
 
 O catálogo (`python -m app.seeds`) traz a UFRPE com o Bacharelado em Sistemas de
 Informação e as outras instituições de Recife. **Só o que é verificado aparece
@@ -403,6 +407,23 @@ disciplina (a chave ignora acento, caixa e pontuação), para a busca de conteú
 (#207) rodar uma vez por assunto. A distância até o módulo mais próximo fica em
 `ementa_assuntos.distancia`, coberto ou não: é o que se olha para calibrar o
 limite com ementas reais.
+
+**Trilha guiada** (`app/services/trilha_guiada.py`). Depois da leitura, o aluno
+revisa a lista (corrige, remove e acrescenta) e confirma. A ementa confirmada por
+último é a base da trilha guiada, que **não tem tabela**: é calculada a cada
+leitura, então uma revisão ou uma lacuna coberta mudam a trilha sem nada para
+sincronizar.
+
+- **Ordem:** as disciplinas pelo período e, empatadas, pela ordem do documento; os
+  assuntos, na ordem do conteúdo programático. Um módulo que cobre dois assuntos
+  aparece uma vez; uma lacuna aparece como "em preparação".
+- **Profundidade pelo nível:** no nível baixo, antes do primeiro módulo que entra de
+  uma trilha do catálogo, entram os módulos anteriores dela, marcados como `base`.
+  Nos níveis médio e alto, só o que cobre os assuntos.
+- **Desbloqueio:** a trilha guiada abre passos por cima da ordem do catálogo. Um
+  módulo dela libera quando o item anterior **da trilha guiada** foi concluído,
+  mesmo que o passo anterior no catálogo não tenha sido. Ela só libera, nunca
+  bloqueia, e a regra mora em `estados_dos_passos`, a mesma que decide o 403.
 
 ### Chat com IA
 

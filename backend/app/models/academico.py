@@ -4,9 +4,10 @@ A ementa vira disciplinas e assuntos (#38). Cada assunto aponta para o módulo
 do catálogo que o cobre ou para a lacuna que ainda falta preencher.
 """
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, Text, UniqueConstraint, false
+from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -78,6 +79,9 @@ class Ementa(Base, TimestampMixin):
         default=StatusAssuntos.pendente, server_default=StatusAssuntos.pendente.value
     )
     erro_assuntos: Mapped[str | None] = mapped_column(Text)
+    # O aluno revisou os assuntos e pediu a trilha. A confirmada por último é a
+    # base da trilha guiada dele (`services/trilha_guiada.py`).
+    confirmada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     disciplinas: Mapped[list["DisciplinaEmenta"]] = relationship(
         back_populates="ementa", cascade="all, delete-orphan", order_by="DisciplinaEmenta.ordem"

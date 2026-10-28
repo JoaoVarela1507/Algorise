@@ -21,6 +21,7 @@ from app.api.v1 import (
     oauth,
     onboarding,
     ranking,
+    trilha_guiada,
     trilhas,
     usuarios,
 )
@@ -32,6 +33,7 @@ router = APIRouter(prefix=PREFIXO)
 router.include_router(auth.router)
 router.include_router(oauth.router)
 router.include_router(trilhas.router)
+router.include_router(trilha_guiada.router)
 router.include_router(atividades.router)
 router.include_router(ranking.router)
 router.include_router(gamificacao.router)

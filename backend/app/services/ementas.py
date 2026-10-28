@@ -99,6 +99,16 @@ def receber(db: Session, usuario: Usuario, conteudo: bytes, nome_original: str |
     return ementa
 
 
+def atual_do_aluno(db: Session, usuario: Usuario) -> Ementa | None:
+    """A última ementa que o aluno enviou."""
+    return db.scalars(
+        select(Ementa)
+        .where(Ementa.usuario_id == usuario.id)
+        .order_by(Ementa.criado_em.desc(), Ementa.id.desc())
+        .limit(1)
+    ).first()
+
+
 def obter_do_aluno(db: Session, usuario: Usuario, ementa_id: int) -> Ementa | None:
     """A ementa, se ela for deste aluno. A de outro responde como inexistente."""
     ementa = db.get(Ementa, ementa_id)

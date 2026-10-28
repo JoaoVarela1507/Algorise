@@ -1,17 +1,19 @@
 """Contrato do catálogo acadêmico e da ementa do onboarding (telas 14 e 15)."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.models.enums import StatusAssuntos, StatusEmenta, StatusLacuna
 
 __all__ = [
     "AssuntoLido",
     "AssuntosDaEmenta",
+    "AssuntosRevisados",
     "CursoResumo",
     "DisciplinaLida",
+    "DisciplinaRevisada",
     "EmentaStatus",
     "InstituicaoResumo",
     "ModuloDoAssunto",
@@ -57,6 +59,8 @@ class EmentaStatus(BaseModel):
     # A leitura das disciplinas e dos assuntos pela IA (#38), depois do texto.
     status_assuntos: StatusAssuntos
     erro_assuntos: str | None = None
+    # Quando o aluno revisou os assuntos e pediu a trilha guiada.
+    confirmada_em: datetime | None = None
     criado_em: datetime
 
 
@@ -91,3 +95,19 @@ class AssuntosDaEmenta(BaseModel):
     erro_assuntos: str | None = None
     # Vazia até `status_assuntos` chegar a `prontos`.
     disciplinas: list[DisciplinaLida]
+
+
+Texto = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+
+
+class DisciplinaRevisada(BaseModel):
+    nome: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    periodo: int | None = Field(default=None, ge=1, le=20)
+    carga_horaria: int | None = Field(default=None, ge=1, le=2000)
+    assuntos: list[Texto] = Field(min_length=1, max_length=200)
+
+
+class AssuntosRevisados(BaseModel):
+    """A lista inteira, como o aluno deixou na revisão: o que sai dela é removido."""
+
+    disciplinas: list[DisciplinaRevisada] = Field(min_length=1, max_length=50)

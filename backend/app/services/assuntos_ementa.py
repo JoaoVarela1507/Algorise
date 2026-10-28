@@ -12,9 +12,14 @@ Roda depois da extração do texto (`services/ementas.py`), em duas etapas:
 
 O mapeamento roda sempre, mesmo na cópia: o catálogo pode ter crescido desde a
 primeira leitura, e uma lacuna de ontem pode estar coberta hoje.
+
+Depois da leitura, o aluno revisa (`revisar`): corrige, remove e acrescenta
+assuntos. Só o que ele mudou é buscado de novo no vault. E confirma
+(`confirmar`), o que faz da ementa a base da trilha guiada dele.
 """
 
 import logging
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -25,7 +30,7 @@ from app.ia import IAIndisponivel, ProvedorIA
 from app.ia.skills import ler_ementa
 from app.ia.vault import buscar_por_vetor, registrar_modulos
 from app.ia.vault.ingestao import LOTE_DE_EMBEDDING
-from app.models import AssuntoEmenta, DisciplinaEmenta, Ementa, Lacuna, StatusAssuntos
+from app.models import AssuntoEmenta, DisciplinaEmenta, Ementa, Lacuna, Modulo, StatusAssuntos
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +59,7 @@ async def processar(db: Session, provedor: ProvedorIA, ementa: Ementa) -> None:
         ementa.disciplinas.clear()
         db.flush()
         ementa.disciplinas = _montar(disciplinas)
-        await mapear(db, provedor, ementa)
+        await mapear(db, provedor, [a for d in ementa.disciplinas for a in d.assuntos])
     except _Falha as erro:
         db.rollback()
         _falhar(db, ementa, str(erro))
@@ -74,13 +79,62 @@ async def processar(db: Session, provedor: ProvedorIA, ementa: Ementa) -> None:
     db.commit()
 
 
-async def mapear(db: Session, provedor: ProvedorIA, ementa: Ementa) -> None:
-    """Liga cada assunto da ementa ao módulo que o cobre ou a uma lacuna.
+async def revisar(
+    db: Session, provedor: ProvedorIA, ementa: Ementa, disciplinas: list[ler_ementa.Disciplina]
+) -> None:
+    """Troca as disciplinas e os assuntos da ementa pelos que o aluno revisou.
+
+    O assunto que já existia (mesma disciplina e mesmo texto, sem contar acento
+    e caixa) mantém a ligação que tinha; só o novo ou o renomeado vai ao vault.
+    Levanta `IAIndisponivel` sem mudar nada, se o vault precisar da IA e ela
+    estiver fora.
+    """
+    disciplinas = ler_ementa.juntar([ler_ementa.Leitura(disciplinas=disciplinas)])
+    ligacoes = {
+        _chave(d.nome, a.texto): (a.modulo, a.lacuna, a.distancia)
+        for d in ementa.disciplinas
+        for a in d.assuntos
+    }
+    tem_novo = any(_chave(d.nome, a) not in ligacoes for d in disciplinas for a in d.assuntos)
+    try:
+        if tem_novo:
+            # Antes de mexer na ementa: o registro confirma a transação por
+            # conta própria (ver `processar`).
+            await registrar_modulos(db, provedor)
+        ementa.disciplinas.clear()
+        db.flush()
+        ementa.disciplinas = _montar(disciplinas)
+        novos = []
+        for disciplina in ementa.disciplinas:
+            for assunto in disciplina.assuntos:
+                ligacao = ligacoes.get(_chave(disciplina.nome, assunto.texto))
+                if ligacao is None:
+                    novos.append(assunto)
+                else:
+                    assunto.modulo, assunto.lacuna, assunto.distancia = ligacao
+        await mapear(db, provedor, novos)
+    except Exception:
+        db.rollback()
+        raise
+    db.commit()
+
+
+def confirmar(db: Session, ementa: Ementa) -> bool:
+    """Faz da ementa a base da trilha guiada. `False` se os assuntos não estão prontos."""
+    if ementa.status_assuntos is not StatusAssuntos.prontos:
+        return False
+    # Confirmar de novo atualiza a data: a confirmada por último é a que vale.
+    ementa.confirmada_em = datetime.now(UTC)
+    db.commit()
+    return True
+
+
+async def mapear(db: Session, provedor: ProvedorIA, assuntos: list[AssuntoEmenta]) -> None:
+    """Liga cada assunto ao módulo que o cobre ou a uma lacuna.
 
     Usa o vault como está: quem chama garante que os módulos estão nele
     (`registrar_modulos`).
     """
-    assuntos = [a for d in ementa.disciplinas for a in d.assuntos]
     textos = [f"{a.disciplina.nome}: {a.texto}" for a in assuntos]
     vetores: list[list[float]] = []
     for inicio in range(0, len(textos), LOTE_DE_EMBEDDING):
@@ -90,10 +144,12 @@ async def mapear(db: Session, provedor: ProvedorIA, ementa: Ementa) -> None:
         [mais_perto, *_] = buscar_por_vetor(db, vetor, com_modulo=True, limite=1) or [None]
         assunto.distancia = mais_perto.distancia if mais_perto else None
         if mais_perto is not None and mais_perto.distancia <= settings.ementa_distancia_maxima:
-            assunto.modulo_id = mais_perto.modulo_id
+            # A relação, e não só o id: quem responde na mesma sessão (a
+            # revisão) lê `assunto.modulo` logo em seguida.
+            assunto.modulo = db.get(Modulo, mais_perto.modulo_id)
             assunto.lacuna = None
         else:
-            assunto.modulo_id = None
+            assunto.modulo = None
             assunto.lacuna = _lacuna(db, assunto.disciplina.nome, assunto.texto)
 
 
@@ -152,9 +208,13 @@ def _montar(disciplinas: list[ler_ementa.Disciplina]) -> list[DisciplinaEmenta]:
     ]
 
 
+def _chave(disciplina: str, assunto: str) -> str:
+    return f"{ler_ementa.normalizar(disciplina)}|{ler_ementa.normalizar(assunto)}"
+
+
 def _lacuna(db: Session, disciplina: str, assunto: str) -> Lacuna:
     """A lacuna do assunto, criada na primeira ementa que o pede."""
-    chave = f"{ler_ementa.normalizar(disciplina)}|{ler_ementa.normalizar(assunto)}"
+    chave = _chave(disciplina, assunto)
     lacuna = db.scalar(select(Lacuna).where(Lacuna.chave == chave))
     if lacuna is not None:
         return lacuna
