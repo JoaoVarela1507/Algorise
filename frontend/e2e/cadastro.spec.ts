@@ -67,7 +67,12 @@ test('cadastro, onboarding e chegada na home', async ({ page }) => {
   await page.getByRole('button', { name: 'Continuar' }).click()
   const { id: ementaId } = (await (await ementaEnviada).json()) as { id: number }
 
-  await expect(page).toHaveURL('/')
+  // Na guiada, a ementa enviada leva à revisão dos assuntos (#38). Com o
+  // provedor `Eco` a IA não devolve a leitura, e a tela mostra a falha com o
+  // botão de tentar de novo: é a leitura de verdade, rodando no servidor.
+  await expect(page).toHaveURL('/trilha-guiada/revisao')
+  await expect(page.getByText('Não deu para ler os assuntos')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('button', { name: 'Tentar de novo' })).toBeVisible()
 
   // O que a tela mandou chegou ao perfil, com os nomes do catálogo.
   const login = await page.request.post(`${API}/auth/login`, {

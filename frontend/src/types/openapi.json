@@ -75,6 +75,25 @@
         "title": "AssuntosDaEmenta",
         "type": "object"
       },
+      "AssuntosRevisados": {
+        "description": "A lista inteira, como o aluno deixou na revisão: o que sai dela é removido.",
+        "properties": {
+          "disciplinas": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplinaRevisada"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Disciplinas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "disciplinas"
+        ],
+        "title": "AssuntosRevisados",
+        "type": "object"
+      },
       "AtividadeResumo": {
         "description": "Atividade sem gabarito — é o que pode ir para o cliente.",
         "properties": {
@@ -383,9 +402,74 @@
         "title": "DisciplinaLida",
         "type": "object"
       },
+      "DisciplinaRevisada": {
+        "properties": {
+          "assuntos": {
+            "items": {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Assuntos",
+            "type": "array"
+          },
+          "carga_horaria": {
+            "anyOf": [
+              {
+                "maximum": 2000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carga Horaria"
+          },
+          "nome": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Nome",
+            "type": "string"
+          },
+          "periodo": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo"
+          }
+        },
+        "required": [
+          "nome",
+          "assuntos"
+        ],
+        "title": "DisciplinaRevisada",
+        "type": "object"
+      },
       "EmentaStatus": {
         "description": "Onde está o processamento. O texto extraído não sai daqui: é insumo da #38.",
         "properties": {
+          "confirmada_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmada Em"
+          },
           "criado_em": {
             "format": "date-time",
             "title": "Criado Em",
@@ -655,6 +739,72 @@
         "title": "InstituicaoResumo",
         "type": "object"
       },
+      "ItemGuiado": {
+        "properties": {
+          "assuntos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Assuntos",
+            "type": "array"
+          },
+          "base": {
+            "default": false,
+            "title": "Base",
+            "type": "boolean"
+          },
+          "disciplina": {
+            "title": "Disciplina",
+            "type": "string"
+          },
+          "modulo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModuloGuiado"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "periodo": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo"
+          },
+          "status_lacuna": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StatusLacuna"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tipo": {
+            "enum": [
+              "modulo",
+              "lacuna"
+            ],
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "disciplina",
+          "assuntos"
+        ],
+        "title": "ItemGuiado",
+        "type": "object"
+      },
       "Login": {
         "properties": {
           "email": {
@@ -777,6 +927,43 @@
           "trilha_id"
         ],
         "title": "ModuloDoAssunto",
+        "type": "object"
+      },
+      "ModuloGuiado": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "ordem": {
+            "title": "Ordem",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusProgresso"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "trilha_nome": {
+            "title": "Trilha Nome",
+            "type": "string"
+          },
+          "trilha_slug": {
+            "title": "Trilha Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "ordem",
+          "trilha_slug",
+          "trilha_nome",
+          "status"
+        ],
+        "title": "ModuloGuiado",
         "type": "object"
       },
       "NivelExperiencia": {
@@ -1808,6 +1995,47 @@
         "title": "TrilhaDetalhe",
         "type": "object"
       },
+      "TrilhaGuiada": {
+        "properties": {
+          "concluidos": {
+            "title": "Concluidos",
+            "type": "integer"
+          },
+          "confirmada_em": {
+            "format": "date-time",
+            "title": "Confirmada Em",
+            "type": "string"
+          },
+          "ementa_id": {
+            "title": "Ementa Id",
+            "type": "integer"
+          },
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ItemGuiado"
+            },
+            "title": "Itens",
+            "type": "array"
+          },
+          "nivel": {
+            "$ref": "#/components/schemas/NivelExperiencia"
+          },
+          "total_modulos": {
+            "title": "Total Modulos",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ementa_id",
+          "confirmada_em",
+          "nivel",
+          "itens",
+          "total_modulos",
+          "concluidos"
+        ],
+        "title": "TrilhaGuiada",
+        "type": "object"
+      },
       "TrilhaRecomendada": {
         "description": "Card da seção de sugestões da tela 24.",
         "properties": {
@@ -2820,6 +3048,52 @@
         ]
       }
     },
+    "/api/v1/ementas/atual": {
+      "get": {
+        "operationId": "obterAtual",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmentaStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A última ementa enviada pelo aluno",
+        "tags": [
+          "ementas"
+        ]
+      }
+    },
     "/api/v1/ementas/{ementa_id}": {
       "get": {
         "operationId": "obterEmenta",
@@ -2986,6 +3260,130 @@
           }
         ],
         "summary": "Lê os assuntos da ementa de novo",
+        "tags": [
+          "ementas"
+        ]
+      },
+      "put": {
+        "description": "A lista inteira, como o aluno deixou: o que sai dela é removido. Só o assunto novo ou renomeado é buscado de novo no catálogo. 409 se os assuntos não estão `prontos`; 503 se a busca precisar da IA e ela estiver fora.",
+        "operationId": "revisarAssuntos",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ementa_id",
+            "required": true,
+            "schema": {
+              "title": "Ementa Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssuntosRevisados"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssuntosDaEmenta"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Grava a revisão dos assuntos",
+        "tags": [
+          "ementas"
+        ]
+      }
+    },
+    "/api/v1/ementas/{ementa_id}/confirmar": {
+      "post": {
+        "description": "A ementa confirmada por último é a base de `GET /trilha-guiada`. 409 se os assuntos não estão `prontos`.",
+        "operationId": "confirmarEmenta",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ementa_id",
+            "required": true,
+            "schema": {
+              "title": "Ementa Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmentaStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Confirma os assuntos e gera a trilha guiada",
         "tags": [
           "ementas"
         ]
@@ -3354,6 +3752,53 @@
         "summary": "Obter Ranking",
         "tags": [
           "ranking"
+        ]
+      }
+    },
+    "/api/v1/trilha-guiada": {
+      "get": {
+        "description": "Os assuntos da ementa confirmada por último, em ordem de estudo: módulos do catálogo, com o estado do passo, e lacunas ainda sem conteúdo. 404 se o aluno ainda não confirmou uma ementa (`POST /ementas/{id}/confirmar`).",
+        "operationId": "obterTrilhaGuiada",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrilhaGuiada"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Trilha guiada do aluno",
+        "tags": [
+          "trilhas"
         ]
       }
     },

@@ -1,4 +1,7 @@
-"""Upload da ementa em PDF (telas 14 e 15), o status da leitura e os assuntos lidos (#38)."""
+"""Upload da ementa em PDF (telas 14 e 15), a leitura dos assuntos e a revisão (#38)."""
+
+import asyncio
+import logging
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Response, UploadFile, status
 from sqlalchemy.orm import Session, sessionmaker
@@ -7,16 +10,20 @@ from app.api.deps import UsuarioAtual
 from app.core.config import settings
 from app.core.database import get_db, get_fabrica_de_sessoes
 from app.core.erros import ErroDeNegocio
-from app.ia import ProvedorIA, get_provedor_ia
+from app.ia import IAIndisponivel, ProvedorIA, get_provedor_ia
+from app.ia.skills import ler_ementa
 from app.models import Ementa, StatusAssuntos, Usuario
 from app.schemas.academico import (
     AssuntoLido,
     AssuntosDaEmenta,
+    AssuntosRevisados,
     DisciplinaLida,
     EmentaStatus,
     ModuloDoAssunto,
 )
-from app.services import ementas
+from app.services import assuntos_ementa, ementas
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ementas", tags=["ementas"])
 
@@ -68,6 +75,19 @@ def enviar_ementa(
     return EmentaStatus.model_validate(ementa)
 
 
+# Antes de `/{ementa_id}`: senão "atual" cairia ali e voltaria 422 por não ser número.
+@router.get("/atual", response_model=EmentaStatus, summary="A última ementa enviada pelo aluno")
+def obter_atual(usuario: UsuarioAtual, db: Session = Depends(get_db)) -> EmentaStatus:
+    ementa = ementas.atual_do_aluno(db, usuario)
+    if ementa is None:
+        raise ErroDeNegocio(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="ementa_nao_encontrada",
+            message="Você ainda não enviou uma ementa",
+        )
+    return EmentaStatus.model_validate(ementa)
+
+
 @router.get("/{ementa_id}", response_model=EmentaStatus, summary="Status da leitura da ementa")
 def obter_ementa(
     ementa_id: int, usuario: UsuarioAtual, db: Session = Depends(get_db)
@@ -88,7 +108,62 @@ def obter_ementa(
 def obter_assuntos(
     ementa_id: int, usuario: UsuarioAtual, db: Session = Depends(get_db)
 ) -> AssuntosDaEmenta:
+    return _assuntos(_do_aluno(db, usuario, ementa_id))
+
+
+@router.put(
+    "/{ementa_id}/assuntos",
+    response_model=AssuntosDaEmenta,
+    summary="Grava a revisão dos assuntos",
+    description=(
+        "A lista inteira, como o aluno deixou: o que sai dela é removido. Só o assunto "
+        "novo ou renomeado é buscado de novo no catálogo. 409 se os assuntos não estão "
+        "`prontos`; 503 se a busca precisar da IA e ela estiver fora."
+    ),
+)
+def revisar_assuntos(
+    ementa_id: int,
+    dados: AssuntosRevisados,
+    usuario: UsuarioAtual,
+    db: Session = Depends(get_db),
+    provedor: ProvedorIA = Depends(get_provedor_ia),
+) -> AssuntosDaEmenta:
     ementa = _do_aluno(db, usuario, ementa_id)
+    if ementa.status_assuntos is not StatusAssuntos.prontos:
+        raise _assuntos_indisponiveis(ementa)
+    disciplinas = [ler_ementa.Disciplina(**d.model_dump()) for d in dados.disciplinas]
+    try:
+        # Rota síncrona roda numa thread, sem event loop.
+        asyncio.run(assuntos_ementa.revisar(db, provedor, ementa, disciplinas))
+    except IAIndisponivel as erro:
+        logger.warning("IA indisponível na revisão da ementa %s: %s", ementa_id, erro)
+        raise ErroDeNegocio(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="ia_indisponivel",
+            message=assuntos_ementa.ERRO_IA_FORA,
+        ) from erro
+    return _assuntos(ementa)
+
+
+@router.post(
+    "/{ementa_id}/confirmar",
+    response_model=EmentaStatus,
+    summary="Confirma os assuntos e gera a trilha guiada",
+    description=(
+        "A ementa confirmada por último é a base de `GET /trilha-guiada`. "
+        "409 se os assuntos não estão `prontos`."
+    ),
+)
+def confirmar_ementa(
+    ementa_id: int, usuario: UsuarioAtual, db: Session = Depends(get_db)
+) -> EmentaStatus:
+    ementa = _do_aluno(db, usuario, ementa_id)
+    if not assuntos_ementa.confirmar(db, ementa):
+        raise _assuntos_indisponiveis(ementa)
+    return EmentaStatus.model_validate(ementa)
+
+
+def _assuntos(ementa: Ementa) -> AssuntosDaEmenta:
     prontos = ementa.status_assuntos is StatusAssuntos.prontos
     return AssuntosDaEmenta(
         status_assuntos=ementa.status_assuntos,
@@ -135,14 +210,18 @@ def reler_assuntos(
 ) -> EmentaStatus:
     ementa = _do_aluno(db, usuario, ementa_id)
     if not ementas.reler_assuntos(db, ementa):
-        raise ErroDeNegocio(
-            status_code=status.HTTP_409_CONFLICT,
-            code="assuntos_indisponiveis",
-            message="A ementa ainda não pode ser lida de novo. Aguarde a leitura atual.",
-            details={"status": ementa.status, "status_assuntos": ementa.status_assuntos},
-        )
+        raise _assuntos_indisponiveis(ementa)
     tarefas.add_task(ementas.processar, fabrica, provedor, ementa.id)
     return EmentaStatus.model_validate(ementa)
+
+
+def _assuntos_indisponiveis(ementa: Ementa) -> ErroDeNegocio:
+    return ErroDeNegocio(
+        status_code=status.HTTP_409_CONFLICT,
+        code="assuntos_indisponiveis",
+        message="Os assuntos desta ementa ainda não estão prontos. Aguarde a leitura.",
+        details={"status": ementa.status, "status_assuntos": ementa.status_assuntos},
+    )
 
 
 def _do_aluno(db: Session, usuario: Usuario, ementa_id: int) -> Ementa:

@@ -202,6 +202,7 @@ export function OnboardingWizard({
 
     // Depois do onboarding, para a ementa já sair com o curso e o período do
     // aluno. O texto é lido no servidor, sem o aluno esperar.
+    const comEmenta = Boolean(ementa)
     if (ementa && ementa !== ementaEnviada) {
       try {
         await enviarEmenta(ementa)
@@ -216,6 +217,10 @@ export function OnboardingWizard({
     setSalvando(false)
     if (onConcluir) {
       onConcluir()
+    } else if (comEmenta) {
+      // A trilha guiada parte da ementa: o aluno revisa o que foi lido antes
+      // de começar (#38). A leitura continua no servidor, e a revisão espera.
+      navigate('/trilha-guiada/revisao')
     } else {
       navigate('/')
     }

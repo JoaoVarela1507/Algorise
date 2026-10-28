@@ -122,6 +122,18 @@ export function apiPost<T>(path: string, body: unknown, opcoes?: Opcoes): Promis
   )
 }
 
+export function apiPut<T>(path: string, body: unknown, opcoes?: Opcoes): Promise<T> {
+  return apiFetch<T>(
+    path,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+    opcoes,
+  )
+}
+
 export function apiPatch<T>(path: string, body: unknown, opcoes?: Opcoes): Promise<T> {
   return apiFetch<T>(
     path,

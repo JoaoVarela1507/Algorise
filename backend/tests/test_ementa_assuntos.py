@@ -73,6 +73,9 @@ class ProvedorDeEmenta:
         self.respostas = [json.dumps(LEITURA)]
         self.chamadas: list[tuple[list[MensagemIA], dict[str, Any] | None]] = []
         self.gerar_fora = False
+        self.embeddings_fora = False
+        # Cada texto que pediu embedding, na ordem.
+        self.embedados: list[str] = []
 
     async def gerar(
         self,
@@ -89,6 +92,9 @@ class ProvedorDeEmenta:
             yield resposta[inicio : inicio + 10]
 
     async def embeddings(self, textos: Sequence[str]) -> list[list[float]]:
+        if self.embeddings_fora:
+            raise IAIndisponivel("fora (simulado no teste)")
+        self.embedados.extend(textos)
         return [vetor_por_tema(texto) for texto in textos]
 
 

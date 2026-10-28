@@ -281,6 +281,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ementas/atual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A última ementa enviada pelo aluno */
+        get: operations["obterAtual"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ementas/{ementa_id}": {
         parameters: {
             query?: never;
@@ -310,12 +327,36 @@ export interface paths {
          * @description Cada assunto vem `coberto`, com o módulo do catálogo que o cobre, ou como `lacuna`, com o status da busca de conteúdo. A lista fica vazia até `status_assuntos` chegar a `prontos`.
          */
         get: operations["obterAssuntos"];
-        put?: never;
+        /**
+         * Grava a revisão dos assuntos
+         * @description A lista inteira, como o aluno deixou: o que sai dela é removido. Só o assunto novo ou renomeado é buscado de novo no catálogo. 409 se os assuntos não estão `prontos`; 503 se a busca precisar da IA e ela estiver fora.
+         */
+        put: operations["revisarAssuntos"];
         /**
          * Lê os assuntos da ementa de novo
          * @description Para quando a leitura falhou (a IA estava fora do ar) ou o catálogo cresceu. Só depois do texto extraído e fora de uma leitura em andamento; senão, 409.
          */
         post: operations["relerAssuntos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ementas/{ementa_id}/confirmar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirma os assuntos e gera a trilha guiada
+         * @description A ementa confirmada por último é a base de `GET /trilha-guiada`. 409 se os assuntos não estão `prontos`.
+         */
+        post: operations["confirmarEmenta"];
         delete?: never;
         options?: never;
         head?: never;
@@ -428,6 +469,26 @@ export interface paths {
         };
         /** Obter Ranking */
         get: operations["obterRanking"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trilha-guiada": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Trilha guiada do aluno
+         * @description Os assuntos da ementa confirmada por último, em ordem de estudo: módulos do catálogo, com o estado do passo, e lacunas ainda sem conteúdo. 404 se o aluno ainda não confirmou uma ementa (`POST /ementas/{id}/confirmar`).
+         */
+        get: operations["obterTrilhaGuiada"];
         put?: never;
         post?: never;
         delete?: never;
@@ -781,6 +842,14 @@ export interface components {
             status_assuntos: components["schemas"]["StatusAssuntos"];
         };
         /**
+         * AssuntosRevisados
+         * @description A lista inteira, como o aluno deixou na revisão: o que sai dela é removido.
+         */
+        AssuntosRevisados: {
+            /** Disciplinas */
+            disciplinas: components["schemas"]["DisciplinaRevisada"][];
+        };
+        /**
          * AtividadeResumo
          * @description Atividade sem gabarito — é o que pode ir para o cliente.
          */
@@ -883,11 +952,24 @@ export interface components {
             /** Periodo */
             periodo?: number | null;
         };
+        /** DisciplinaRevisada */
+        DisciplinaRevisada: {
+            /** Assuntos */
+            assuntos: string[];
+            /** Carga Horaria */
+            carga_horaria?: number | null;
+            /** Nome */
+            nome: string;
+            /** Periodo */
+            periodo?: number | null;
+        };
         /**
          * EmentaStatus
          * @description Onde está o processamento. O texto extraído não sai daqui: é insumo da #38.
          */
         EmentaStatus: {
+            /** Confirmada Em */
+            confirmada_em?: string | null;
             /**
              * Criado Em
              * Format: date-time
@@ -993,6 +1075,27 @@ export interface components {
             /** Uf */
             uf?: string | null;
         };
+        /** ItemGuiado */
+        ItemGuiado: {
+            /** Assuntos */
+            assuntos: string[];
+            /**
+             * Base
+             * @default false
+             */
+            base: boolean;
+            /** Disciplina */
+            disciplina: string;
+            modulo?: components["schemas"]["ModuloGuiado"] | null;
+            /** Periodo */
+            periodo?: number | null;
+            status_lacuna?: components["schemas"]["StatusLacuna"] | null;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "modulo" | "lacuna";
+        };
         /** Login */
         Login: {
             /**
@@ -1052,6 +1155,20 @@ export interface components {
             titulo: string;
             /** Trilha Id */
             trilha_id: number;
+        };
+        /** ModuloGuiado */
+        ModuloGuiado: {
+            /** Id */
+            id: number;
+            /** Ordem */
+            ordem: number;
+            status: components["schemas"]["StatusProgresso"];
+            /** Titulo */
+            titulo: string;
+            /** Trilha Nome */
+            trilha_nome: string;
+            /** Trilha Slug */
+            trilha_slug: string;
         };
         /**
          * NivelExperiencia
@@ -1512,6 +1629,23 @@ export interface components {
              * Total Modulos
              * @default 0
              */
+            total_modulos: number;
+        };
+        /** TrilhaGuiada */
+        TrilhaGuiada: {
+            /** Concluidos */
+            concluidos: number;
+            /**
+             * Confirmada Em
+             * Format: date-time
+             */
+            confirmada_em: string;
+            /** Ementa Id */
+            ementa_id: number;
+            /** Itens */
+            itens: components["schemas"]["ItemGuiado"][];
+            nivel: components["schemas"]["NivelExperiencia"];
+            /** Total Modulos */
             total_modulos: number;
         };
         /**
@@ -2242,6 +2376,44 @@ export interface operations {
             };
         };
     };
+    obterAtual: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmentaStatus"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
     obterEmenta: {
         parameters: {
             query?: never;
@@ -2322,6 +2494,50 @@ export interface operations {
             };
         };
     };
+    revisarAssuntos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ementa_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssuntosRevisados"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssuntosDaEmenta"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
     relerAssuntos: {
         parameters: {
             query?: never;
@@ -2335,6 +2551,46 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmentaStatus"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    confirmarEmenta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ementa_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2584,6 +2840,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Ranking"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterTrilhaGuiada: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrilhaGuiada"];
                 };
             };
             /** @description Dados inválidos */

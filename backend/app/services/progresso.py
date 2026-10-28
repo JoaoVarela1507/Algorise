@@ -15,6 +15,12 @@ O estado de um passo sai de três coisas: o que está gravado em
   dele pede agora) e é livre nas demais. Sem período informado, não há "ordem
   da faculdade" para seguir, e vale a ordem em tudo, como na guiada.
 
+A trilha guiada da ementa (#38) abre caminho por cima disso: um módulo dela
+libera quando o item anterior **da trilha guiada** foi concluído, mesmo que o
+passo anterior na trilha do catálogo não tenha sido. É o que deixa o aluno de
+nível alto começar no assunto da ementa sem refazer o básico do catálogo. Ela
+só libera, nunca bloqueia: o que a ordem do catálogo abre continua aberto.
+
 Trocar de modo não grava nada: o estado é calculado a cada leitura, então o que
 foi concluído continua concluído, e só muda o que está aberto daqui em diante.
 Um passo fechado fora de ordem no modo livre segue fechado ao voltar para a
@@ -22,11 +28,13 @@ guiada, e o próximo depois dele abre normalmente.
 """
 
 from datetime import UTC, datetime
+from itertools import pairwise
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import Modulo, ProgressoUsuario, StatusProgresso, TipoTrilha, Trilha, Usuario
+from app.services import trilha_guiada
 
 
 class PassoBloqueado(Exception):
@@ -59,6 +67,8 @@ def estados_dos_passos(
         db, usuario_id=usuario.id if usuario else None, trilha_id=trilha.id
     )
     em_ordem = segue_ordem(trilha, usuario)
+    # Fora da ordem tudo já está aberto, e a trilha guiada não tem o que somar.
+    pela_guiada = abertos_pela_trilha_guiada(db, usuario) if em_ordem and usuario else set()
 
     estados: dict[int, StatusProgresso] = {}
     liberado = True  # o primeiro passo nasce aberto
@@ -69,11 +79,29 @@ def estados_dos_passos(
             liberado = True
             continue
 
-        estados[modulo.id] = StatusProgresso.em_andamento if liberado else StatusProgresso.bloqueado
+        aberto = liberado or modulo.id in pela_guiada
+        estados[modulo.id] = StatusProgresso.em_andamento if aberto else StatusProgresso.bloqueado
         # Na ordem, o próximo só abre depois que este fechar.
         liberado = not em_ordem
 
     return estados
+
+
+def abertos_pela_trilha_guiada(db: Session, usuario: Usuario) -> set[int]:
+    """Os módulos que a trilha guiada libera: o primeiro e os que vêm depois de um concluído."""
+    ordem = trilha_guiada.modulos_em_ordem(db, usuario)
+    if not ordem:
+        return set()
+    concluidos = set(
+        db.scalars(
+            select(ProgressoUsuario.modulo_id).where(
+                ProgressoUsuario.usuario_id == usuario.id,
+                ProgressoUsuario.modulo_id.in_(ordem),
+                ProgressoUsuario.status == StatusProgresso.concluido,
+            )
+        )
+    )
+    return {ordem[0]} | {modulo for anterior, modulo in pairwise(ordem) if anterior in concluidos}
 
 
 def conteudo_do_passo(

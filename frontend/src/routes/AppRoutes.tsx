@@ -12,6 +12,8 @@ import { RedefinirSenhaPage } from '@/pages/Auth/RedefinirSenhaPage'
 import { HomePage } from '@/pages/Home/HomePage'
 import { TrilhasPage } from '@/pages/Trilhas/TrilhasPage'
 import { TrilhaPage } from '@/pages/Trilha/TrilhaPage'
+import { RevisaoEmentaPage } from '@/pages/TrilhaGuiada/RevisaoEmentaPage'
+import { TrilhaGuiadaPage } from '@/pages/TrilhaGuiada/TrilhaGuiadaPage'
 import { QuestaoPage } from '@/pages/Questao/QuestaoPage'
 import { ChatPage } from '@/pages/Chat/ChatPage'
 import { PerfilPage } from '@/pages/Perfil/PerfilPage'
@@ -39,6 +41,8 @@ export function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/trilhas" element={<TrilhasPage />} />
+          <Route path="/trilha-guiada" element={<TrilhaGuiadaPage />} />
+          <Route path="/trilha-guiada/revisao" element={<RevisaoEmentaPage />} />
           <Route path="/trilhas/:trilhaId" element={<TrilhaPage />} />
           <Route path="/trilhas/:trilhaId/questao/:questaoId" element={<QuestaoPage />} />
           <Route path="/chat" element={<ChatPage />} />
