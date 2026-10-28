@@ -58,6 +58,14 @@ export const chaves = {
     recomendadas: () => ['trilhas', 'recomendadas'] as const,
     detalhe: (slug: string) => ['trilhas', 'detalhe', slug] as const,
     passo: (slug: string, ordem: number) => ['trilhas', 'passo', slug, ordem] as const,
+    // Debaixo de `trilhas`: concluir um passo invalida `trilhas.todas`, e o
+    // progresso da trilha guiada muda junto.
+    guiada: () => ['trilhas', 'guiada'] as const,
+  },
+  ementa: {
+    todas: ['ementa'] as const,
+    atual: () => ['ementa', 'atual'] as const,
+    assuntos: (ementaId: number) => ['ementa', ementaId, 'assuntos'] as const,
   },
   atividades: {
     todas: ['atividades'] as const,

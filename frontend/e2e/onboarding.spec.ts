@@ -63,7 +63,8 @@ test('ementa que não é PDF mostra o motivo e não perde o preenchido', async (
     buffer: pdfComTexto(EMENTA_DE_TESTE),
   })
   await page.getByRole('button', { name: 'Continuar' }).click()
-  await expect(page).toHaveURL('/')
+  // Com a ementa enviada, o próximo passo é revisar o que foi lido (#38).
+  await expect(page).toHaveURL('/trilha-guiada/revisao')
 })
 
 test('sem instituição nem ementa na guiada, o passo 3 diz o que falta', async ({

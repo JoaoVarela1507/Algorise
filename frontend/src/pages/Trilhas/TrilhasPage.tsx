@@ -1,6 +1,15 @@
 import { useId, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { AnimatePresence, motion, type Variants } from 'framer-motion'
-import { Check, ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react'
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Route as IconeRota,
+  Search,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TrilhaCard } from '@/components/trilhas/TrilhaCard'
@@ -82,6 +91,16 @@ export function TrilhasPage() {
           </div>
 
           <div className="flex w-full gap-3 sm:w-auto">
+            {/* A trilha guiada sai da ementa: só faz sentido para quem escolheu esse modo. */}
+            {usuario?.tipoTrilha === 'guiada' && (
+              <Button asChild variant="secondary" className="shrink-0 shadow-sm">
+                <Link to="/trilha-guiada">
+                  <IconeRota aria-hidden />
+                  <span className="hidden sm:inline">Minha trilha guiada</span>
+                  <span className="sr-only sm:hidden">Minha trilha guiada</span>
+                </Link>
+              </Button>
+            )}
             <div className="relative flex-1 sm:w-80">
               <Search
                 className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
