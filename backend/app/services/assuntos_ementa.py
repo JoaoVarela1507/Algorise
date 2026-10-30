@@ -13,9 +13,13 @@ Roda depois da extração do texto (`services/ementas.py`), em duas etapas:
 O mapeamento roda sempre, mesmo na cópia: o catálogo pode ter crescido desde a
 primeira leitura, e uma lacuna de ontem pode estar coberta hoje.
 
+Só as disciplinas de programação (a IA marca, o aluno corrige) entram na
+trilha guiada e vão ao catálogo; as demais ficam guardadas, sem ligação.
+
 Depois da leitura, o aluno revisa (`revisar`): corrige, remove e acrescenta
-assuntos. Só o que ele mudou é buscado de novo no vault. E confirma
-(`confirmar`), o que faz da ementa a base da trilha guiada dele.
+assuntos, e escolhe as disciplinas da trilha. Só o que ele mudou é buscado de
+novo no vault. E confirma (`confirmar`), o que faz da ementa a base da trilha
+guiada dele.
 """
 
 import logging
@@ -59,7 +63,7 @@ async def processar(db: Session, provedor: ProvedorIA, ementa: Ementa) -> None:
         ementa.disciplinas.clear()
         db.flush()
         ementa.disciplinas = _montar(disciplinas)
-        await mapear(db, provedor, [a for d in ementa.disciplinas for a in d.assuntos])
+        await mapear(db, provedor, _da_trilha(ementa))
     except _Falha as erro:
         db.rollback()
         _falhar(db, ementa, str(erro))
@@ -85,17 +89,21 @@ async def revisar(
     """Troca as disciplinas e os assuntos da ementa pelos que o aluno revisou.
 
     O assunto que já existia (mesma disciplina e mesmo texto, sem contar acento
-    e caixa) mantém a ligação que tinha; só o novo ou o renomeado vai ao vault.
-    Levanta `IAIndisponivel` sem mudar nada, se o vault precisar da IA e ela
-    estiver fora.
+    e caixa) mantém a ligação que tinha; só o novo, o renomeado e o de uma
+    disciplina que acabou de entrar na trilha vão ao vault. Em `disciplinas`,
+    `programacao` é o que o aluno marcou para a trilha. Levanta `IAIndisponivel`
+    sem mudar nada, se o vault precisar da IA e ela estiver fora.
     """
     disciplinas = ler_ementa.juntar([ler_ementa.Leitura(disciplinas=disciplinas)])
+    # Só o assunto que estava na trilha tem ligação: o de fora nunca foi ao vault.
     ligacoes = {
-        _chave(d.nome, a.texto): (a.modulo, a.lacuna, a.distancia)
-        for d in ementa.disciplinas
-        for a in d.assuntos
+        _chave(a.disciplina.nome, a.texto): (a.modulo, a.lacuna, a.distancia)
+        for a in _da_trilha(ementa)
+        if a.modulo is not None or a.lacuna is not None
     }
-    tem_novo = any(_chave(d.nome, a) not in ligacoes for d in disciplinas for a in d.assuntos)
+    tem_novo = any(
+        _chave(d.nome, a) not in ligacoes for d in disciplinas if d.programacao for a in d.assuntos
+    )
     try:
         if tem_novo:
             # Antes de mexer na ementa: o registro confirma a transação por
@@ -105,13 +113,12 @@ async def revisar(
         db.flush()
         ementa.disciplinas = _montar(disciplinas)
         novos = []
-        for disciplina in ementa.disciplinas:
-            for assunto in disciplina.assuntos:
-                ligacao = ligacoes.get(_chave(disciplina.nome, assunto.texto))
-                if ligacao is None:
-                    novos.append(assunto)
-                else:
-                    assunto.modulo, assunto.lacuna, assunto.distancia = ligacao
+        for assunto in _da_trilha(ementa):
+            ligacao = ligacoes.get(_chave(assunto.disciplina.nome, assunto.texto))
+            if ligacao is None:
+                novos.append(assunto)
+            else:
+                assunto.modulo, assunto.lacuna, assunto.distancia = ligacao
         await mapear(db, provedor, novos)
     except Exception:
         db.rollback()
@@ -155,7 +162,7 @@ async def mapear(db: Session, provedor: ProvedorIA, assuntos: list[AssuntoEmenta
 
 async def _ler(provedor: ProvedorIA, texto: str | None) -> list[ler_ementa.Disciplina]:
     leituras = []
-    for parte in ler_ementa.dividir_texto(texto or ""):
+    for parte in ler_ementa.dividir_texto(ler_ementa.sem_bibliografia(texto or "")):
         pedacos = [
             pedaco
             async for pedaco in provedor.gerar(
@@ -188,6 +195,7 @@ def _copiar_de_outra(db: Session, ementa: Ementa) -> list[ler_ementa.Disciplina]
             nome=d.nome,
             periodo=d.periodo,
             carga_horaria=d.carga_horaria,
+            programacao=d.na_trilha,
             assuntos=[a.texto for a in d.assuntos],
         )
         for d in outra.disciplinas
@@ -201,11 +209,21 @@ def _montar(disciplinas: list[ler_ementa.Disciplina]) -> list[DisciplinaEmenta]:
             nome=d.nome,
             periodo=d.periodo,
             carga_horaria=d.carga_horaria,
+            na_trilha=d.programacao,
             assuntos=[AssuntoEmenta(ordem=j, texto=texto) for j, texto in enumerate(d.assuntos)],
         )
         for i, d in enumerate(disciplinas)
         if d.assuntos
     ]
+
+
+def _da_trilha(ementa: Ementa) -> list[AssuntoEmenta]:
+    """Os assuntos das disciplinas que entram na trilha guiada.
+
+    Só eles vão ao catálogo: um assunto de Cálculo virando lacuna faria a busca
+    de conteúdo (#207) procurar Cálculo no YouTube.
+    """
+    return [a for d in ementa.disciplinas if d.na_trilha for a in d.assuntos]
 
 
 def _chave(disciplina: str, assunto: str) -> str:

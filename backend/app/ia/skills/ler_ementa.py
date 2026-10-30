@@ -29,12 +29,18 @@ TAMANHO_DA_PARTE = 4000
 MAXIMO_DE_TOKENS = 2000
 
 PROMPT = """\
-Você lê ementas de cursos de graduação e extrai o conteúdo programático.
+Você lê ementas de cursos de graduação e extrai o conteúdo programático. O \
+texto costuma ser o ementário do PPC (Projeto Pedagógico do Curso), com várias \
+disciplinas.
 
 Responda só com JSON, no formato pedido:
 - "disciplinas": cada disciplina que aparece no texto, na ordem do documento.
 - "nome": o nome da disciplina como está no texto, sem o código.
 - "periodo" e "carga_horaria" (em horas): só se estiverem no texto; senão, null.
+- "programacao": true se a disciplina ensina a escrever programas (algoritmos, \
+linguagens de programação, estruturas de dados, orientação a objetos, \
+desenvolvimento web ou mobile, engenharia de software com código); false para as \
+demais (matemática, física, administração, ética, metodologia científica).
 - "assuntos": os tópicos do conteúdo programático, cada um curto (até oito \
 palavras), em português, sem numeração. Um tópico com subtópicos vira um \
 assunto por subtópico.
@@ -52,6 +58,8 @@ class Disciplina(BaseModel):
     nome: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
     periodo: int | None = Field(default=None, ge=1, le=20)
     carga_horaria: int | None = Field(default=None, ge=1, le=2000)
+    # Ensina a programar: é o que entra na trilha guiada (#38).
+    programacao: bool = False
     assuntos: list[Assunto] = []
 
 
@@ -65,6 +73,34 @@ FORMATO = Leitura.model_json_schema()
 
 class SaidaInvalida(Exception):
     """A resposta do modelo não é uma `Leitura` válida."""
+
+
+# Onde começa a bibliografia de uma disciplina, e onde começa a próxima.
+_BIBLIOGRAFIA = re.compile(r"^\s*bibliografia", re.IGNORECASE)
+_PROXIMA_DISCIPLINA = re.compile(
+    r"^\s*(componente curricular|disciplina|nome da disciplina|c[oó]digo|ementa\b|carga hor)",
+    re.IGNORECASE,
+)
+
+
+def sem_bibliografia(texto: str) -> str:
+    """O texto sem as listas de bibliografia.
+
+    Num PPC elas são dois terços do ementário, e o prompt já manda ignorá-las:
+    tirá-las antes divide por três as chamadas ao modelo. Cada lista vai do
+    título "Bibliografia..." até a linha que abre a próxima disciplina.
+    """
+    linhas: list[str] = []
+    na_bibliografia = False
+    for linha in texto.splitlines():
+        if _BIBLIOGRAFIA.match(linha):
+            na_bibliografia = True
+            continue
+        if na_bibliografia and _PROXIMA_DISCIPLINA.match(linha):
+            na_bibliografia = False
+        if not na_bibliografia:
+            linhas.append(linha)
+    return "\n".join(linhas)
 
 
 def dividir_texto(texto: str, *, tamanho: int = TAMANHO_DA_PARTE) -> list[str]:
@@ -107,7 +143,7 @@ def juntar(leituras: Sequence[Leitura]) -> list[Disciplina]:
 
     A disciplina que atravessa o corte entre duas partes aparece nas duas
     leituras: os assuntos se somam, e o período e a carga horária ficam com o
-    primeiro que veio preenchido.
+    primeiro que veio preenchido. Basta uma leitura dizer que é de programação.
     """
     juntas: dict[str, Disciplina] = {}
     for leitura in leituras:
@@ -118,6 +154,7 @@ def juntar(leituras: Sequence[Leitura]) -> list[Disciplina]:
             atual = juntas.setdefault(chave, Disciplina(nome=disciplina.nome))
             atual.periodo = atual.periodo or disciplina.periodo
             atual.carga_horaria = atual.carga_horaria or disciplina.carga_horaria
+            atual.programacao = atual.programacao or disciplina.programacao
             vistos = {normalizar(a) for a in atual.assuntos}
             for assunto in disciplina.assuntos:
                 if normalizar(assunto) not in vistos:

@@ -5,7 +5,8 @@ ementa que o aluno confirmou por último (`Ementa.confirmada_em`): quando uma
 lacuna for coberta (#210), ou o aluno corrigir um assunto, a trilha muda sem
 nada para sincronizar.
 
-A ordem é a do curso: as disciplinas pelo período e, dentro dele, pela ordem do
+Entram só as disciplinas de programação (`na_trilha`). A ordem é a do curso: as
+disciplinas pelo período e, dentro dele, pela ordem do
 documento; os assuntos, na ordem do conteúdo programático. Cada item é um
 módulo do catálogo, que pode cobrir mais de um assunto e aparece uma vez só, ou
 uma lacuna, que ainda espera conteúdo.
@@ -79,7 +80,10 @@ def montar(db: Session, usuario: Usuario) -> tuple[Ementa | None, list[Item]]:
     itens: list[Item] = []
     por_modulo: dict[int, Item] = {}
     por_lacuna: dict[int, Item] = {}
-    disciplinas = sorted(ementa.disciplinas, key=lambda d: (d.periodo or 99, d.ordem))
+    # Só as de programação (marcadas na leitura ou pelo aluno), do 1º período em diante.
+    disciplinas = sorted(
+        (d for d in ementa.disciplinas if d.na_trilha), key=lambda d: (d.periodo or 99, d.ordem)
+    )
 
     for disciplina in disciplinas:
         for assunto in disciplina.assuntos:

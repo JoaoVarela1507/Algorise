@@ -825,7 +825,7 @@ export interface components {
              * Situacao
              * @enum {string}
              */
-            situacao: "coberto" | "lacuna";
+            situacao: "coberto" | "lacuna" | "fora";
             status_lacuna?: components["schemas"]["StatusLacuna"] | null;
             /** Texto */
             texto: string;
@@ -910,7 +910,7 @@ export interface components {
         Body_enviarEmenta: {
             /**
              * Arquivo
-             * @description PDF de até 5 MB
+             * @description PDF de até 30 MB
              */
             arquivo: string;
         };
@@ -947,6 +947,8 @@ export interface components {
             assuntos: components["schemas"]["AssuntoLido"][];
             /** Carga Horaria */
             carga_horaria?: number | null;
+            /** Na Trilha */
+            na_trilha: boolean;
             /** Nome */
             nome: string;
             /** Periodo */
@@ -958,6 +960,11 @@ export interface components {
             assuntos: string[];
             /** Carga Horaria */
             carga_horaria?: number | null;
+            /**
+             * Na Trilha
+             * @default true
+             */
+            na_trilha: boolean;
             /** Nome */
             nome: string;
             /** Periodo */
@@ -983,6 +990,10 @@ export interface components {
             id: number;
             /** Nome Original */
             nome_original?: string | null;
+            /** Pagina Final */
+            pagina_final?: number | null;
+            /** Pagina Inicial */
+            pagina_inicial?: number | null;
             /** Paginas */
             paginas?: number | null;
             status: components["schemas"]["StatusEmenta"];

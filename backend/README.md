@@ -379,23 +379,38 @@ crescer para milhares de linhas, é em `app/services/catalogo.py` que o `pg_trgm
 entra.
 
 A ementa (`app/services/ementas.py`) é conferida no request (PDF pelo conteúdo,
-até `TAMANHO_MAXIMO_EMENTA`, 5 MB) e gravada em `DIRETORIO_MIDIA/ementas/<aluno>/`,
+até `TAMANHO_MAXIMO_EMENTA`, 30 MB) e gravada em `DIRETORIO_MIDIA/ementas/<aluno>/`,
 **fora** de `/media/avatares`: ementa não tem URL. O texto é extraído depois da
-resposta, com o pypdf, e fica em `ementas.texto_extraido` para a #38. PDF sem
-texto (escaneado), com senha, corrompido ou com mais de `MAXIMO_PAGINAS_EMENTA`
-páginas termina em `falhou`, com o motivo escrito para o aluno. O mesmo PDF
-enviado de novo é reconhecido pelo SHA-256 e reaproveita o texto.
+resposta, com o pypdf, e fica em `ementas.texto_extraido`. PDF sem texto
+(escaneado), com senha ou corrompido termina em `falhou`, com o motivo escrito
+para o aluno. O mesmo PDF enviado de novo é reconhecido pelo SHA-256 e
+reaproveita o texto.
+
+**PPC.** O aluno costuma mandar o PPC do curso, de 100 a 300 páginas, e não a
+ementa de uma disciplina. Não há teto de páginas: `app/services/ppc.py` acha o
+ementário e só ele é guardado e lido pela IA. A busca tenta, nesta ordem, o item
+"Ementário" do índice lateral do PDF, a linha `EMENTÁRIO ..... 87` do sumário
+nas primeiras 15 páginas (com o deslocamento entre a página impressa e a do
+PDF) e o trecho com mais páginas de "Ementa / Carga horária / Bibliografia". Sem
+nada disso, lê o documento inteiro. O trecho lido fica em `pagina_inicial` e
+`pagina_final`.
 
 Com o texto pronto, a IA lê as disciplinas e os assuntos do conteúdo programático
 (#38, `app/services/assuntos_ementa.py`), com status próprio em `status_assuntos`:
-a IA fora do ar não invalida um PDF que foi lido.
+a IA fora do ar não invalida um PDF que foi lido. A leitura roda em segundo
+plano e espera o modelo até `IA_TIMEOUT_LEITURA_TAREFAS` (15 minutos) entre um
+pedaço e outro da resposta; o chat continua com `IA_TIMEOUT_LEITURA`.
 
-1. **Leitura:** a skill `ler_ementa` recebe o texto em partes de 4000 caracteres
-   e pede ao modelo um JSON no formato de `Leitura` (o `format` do Ollama). A
-   mesma disciplina partida entre duas partes vira uma só. Uma resposta que não
-   valida é descartada inteira, e o aluno vê o motivo em `erro_assuntos`. O
-   mesmo PDF já lido copia as disciplinas, sem chamar a IA.
-2. **Mapeamento:** cada assunto é buscado no vault entre o que aponta para um
+1. **Leitura:** a skill `ler_ementa` recebe o texto sem as bibliografias (dois
+   terços de um ementário), em partes de 4000 caracteres, e pede ao modelo um
+   JSON no formato de `Leitura` (o `format` do Ollama). A mesma disciplina
+   partida entre duas partes vira uma só. A IA marca cada disciplina como de
+   programação ou não: só essas entram na trilha guiada (`na_trilha`), e o aluno
+   corrige na revisão. Uma resposta que não valida é descartada inteira, e o
+   aluno vê o motivo em `erro_assuntos`. O mesmo PDF já lido copia as
+   disciplinas, sem chamar a IA.
+2. **Mapeamento:** cada assunto das disciplinas da trilha é buscado no vault
+   entre o que aponta para um
    módulo. Os módulos do catálogo entram no vault pelo título, pela descrição e
    pela disciplina da trilha (`registrar-modulos`, que roda sozinho antes de
    cada leitura e só pede embedding do que mudou). Abaixo de

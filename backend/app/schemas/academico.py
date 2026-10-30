@@ -54,6 +54,9 @@ class EmentaStatus(BaseModel):
     nome_original: str | None = None
     tamanho_bytes: int | None = None
     paginas: int | None = None
+    # O trecho lido (1 a `paginas`): no PPC, só o ementário.
+    pagina_inicial: int | None = None
+    pagina_final: int | None = None
     # Motivo da falha, escrito para o aluno.
     erro: str | None = None
     # A leitura das disciplinas e dos assuntos pela IA (#38), depois do texto.
@@ -75,8 +78,9 @@ class ModuloDoAssunto(BaseModel):
 class AssuntoLido(BaseModel):
     texto: str
     # `coberto`: há um módulo no catálogo para o assunto. `lacuna`: ainda não,
-    # e `status_lacuna` diz em que pé está a busca de conteúdo.
-    situacao: Literal["coberto", "lacuna"]
+    # e `status_lacuna` diz em que pé está a busca de conteúdo. `fora`: a
+    # disciplina não entra na trilha guiada, e o assunto não foi ao catálogo.
+    situacao: Literal["coberto", "lacuna", "fora"]
     modulo: ModuloDoAssunto | None = None
     status_lacuna: StatusLacuna | None = None
 
@@ -85,6 +89,8 @@ class DisciplinaLida(BaseModel):
     nome: str
     periodo: int | None = None
     carga_horaria: int | None = None
+    # Entra na trilha guiada: de programação, segundo a IA ou o aluno.
+    na_trilha: bool
     assuntos: list[AssuntoLido]
 
 
@@ -104,6 +110,7 @@ class DisciplinaRevisada(BaseModel):
     nome: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
     periodo: int | None = Field(default=None, ge=1, le=20)
     carga_horaria: int | None = Field(default=None, ge=1, le=2000)
+    na_trilha: bool = True
     assuntos: list[Texto] = Field(min_length=1, max_length=200)
 
 
