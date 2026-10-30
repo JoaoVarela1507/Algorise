@@ -19,7 +19,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.ia import IAIndisponivel, MensagemIA, get_provedor_ia
+from app.ia import IAIndisponivel, MensagemIA, get_provedor_ia, get_provedor_ia_tarefas
 from app.ia.base import DIMENSOES_EMBEDDING
 from app.ia.ollama import Ollama
 from app.ia.skills import ler_ementa
@@ -45,6 +45,7 @@ LEITURA = {
         {
             "nome": DISCIPLINA,
             "periodo": 1,
+            "programacao": True,
             "carga_horaria": 60,
             "assuntos": [
                 "Variáveis e tipos",
@@ -108,7 +109,9 @@ def midia(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def provedor(cliente: TestClient) -> Iterator[ProvedorDeEmenta]:
     """Depende do `cliente` para trocar o `Eco` que ele instala."""
     falso = ProvedorDeEmenta()
+    # A revisão usa o provedor do request; a leitura, o das tarefas.
     app.dependency_overrides[get_provedor_ia] = lambda: falso
+    app.dependency_overrides[get_provedor_ia_tarefas] = lambda: falso
     yield falso
 
 
@@ -435,7 +438,13 @@ def test_mapeamento_no_pgvector_cobre_e_abre_uma_lacuna_so(db_postgres: Session)
     """O mapeamento pelo `cosine_distance` e a lacuna única pela constraint do banco."""
     provedor = ProvedorDeEmenta()
     provedor.respostas = [
-        json.dumps({"disciplinas": [{"nome": "Vault Teste", "assuntos": ["Recursão", "Grafos"]}]})
+        json.dumps(
+            {
+                "disciplinas": [
+                    {"nome": "Vault Teste", "programacao": True, "assuntos": ["Recursão", "Grafos"]}
+                ]
+            }
+        )
     ]
     trilha = Trilha(slug="ementa-teste-pg", nome="Ementa", disciplina="Vault Teste", periodo=1)
     trilha.modulos = [Modulo(ordem=1, titulo="Recursão em profundidade")]
@@ -469,3 +478,61 @@ def test_mapeamento_no_pgvector_cobre_e_abre_uma_lacuna_so(db_postgres: Session)
         assert grafos.modulo_id is None
     lacunas = db_postgres.scalars(select(Lacuna).where(Lacuna.disciplina == "Vault Teste")).all()
     assert [lacuna.assunto for lacuna in lacunas] == ["Grafos"]
+
+
+def test_disciplina_partida_e_de_programacao_se_uma_das_partes_disser() -> None:
+    partes = [
+        ler_ementa.Leitura.model_validate(
+            {"disciplinas": [{"nome": "Algoritmos", "programacao": False, "assuntos": ["Laços"]}]}
+        ),
+        ler_ementa.Leitura.model_validate(
+            {"disciplinas": [{"nome": "Algoritmos", "programacao": True, "assuntos": ["Pilhas"]}]}
+        ),
+    ]
+
+    [algoritmos] = ler_ementa.juntar(partes)
+
+    assert algoritmos.programacao is True
+
+
+def test_bibliografia_sai_antes_de_ir_para_a_ia() -> None:
+    texto = "\n".join(
+        [
+            "Componente Curricular: Algoritmos",
+            "Ementa",
+            "Laços e funções.",
+            "Bibliografia Básica",
+            "● CORMEN, T. Algoritmos. Rio de Janeiro: Elsevier, 2012.",
+            "Bibliografia Complementar",
+            "● FORBELLONE, A. Lógica de Programação. 2005.",
+            "Componente Curricular: Banco de Dados",
+            "Código: BD",
+            "Ementa",
+            "Modelo relacional.",
+            "BIBLIOGRAFIA",
+            "● DATE, C. Introdução a Sistemas de Banco de Dados.",
+        ]
+    )
+
+    assert ler_ementa.sem_bibliografia(texto).splitlines() == [
+        "Componente Curricular: Algoritmos",
+        "Ementa",
+        "Laços e funções.",
+        "Componente Curricular: Banco de Dados",
+        "Código: BD",
+        "Ementa",
+        "Modelo relacional.",
+    ]
+
+
+def test_leitura_em_segundo_plano_espera_mais_que_o_chat(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.ia.provedor import get_provedor_ia_tarefas
+
+    monkeypatch.setattr(settings, "ia_provedor", "ollama")
+    monkeypatch.setattr(settings, "ia_timeout_leitura", 120)
+    monkeypatch.setattr(settings, "ia_timeout_leitura_tarefas", 900)
+
+    chat, tarefas = get_provedor_ia(), get_provedor_ia_tarefas()
+
+    assert isinstance(chat, Ollama) and isinstance(tarefas, Ollama)
+    assert (chat.timeout.read, tarefas.timeout.read) == (120, 900)

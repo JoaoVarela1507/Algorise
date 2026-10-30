@@ -32,17 +32,22 @@ TEXTO_DA_EMENTA = [
 
 
 def pdf_com_texto(linhas: list[str], *, paginas: int = 1) -> bytes:
-    """PDF mínimo, montado à mão, com texto selecionável em cada página."""
-    texto = " ".join(f"({linha}) Tj 0 -16 Td" for linha in linhas)
-    conteudo = f"BT /F1 12 Tf 72 720 Td {texto} ET".encode()
+    """PDF mínimo, montado à mão, com o mesmo texto selecionável em cada página."""
+    return pdf_com_paginas([linhas] * paginas)
 
-    filhos = " ".join(f"{3 + 2 * i} 0 R" for i in range(paginas))
+
+def pdf_com_paginas(paginas: list[list[str]]) -> bytes:
+    """PDF mínimo, montado à mão, com as linhas de cada página."""
+    total = len(paginas)
+    filhos = " ".join(f"{3 + 2 * i} 0 R" for i in range(total))
     objetos = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
-        f"<< /Type /Pages /Kids [{filhos}] /Count {paginas} >>".encode(),
+        f"<< /Type /Pages /Kids [{filhos}] /Count {total} >>".encode(),
     ]
-    fonte = 3 + 2 * paginas
-    for i in range(paginas):
+    fonte = 3 + 2 * total
+    for i, linhas in enumerate(paginas):
+        texto = " ".join(f"({linha}) Tj 0 -16 Td" for linha in linhas)
+        conteudo = f"BT /F1 12 Tf 72 720 Td {texto} ET".encode()
         objetos.append(
             f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
             f"/Resources << /Font << /F1 {fonte} 0 R >> >> /Contents {4 + 2 * i} 0 R >>".encode()
@@ -483,17 +488,29 @@ def test_pdf_com_senha_falha_com_o_motivo(
     assert "senha" in _falha(cliente, autenticado, saida.getvalue())
 
 
-def test_pdf_com_paginas_demais_falha(
-    cliente: TestClient,
-    autenticado: dict[str, str],
-    midia: Path,
-    monkeypatch: pytest.MonkeyPatch,
+def test_ppc_de_muitas_paginas_guarda_so_o_ementario(
+    cliente: TestClient, autenticado: dict[str, str], db: Session, midia: Path
 ) -> None:
-    monkeypatch.setattr(settings, "maximo_paginas_ementa", 2)
+    """O aluno manda o PPC inteiro: sem teto de páginas, e o texto é o do ementário."""
+    paginas = [[f"Historico do curso, pagina {i}"] for i in range(120)]
+    paginas[1] = [
+        "SUMARIO",
+        "1 APRESENTACAO ........ 3",
+        "7 EMENTARIO ........ 80",
+        "8 ANEXOS ...... 90",
+    ]
+    paginas[81] = ["7 EMENTARIO", *TEXTO_DA_EMENTA]
+    for i in range(82, 91):
+        paginas[i] = [f"Ementa da disciplina {i}: carga horaria de 60 horas"]
 
-    erro = _falha(cliente, autenticado, pdf_com_texto(TEXTO_DA_EMENTA, paginas=3))
+    ementa_id = _enviar(cliente, autenticado, pdf_com_paginas(paginas)).json()["id"]
 
-    assert "2 páginas" in erro
+    corpo = _status(cliente, autenticado, ementa_id)
+    assert (corpo["status"], corpo["paginas"]) == ("processada", 120)
+    assert (corpo["pagina_inicial"], corpo["pagina_final"]) == (82, 91)
+    texto = db.get(Ementa, ementa_id).texto_extraido
+    assert texto.startswith("7 EMENTARIO")
+    assert "Historico do curso" not in texto
 
 
 def test_mesma_ementa_reaproveita_o_texto(
