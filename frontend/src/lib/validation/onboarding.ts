@@ -1,7 +1,8 @@
 import { z } from 'zod'
 
 /** Espelha `tamanho_maximo_ementa` do backend, que confere de novo no envio. */
-export const TAMANHO_MAXIMO_EMENTA = 5 * 1024 * 1024
+// O aluno costuma mandar o PPC do curso, bem maior que uma ementa.
+export const TAMANHO_MAXIMO_EMENTA = 30 * 1024 * 1024
 
 const escolhaSchema = z.object({ texto: z.string(), id: z.number().nullable() })
 
@@ -17,7 +18,7 @@ const ementaSchema = z
   )
   .refine(
     (arquivo) => !arquivo || arquivo.size <= TAMANHO_MAXIMO_EMENTA,
-    'A ementa precisa ter até 5 MB.',
+    'A ementa precisa ter até 30 MB.',
   )
 
 /**

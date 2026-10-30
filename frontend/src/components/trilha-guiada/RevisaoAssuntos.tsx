@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import { Plus, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { mensagemDeErro } from '@/lib/erros'
 import type { DisciplinaLida, DisciplinaRevisada } from '@/services/ementa'
@@ -21,6 +22,8 @@ interface DisciplinaEditavel {
   nome: string
   periodo?: number | null
   carga_horaria?: number | null
+  // Entra na trilha guiada. A IA marca as de programação; o aluno corrige.
+  na_trilha: boolean
   assuntos: AssuntoEditavel[]
 }
 
@@ -31,6 +34,7 @@ function paraRevisao(disciplinas: DisciplinaEditavel[]): DisciplinaRevisada[] {
       nome: disciplina.nome,
       periodo: disciplina.periodo ?? null,
       carga_horaria: disciplina.carga_horaria ?? null,
+      na_trilha: disciplina.na_trilha,
       assuntos: disciplina.assuntos.map((a) => a.texto.trim()).filter(Boolean),
     }))
     .filter((disciplina) => disciplina.assuntos.length > 0)
@@ -38,7 +42,8 @@ function paraRevisao(disciplinas: DisciplinaEditavel[]): DisciplinaRevisada[] {
 
 function Situacao({ assunto }: { assunto: AssuntoEditavel }) {
   const lido = assunto.lido
-  if (!lido || lido.texto !== assunto.texto.trim()) {
+  // Fora da trilha no servidor e marcada agora: vai ao catálogo ao salvar.
+  if (!lido || lido.texto !== assunto.texto.trim() || lido.situacao === 'fora') {
     return <Badge variant="outline">Novo</Badge>
   }
   if (lido.situacao === 'coberto') {
@@ -76,6 +81,7 @@ export function RevisaoAssuntos({
       nome: disciplina.nome,
       periodo: disciplina.periodo,
       carga_horaria: disciplina.carga_horaria,
+      na_trilha: disciplina.na_trilha,
       assuntos: disciplina.assuntos.map((lido) => ({ chave: nova(), texto: lido.texto, lido })),
     })),
   )
@@ -92,7 +98,13 @@ export function RevisaoAssuntos({
     ),
   )
   const alterada = JSON.stringify(revisao) !== original
-  const vazia = revisao.length === 0
+  const vazia = !revisao.some((disciplina) => disciplina.na_trilha)
+
+  function alternarTrilha(disciplina: number, naTrilha: boolean) {
+    setDisciplinas((atuais) =>
+      atuais.map((d) => (d.chave === disciplina ? { ...d, na_trilha: naTrilha } : d)),
+    )
+  }
 
   function mudarAssunto(disciplina: number, assunto: number, texto: string) {
     setDisciplinas((atuais) =>
@@ -149,50 +161,65 @@ export function RevisaoAssuntos({
                 .filter(Boolean)
                 .join(' · ')}
             </p>
+            <label className="flex w-full items-center gap-2 text-sm font-semibold text-foreground">
+              <Checkbox
+                checked={disciplina.na_trilha}
+                onCheckedChange={(marcada) => alternarTrilha(disciplina.chave, marcada === true)}
+              />
+              Incluir na trilha guiada
+            </label>
           </header>
 
-          <ul className="flex flex-col gap-2">
-            {disciplina.assuntos.map((assunto, i) => (
-              <li key={assunto.chave} className="flex items-center gap-2">
+          {/* Num PPC são dezenas de disciplinas: as de fora mostram só o nome. */}
+          {disciplina.na_trilha && (
+            <>
+              <ul className="flex flex-col gap-2">
+                {disciplina.assuntos.map((assunto, i) => (
+                  <li key={assunto.chave} className="flex items-center gap-2">
+                    <Input
+                      value={assunto.texto}
+                      aria-label={`Assunto ${i + 1} de ${disciplina.nome}`}
+                      maxLength={300}
+                      onChange={(evento) =>
+                        mudarAssunto(disciplina.chave, assunto.chave, evento.target.value)
+                      }
+                    />
+                    <Situacao assunto={assunto} />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Remover "${assunto.texto}"`}
+                      onClick={() => removerAssunto(disciplina.chave, assunto.chave)}
+                    >
+                      <X />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+
+              <form
+                className="mt-3 flex items-center gap-2"
+                onSubmit={(evento) => acrescentar(evento, disciplina.chave)}
+              >
                 <Input
-                  value={assunto.texto}
-                  aria-label={`Assunto ${i + 1} de ${disciplina.nome}`}
+                  placeholder="Acrescentar um assunto"
+                  aria-label={`Novo assunto em ${disciplina.nome}`}
                   maxLength={300}
+                  value={rascunhos[disciplina.chave] ?? ''}
                   onChange={(evento) =>
-                    mudarAssunto(disciplina.chave, assunto.chave, evento.target.value)
+                    setRascunhos((atuais) => ({
+                      ...atuais,
+                      [disciplina.chave]: evento.target.value,
+                    }))
                   }
                 />
-                <Situacao assunto={assunto} />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Remover "${assunto.texto}"`}
-                  onClick={() => removerAssunto(disciplina.chave, assunto.chave)}
-                >
-                  <X />
+                <Button type="submit" variant="secondary" size="icon" aria-label="Acrescentar">
+                  <Plus />
                 </Button>
-              </li>
-            ))}
-          </ul>
-
-          <form
-            className="mt-3 flex items-center gap-2"
-            onSubmit={(evento) => acrescentar(evento, disciplina.chave)}
-          >
-            <Input
-              placeholder="Acrescentar um assunto"
-              aria-label={`Novo assunto em ${disciplina.nome}`}
-              maxLength={300}
-              value={rascunhos[disciplina.chave] ?? ''}
-              onChange={(evento) =>
-                setRascunhos((atuais) => ({ ...atuais, [disciplina.chave]: evento.target.value }))
-              }
-            />
-            <Button type="submit" variant="secondary" size="icon" aria-label="Acrescentar">
-              <Plus />
-            </Button>
-          </form>
+              </form>
+            </>
+          )}
         </section>
       ))}
 
@@ -203,7 +230,7 @@ export function RevisaoAssuntos({
       )}
       {vazia && (
         <p role="alert" className="text-sm font-semibold text-destructive">
-          Deixe pelo menos um assunto para gerar a trilha.
+          Inclua pelo menos uma disciplina, com um assunto, na trilha guiada.
         </p>
       )}
 

@@ -49,10 +49,10 @@ describe('configuração de trilha', () => {
     expect(erros(false, { ementa: pdf(10, 'GRADE.PDF', '') })).toEqual({})
   })
 
-  it('recusa a ementa acima de 5 MB', () => {
+  it('recusa a ementa acima de 30 MB', () => {
     expect(erros(false, { ementa: pdf(TAMANHO_MAXIMO_EMENTA) })).toEqual({})
     expect(erros(false, { ementa: pdf(TAMANHO_MAXIMO_EMENTA + 1) }).ementa).toEqual([
-      'A ementa precisa ter até 5 MB.',
+      'A ementa precisa ter até 30 MB.',
     ])
   })
 })
