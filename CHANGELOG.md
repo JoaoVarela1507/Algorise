@@ -14,6 +14,13 @@ O tipo do commit define o bump:
 - `feat!: ...` ou `BREAKING CHANGE:` no corpo — major (**1**.0.0)
 - `chore:`, `docs:`, `test:` — não geram release
 
+## [0.21.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.20.0...v0.21.0) (2026-10-31)
+
+
+### Adicionado
+
+* ementa a partir do PPC, com recorte do ementario e disciplinas da trilha ([#215](https://github.com/JoaoVarela1507/Algorise/issues/215)) ([7b1676d](https://github.com/JoaoVarela1507/Algorise/commit/7b1676d44f9148c6b15b9bc750937563762ee36b))
+
 ## [0.20.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.19.0...v0.20.0) (2026-10-28)
 
 
