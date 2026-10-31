@@ -9,10 +9,12 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import (
     Ementa,
+    Lacuna,
     Modulo,
     NivelExperiencia,
     ProgressoUsuario,
@@ -39,10 +41,16 @@ from tests.test_ementa_assuntos import provedor as provedor
 # caem no mesmo módulo (laços).
 LEITURA_GUIADA = {
     "disciplinas": [
-        {"nome": "Estruturas de Dados", "periodo": 2, "assuntos": ["Recursão"]},
+        {
+            "nome": "Estruturas de Dados",
+            "periodo": 2,
+            "programacao": True,
+            "assuntos": ["Recursão"],
+        },
         {
             "nome": DISCIPLINA,
             "periodo": 1,
+            "programacao": True,
             "assuntos": ["Laços de repetição", "Variáveis e tipos", "Repetição com while"],
         },
     ]
@@ -420,3 +428,83 @@ def test_confirmar_de_novo_faz_da_ementa_a_base(
 
     assert guiada(cliente, autenticado)["ementa_id"] == primeira
     assert assuntos_ementa.confirmar(db, db.get(Ementa, primeira))
+
+
+# --- disciplinas da trilha ----------------------------------------------------------------
+
+LEITURA_DO_PPC = {
+    "disciplinas": [
+        {"nome": "Cálculo I", "periodo": 1, "programacao": False, "assuntos": ["Derivadas"]},
+        {
+            "nome": DISCIPLINA,
+            "periodo": 1,
+            "programacao": True,
+            "assuntos": ["Laços de repetição", "Recursão"],
+        },
+    ]
+}
+
+
+def test_disciplina_que_nao_e_de_programacao_fica_fora_do_catalogo_e_da_trilha(
+    cliente: TestClient,
+    autenticado: dict[str, str],
+    provedor: ProvedorDeEmenta,
+    python: Trilha,
+    midia: Path,
+    db: Session,
+) -> None:
+    provedor.respostas = [json.dumps(LEITURA_DO_PPC)]
+    ementa_id = enviar(cliente, autenticado)
+
+    corpo = assuntos(cliente, autenticado, ementa_id)
+    assert [(d["nome"], d["na_trilha"]) for d in corpo["disciplinas"]] == [
+        ("Cálculo I", False),
+        (DISCIPLINA, True),
+    ]
+    assert situacoes(corpo) == {
+        "Derivadas": "fora",
+        "Laços de repetição": "coberto",
+        "Recursão": "lacuna",
+    }
+    # Cálculo nem pediu embedding, nem virou lacuna para a busca no YouTube.
+    assert not any(texto.startswith("Cálculo") for texto in provedor.embedados)
+    assert [lacuna.assunto for lacuna in db.scalars(select(Lacuna))] == ["Recursão"]
+
+    cliente.post(f"/api/v1/ementas/{ementa_id}/confirmar", headers=autenticado)
+    assert {item["disciplina"] for item in guiada(cliente, autenticado)["itens"]} == {DISCIPLINA}
+
+
+def test_aluno_escolhe_na_revisao_as_disciplinas_da_trilha(
+    cliente: TestClient,
+    autenticado: dict[str, str],
+    provedor: ProvedorDeEmenta,
+    python: Trilha,
+    midia: Path,
+) -> None:
+    provedor.respostas = [json.dumps(LEITURA_DO_PPC)]
+    ementa_id = enviar(cliente, autenticado)
+    provedor.embedados.clear()
+
+    revisao = {
+        "disciplinas": [
+            {"nome": "Cálculo I", "periodo": 1, "na_trilha": True, "assuntos": ["Derivadas"]},
+            {
+                "nome": DISCIPLINA,
+                "periodo": 1,
+                "na_trilha": False,
+                "assuntos": ["Laços de repetição", "Recursão"],
+            },
+        ]
+    }
+    resposta = cliente.put(
+        f"/api/v1/ementas/{ementa_id}/assuntos", headers=autenticado, json=revisao
+    )
+
+    assert resposta.status_code == 200, resposta.text
+    assert situacoes(resposta.json()) == {
+        "Derivadas": "lacuna",
+        "Laços de repetição": "fora",
+        "Recursão": "fora",
+    }
+    # Só a disciplina que entrou agora foi ao catálogo.
+    assert provedor.embedados == ["Cálculo I: Derivadas"]

@@ -13,6 +13,7 @@ const LIDAS: DisciplinaLida[] = [
     nome: 'Introdução à Programação',
     periodo: 1,
     carga_horaria: 60,
+    na_trilha: true,
     assuntos: [
       { texto: 'Laços', situacao: 'coberto', modulo: { id: 4, titulo: 'Laços', trilha_id: 1 } },
       { texto: 'Recursão', situacao: 'lacuna', status_lacuna: 'pendente' },
@@ -70,6 +71,7 @@ describe('RevisaoAssuntos', () => {
         nome: 'Introdução à Programação',
         periodo: 1,
         carga_horaria: 60,
+        na_trilha: true,
         assuntos: ['Laços de repetição', 'Funções'],
       },
     ])
@@ -92,7 +94,7 @@ describe('RevisaoAssuntos', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remover "Laços"' }))
     fireEvent.click(screen.getByRole('button', { name: 'Remover "Recursão"' }))
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Deixe pelo menos um assunto')
+    expect(screen.getByRole('alert')).toHaveTextContent('Inclua pelo menos uma disciplina')
     expect(screen.getByRole('button', { name: 'Confirmar e gerar trilha' })).toBeDisabled()
   })
 })

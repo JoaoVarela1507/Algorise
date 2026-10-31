@@ -69,6 +69,10 @@ class Ementa(Base, TimestampMixin):
     # um colega de curso) reaproveita o texto já extraído.
     hash_sha256: Mapped[str | None] = mapped_column(String(64), index=True)
     paginas: Mapped[int | None]
+    # O trecho do PDF que foi lido (1 a `paginas`): no PPC, só o ementário
+    # (`services/ppc.py`). Serve para conferir o recorte.
+    pagina_inicial: Mapped[int | None]
+    pagina_final: Mapped[int | None]
     status: Mapped[StatusEmenta] = mapped_column(default=StatusEmenta.pendente, index=True)
     # Guardado para não reprocessar o mesmo PDF a cada tentativa.
     texto_extraido: Mapped[str | None] = mapped_column(Text)
@@ -102,6 +106,9 @@ class DisciplinaEmenta(Base):
     nome: Mapped[str] = mapped_column(String(200))
     periodo: Mapped[int | None]
     carga_horaria: Mapped[int | None]
+    # Entra na trilha guiada. Vem da IA (é de programação) e o aluno corrige na
+    # revisão. Só a disciplina na trilha tem os assuntos ligados ao catálogo.
+    na_trilha: Mapped[bool] = mapped_column(default=False, server_default=false())
 
     ementa: Mapped[Ementa] = relationship(back_populates="disciplinas")
     assuntos: Mapped[list["AssuntoEmenta"]] = relationship(

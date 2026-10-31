@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     # carregando o modelo na memória.
     ia_timeout_conexao: float = 5
     ia_timeout_leitura: float = 120
+    # O mesmo intervalo para o trabalho em segundo plano (a leitura da ementa),
+    # em que ninguém espera olhando a tela: na CPU, o modelo pode levar minutos
+    # para processar uma parte longa antes do primeiro pedaço.
+    ia_timeout_leitura_tarefas: float = 15 * 60
     # Tentativas contra o Ollama fora, só antes do primeiro pedaço: depois dele,
     # tentar de novo repetiria o texto que o aluno já viu.
     ia_tentativas: int = 2
@@ -118,8 +122,9 @@ class Settings(BaseSettings):
     bloqueio_login_duracao: int = 15 * 60
 
     # Teto do corpo de qualquer requisição, em bytes. O maior upload previsto é
-    # o PDF da ementa; cada rota de upload aplica o seu limite, menor que este.
-    tamanho_maximo_requisicao: int = 10 * 1024 * 1024
+    # o PDF da ementa (o PPC); cada rota de upload aplica o seu limite, menor
+    # que este.
+    tamanho_maximo_requisicao: int = 35 * 1024 * 1024
 
     # Onde ficam os arquivos enviados pelos alunos, fora do banco. Só a
     # subpasta `avatares` é servida publicamente (em `/media/avatares`).
@@ -128,11 +133,10 @@ class Settings(BaseSettings):
     # Teto da foto do perfil, em bytes. Acima disso nem chega a ser aberta.
     tamanho_maximo_avatar: int = 2 * 1024 * 1024
 
-    # Teto da ementa em PDF (#28), em bytes e em páginas. Ementa de verdade tem
-    # poucas páginas; o limite de páginas é o que segura um PDF gigante na hora
-    # de extrair o texto, que o de bytes sozinho não pega.
-    tamanho_maximo_ementa: int = 5 * 1024 * 1024
-    maximo_paginas_ementa: int = 50
+    # Teto da ementa em PDF (#28), em bytes. O aluno costuma mandar o PPC do
+    # curso, de centenas de páginas, e não há teto de páginas: só o trecho do
+    # ementário vai para a IA (`services/ppc.py`).
+    tamanho_maximo_ementa: int = 30 * 1024 * 1024
 
     # Versão dos termos de uso e da política de privacidade. Mudar a versão é o
     # que faz um consentimento antigo deixar de valer.

@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from app.core.database import SessionLocal
-from app.ia import IAIndisponivel, get_provedor_ia
+from app.ia import IAIndisponivel, get_provedor_ia_tarefas
 from app.ia.vault import (
     Ingestao,
     ModuloNaoEncontrado,
@@ -36,7 +36,7 @@ def main(argumentos: list[str] | None = None) -> int:
 
 
 async def _executar(args: argparse.Namespace) -> int:
-    provedor = get_provedor_ia()
+    provedor = get_provedor_ia_tarefas()
     with SessionLocal() as sessao:
         if args.comando == "ingerir":
             ingestao = await ingerir_transcricao(

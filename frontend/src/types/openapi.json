@@ -16,7 +16,8 @@
           "situacao": {
             "enum": [
               "coberto",
-              "lacuna"
+              "lacuna",
+              "fora"
             ],
             "title": "Situacao",
             "type": "string"
@@ -286,7 +287,7 @@
         "properties": {
           "arquivo": {
             "contentMediaType": "application/octet-stream",
-            "description": "PDF de até 5 MB",
+            "description": "PDF de até 30 MB",
             "title": "Arquivo",
             "type": "string"
           }
@@ -379,6 +380,10 @@
             ],
             "title": "Carga Horaria"
           },
+          "na_trilha": {
+            "title": "Na Trilha",
+            "type": "boolean"
+          },
           "nome": {
             "title": "Nome",
             "type": "string"
@@ -397,6 +402,7 @@
         },
         "required": [
           "nome",
+          "na_trilha",
           "assuntos"
         ],
         "title": "DisciplinaLida",
@@ -427,6 +433,11 @@
               }
             ],
             "title": "Carga Horaria"
+          },
+          "na_trilha": {
+            "default": true,
+            "title": "Na Trilha",
+            "type": "boolean"
           },
           "nome": {
             "maxLength": 200,
@@ -511,6 +522,28 @@
               }
             ],
             "title": "Nome Original"
+          },
+          "pagina_final": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagina Final"
+          },
+          "pagina_inicial": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagina Inicial"
           },
           "paginas": {
             "anyOf": [

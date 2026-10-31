@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Response, UploadFile, status
 from sqlalchemy.orm import Session, sessionmaker
@@ -10,9 +11,9 @@ from app.api.deps import UsuarioAtual
 from app.core.config import settings
 from app.core.database import get_db, get_fabrica_de_sessoes
 from app.core.erros import ErroDeNegocio
-from app.ia import IAIndisponivel, ProvedorIA, get_provedor_ia
+from app.ia import IAIndisponivel, ProvedorIA, get_provedor_ia, get_provedor_ia_tarefas
 from app.ia.skills import ler_ementa
-from app.models import Ementa, StatusAssuntos, Usuario
+from app.models import AssuntoEmenta, Ementa, StatusAssuntos, Usuario
 from app.schemas.academico import (
     AssuntoLido,
     AssuntosDaEmenta,
@@ -43,10 +44,12 @@ def enviar_ementa(
     usuario: UsuarioAtual,
     tarefas: BackgroundTasks,
     resposta: Response,
-    arquivo: UploadFile = File(description="PDF de até 5 MB"),
+    arquivo: UploadFile = File(
+        description=f"PDF de até {settings.tamanho_maximo_ementa // (1024 * 1024)} MB"
+    ),
     db: Session = Depends(get_db),
     fabrica: sessionmaker[Session] = Depends(get_fabrica_de_sessoes),
-    provedor: ProvedorIA = Depends(get_provedor_ia),
+    provedor: ProvedorIA = Depends(get_provedor_ia_tarefas),
 ) -> EmentaStatus:
     # Um byte além do limite basta para saber que passou, sem ler o resto.
     conteudo = arquivo.file.read(settings.tamanho_maximo_ementa + 1)
@@ -131,7 +134,11 @@ def revisar_assuntos(
     ementa = _do_aluno(db, usuario, ementa_id)
     if ementa.status_assuntos is not StatusAssuntos.prontos:
         raise _assuntos_indisponiveis(ementa)
-    disciplinas = [ler_ementa.Disciplina(**d.model_dump()) for d in dados.disciplinas]
+    # Na skill, `programacao` é o que entra na trilha; na revisão, quem marca é o aluno.
+    disciplinas = [
+        ler_ementa.Disciplina(**d.model_dump(exclude={"na_trilha"}), programacao=d.na_trilha)
+        for d in dados.disciplinas
+    ]
     try:
         # Rota síncrona roda numa thread, sem event loop.
         asyncio.run(assuntos_ementa.revisar(db, provedor, ementa, disciplinas))
@@ -173,10 +180,11 @@ def _assuntos(ementa: Ementa) -> AssuntosDaEmenta:
                 nome=disciplina.nome,
                 periodo=disciplina.periodo,
                 carga_horaria=disciplina.carga_horaria,
+                na_trilha=disciplina.na_trilha,
                 assuntos=[
                     AssuntoLido(
                         texto=assunto.texto,
-                        situacao="coberto" if assunto.modulo is not None else "lacuna",
+                        situacao=_situacao(disciplina.na_trilha, assunto),
                         modulo=ModuloDoAssunto.model_validate(assunto.modulo)
                         if assunto.modulo is not None
                         else None,
@@ -206,13 +214,19 @@ def reler_assuntos(
     tarefas: BackgroundTasks,
     db: Session = Depends(get_db),
     fabrica: sessionmaker[Session] = Depends(get_fabrica_de_sessoes),
-    provedor: ProvedorIA = Depends(get_provedor_ia),
+    provedor: ProvedorIA = Depends(get_provedor_ia_tarefas),
 ) -> EmentaStatus:
     ementa = _do_aluno(db, usuario, ementa_id)
     if not ementas.reler_assuntos(db, ementa):
         raise _assuntos_indisponiveis(ementa)
     tarefas.add_task(ementas.processar, fabrica, provedor, ementa.id)
     return EmentaStatus.model_validate(ementa)
+
+
+def _situacao(na_trilha: bool, assunto: AssuntoEmenta) -> Literal["coberto", "lacuna", "fora"]:
+    if not na_trilha:
+        return "fora"
+    return "coberto" if assunto.modulo is not None else "lacuna"
 
 
 def _assuntos_indisponiveis(ementa: Ementa) -> ErroDeNegocio:

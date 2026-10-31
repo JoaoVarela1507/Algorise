@@ -23,6 +23,7 @@ import hashlib
 import logging
 import shutil
 import uuid
+from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 
@@ -34,7 +35,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import settings
 from app.ia import ProvedorIA
 from app.models import Ementa, StatusAssuntos, StatusEmenta, Usuario
-from app.services import assuntos_ementa
+from app.services import assuntos_ementa, ppc
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,8 @@ def receber(db: Session, usuario: Usuario, conteudo: bytes, nome_original: str |
         ementa.status = StatusEmenta.processada
         ementa.texto_extraido = ja_lida.texto_extraido
         ementa.paginas = ja_lida.paginas
+        ementa.pagina_inicial = ja_lida.pagina_inicial
+        ementa.pagina_final = ja_lida.pagina_final
 
     db.add(ementa)
     try:
@@ -164,7 +167,7 @@ def _extrair(db: Session, ementa: Ementa) -> None:
     db.commit()
 
     try:
-        texto, paginas = _extrair_texto(Path(settings.diretorio_midia) / ementa.arquivo_path)
+        extraido = _extrair_texto(Path(settings.diretorio_midia) / ementa.arquivo_path)
     except EmentaInvalida as erro:
         ementa.status = StatusEmenta.falhou
         ementa.erro = str(erro)
@@ -174,8 +177,11 @@ def _extrair(db: Session, ementa: Ementa) -> None:
         ementa.erro = "Não foi possível ler o PDF. Tente enviar outro arquivo."
     else:
         ementa.status = StatusEmenta.processada
-        ementa.texto_extraido = texto
-        ementa.paginas = paginas
+        ementa.texto_extraido = extraido.texto
+        ementa.paginas = extraido.paginas
+        # 1 a N, como o aluno vê no leitor de PDF.
+        ementa.pagina_inicial = extraido.trecho.inicio + 1
+        ementa.pagina_final = extraido.trecho.fim + 1
     db.commit()
 
 
@@ -196,24 +202,62 @@ def _ja_processada(db: Session, hash_sha256: str) -> Ementa | None:
     )
 
 
-def _extrair_texto(caminho: Path) -> tuple[str, int]:
+@dataclass(frozen=True)
+class _Extraido:
+    texto: str
+    paginas: int
+    trecho: ppc.Trecho
+
+
+def _extrair_texto(caminho: Path) -> _Extraido:
+    """O texto do ementário do PDF e onde ele está.
+
+    O aluno costuma mandar o PPC inteiro, de centenas de páginas: o texto
+    guardado (e lido pela IA) é só o trecho com as ementas (`services/ppc.py`).
+    Não há teto de páginas; o de bytes, conferido no upload, segura o tamanho.
+    """
     try:
         leitor = PdfReader(BytesIO(caminho.read_bytes()))
         if leitor.is_encrypted and not leitor.decrypt(""):
             raise EmentaInvalida("O PDF está protegido por senha. Envie uma cópia sem senha.")
-
-        paginas = len(leitor.pages)
-        # Ementa tem poucas páginas; um PDF de centenas é outra coisa, e ler
-        # tudo seguraria o processo.
-        if paginas > settings.maximo_paginas_ementa:
-            raise EmentaInvalida(f"A ementa pode ter até {settings.maximo_paginas_ementa} páginas.")
-        texto = "\n".join((pagina.extract_text() or "") for pagina in leitor.pages).strip()
+        paginas = [(pagina.extract_text() or "") for pagina in leitor.pages]
+        trecho = ppc.localizar(paginas, _marcadores(leitor))
     except PyPdfError as erro:
         raise EmentaInvalida("O arquivo parece um PDF, mas está corrompido.") from erro
 
+    texto = "\n".join(paginas[trecho.inicio : trecho.fim + 1]).strip()
     if len(texto) < MINIMO_DE_CARACTERES:
         raise EmentaInvalida(
             "Não encontramos texto no PDF. Se ele for uma ementa escaneada, envie a "
             "versão em texto; a leitura de documentos escaneados ainda não está disponível."
         )
-    return texto, paginas
+    logger.info(
+        "Ementário nas páginas %d a %d de %d (%s)",
+        trecho.inicio + 1,
+        trecho.fim + 1,
+        len(paginas),
+        trecho.metodo,
+    )
+    return _Extraido(texto, len(paginas), trecho)
+
+
+def _marcadores(leitor: PdfReader) -> list[tuple[str, int]]:
+    """Os itens do índice lateral do PDF, em ordem, com a página de cada um."""
+    itens: list[tuple[str, int]] = []
+
+    def percorrer(nivel: list) -> None:
+        for item in nivel:
+            if isinstance(item, list):
+                percorrer(item)
+                continue
+            pagina = leitor.get_destination_page_number(item)
+            if pagina is not None and pagina >= 0:
+                itens.append((str(item.title or ""), pagina))
+
+    try:
+        percorrer(leitor.outline)
+    except (PyPdfError, KeyError, TypeError):
+        # Índice malformado não impede a leitura: o sumário e a densidade
+        # ainda podem achar o ementário.
+        return []
+    return itens

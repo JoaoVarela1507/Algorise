@@ -25,7 +25,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.core import redis as nucleo_redis
 from app.core.database import get_db, get_fabrica_de_sessoes
-from app.ia import get_provedor_ia
+from app.ia import get_provedor_ia, get_provedor_ia_tarefas
 from app.ia.eco import Eco
 from app.main import app
 from app.models import Base, Trilha, Usuario
@@ -112,6 +112,7 @@ def cliente(
     # Nenhuma rota chega à rede por acaso (a leitura da ementa chama a IA). O
     # teste que precisa de outra resposta troca este override pelo dele.
     app.dependency_overrides[get_provedor_ia] = Eco
+    app.dependency_overrides[get_provedor_ia_tarefas] = Eco
     try:
         with TestClient(app, raise_server_exceptions=False) as cliente_http:
             yield cliente_http
@@ -119,6 +120,7 @@ def cliente(
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_fabrica_de_sessoes, None)
         app.dependency_overrides.pop(get_provedor_ia, None)
+        app.dependency_overrides.pop(get_provedor_ia_tarefas, None)
 
 
 @pytest.fixture

@@ -319,8 +319,8 @@ export function OnboardingWizard({
                   {ementa ? ementa.name : 'Faça o upload da sua grade curricular'}
                   <span className="text-xs">
                     {ementaObrigatoria
-                      ? 'PDF de até 5 MB (obrigatório)'
-                      : 'PDF de até 5 MB (opcional)'}
+                      ? 'PDF de até 30 MB (obrigatório)'
+                      : 'PDF de até 30 MB (opcional)'}
                   </span>
                   <Controller
                     control={control}

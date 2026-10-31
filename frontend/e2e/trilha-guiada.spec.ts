@@ -25,6 +25,7 @@ const ASSUNTOS = {
       nome: 'Introdução à Programação',
       periodo: 1,
       carga_horaria: 60,
+      na_trilha: true,
       assuntos: [
         { texto: 'Laços', situacao: 'coberto', modulo: { id: 4, titulo: 'Laços', trilha_id: 1 } },
         { texto: 'Recursão', situacao: 'lacuna', status_lacuna: 'pendente' },
@@ -157,6 +158,7 @@ test('revisar os assuntos, confirmar e ver a trilha guiada', async ({ page, requ
           nome: 'Introdução à Programação',
           periodo: 1,
           carga_horaria: 60,
+          na_trilha: true,
           assuntos: ['Laços de repetição'],
         },
       ],

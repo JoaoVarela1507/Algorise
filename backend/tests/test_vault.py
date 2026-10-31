@@ -365,7 +365,7 @@ def test_linha_de_comando_ingere_e_registra(
     arquivo = tmp_path / "aula.vtt"
     arquivo.write_text(VTT, encoding="utf-8")
     monkeypatch.setattr(linha_de_comando, "SessionLocal", sessao_factory)
-    monkeypatch.setattr(linha_de_comando, "get_provedor_ia", lambda: provedor)
+    monkeypatch.setattr(linha_de_comando, "get_provedor_ia_tarefas", lambda: provedor)
 
     assert linha_de_comando.main(["ingerir", "--modulo", str(lacos.id), str(arquivo)]) == 0
     assert linha_de_comando.main(["ingerir", "--modulo", str(lacos.id), str(arquivo)]) == 0

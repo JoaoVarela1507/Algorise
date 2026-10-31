@@ -13,6 +13,13 @@ usa, e é isso que deixa a skill testável sem fixture nenhuma.
 """
 
 from app.ia.base import IAIndisponivel, MensagemIA, Papel, ProvedorIA
-from app.ia.provedor import get_provedor_ia
+from app.ia.provedor import get_provedor_ia, get_provedor_ia_tarefas
 
-__all__ = ["IAIndisponivel", "MensagemIA", "Papel", "ProvedorIA", "get_provedor_ia"]
+__all__ = [
+    "IAIndisponivel",
+    "MensagemIA",
+    "Papel",
+    "ProvedorIA",
+    "get_provedor_ia",
+    "get_provedor_ia_tarefas",
+]
