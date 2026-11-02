@@ -1,7 +1,7 @@
 fastapi==0.162.0
 uvicorn[standard]==0.54.0
-pydantic==2.14.1
-pydantic-settings==2.16.1
+pydantic==2.14.2
+pydantic-settings==2.16.2
 python-dotenv==1.2.4
 sqlalchemy==2.1.6
 psycopg[binary]==3.3.6
@@ -19,6 +19,6 @@ httpx2==2.16.0
 python-multipart==0.0.32
 pillow==13.0.0
 # Texto da ementa em PDF (#28). Puro Python: não pede nada instalado no sistema.
-pypdf==6.21.2
+pypdf==6.21.4
 # Coluna `vector` do vault das skills (#200) no SQLAlchemy.
 pgvector==0.5.1
