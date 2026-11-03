@@ -1384,6 +1384,11 @@
             ],
             "title": "Paginas"
           },
+          "partes_pendentes": {
+            "default": 0,
+            "title": "Partes Pendentes",
+            "type": "integer"
+          },
           "status": {
             "$ref": "#/components/schemas/StatusEmenta"
           },

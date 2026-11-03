@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { RevisaoAssuntos } from '@/components/trilha-guiada/RevisaoAssuntos'
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,15 @@ export function RevisaoEmentaPage() {
   const revisar = useRevisarAssuntos(id)
   const confirmar = useConfirmarEmenta(id)
   const reler = useRelerAssuntos(id)
+  const pendentes = ementa.data?.partes_pendentes ?? 0
+  // O resto da ementa terminou de ser lido com a revisão aberta. A lista não
+  // recarrega sozinha, para não apagar o que o aluno está editando.
+  const [chegaramNovas, setChegaramNovas] = useState(false)
+  const pendentesAntes = useRef(pendentes)
+  useEffect(() => {
+    if (pendentesAntes.current > 0 && pendentes === 0) setChegaramNovas(true)
+    pendentesAntes.current = pendentes
+  }, [pendentes])
 
   async function confirmarRevisao(disciplinas: DisciplinaRevisada[], alterada: boolean) {
     try {
@@ -92,15 +102,42 @@ export function RevisaoEmentaPage() {
     )
   } else {
     conteudo = (
-      <RevisaoAssuntos
-        // Recria o formulário com o que o servidor devolveu depois de salvar.
-        key={assuntos.dataUpdatedAt}
-        disciplinas={assuntos.data.disciplinas}
-        salvando={revisar.isPending || confirmar.isPending}
-        erro={revisar.error ?? confirmar.error}
-        aoSalvar={(disciplinas) => revisar.mutate(disciplinas)}
-        aoConfirmar={(disciplinas, alterada) => void confirmarRevisao(disciplinas, alterada)}
-      />
+      <>
+        {pendentes > 0 && (
+          <p role="status" className="rounded-lg border border-border bg-accent/40 p-3 text-sm">
+            Ainda estamos lendo o resto da sua ementa ({pendentes}{' '}
+            {pendentes === 1 ? 'parte' : 'partes'}). As disciplinas de programação já estão aqui: dá
+            para revisar e gerar a trilha agora. As outras aparecem quando a leitura terminar.
+          </p>
+        )}
+        {chegaramNovas && (
+          <div
+            role="status"
+            className="flex items-center justify-between gap-3 rounded-lg border border-border bg-accent/40 p-3 text-sm"
+          >
+            <span>Terminamos de ler a ementa: há disciplinas novas na lista.</span>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setChegaramNovas(false)
+                void assuntos.refetch()
+              }}
+            >
+              Mostrar
+            </Button>
+          </div>
+        )}
+        <RevisaoAssuntos
+          // Recria o formulário com o que o servidor devolveu depois de salvar.
+          key={assuntos.dataUpdatedAt}
+          disciplinas={assuntos.data.disciplinas}
+          salvando={revisar.isPending || confirmar.isPending}
+          erro={revisar.error ?? confirmar.error}
+          aoSalvar={(disciplinas) => revisar.mutate(disciplinas)}
+          aoConfirmar={(disciplinas, alterada) => void confirmarRevisao(disciplinas, alterada)}
+        />
+      </>
     )
   }
 

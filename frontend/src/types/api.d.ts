@@ -1922,6 +1922,11 @@ export interface components {
             pagina_inicial?: number | null;
             /** Paginas */
             paginas?: number | null;
+            /**
+             * Partes Pendentes
+             * @default 0
+             */
+            partes_pendentes: number;
             status: components["schemas"]["StatusEmenta"];
             status_assuntos: components["schemas"]["StatusAssuntos"];
             /** Tamanho Bytes */
