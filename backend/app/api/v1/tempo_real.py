@@ -40,6 +40,7 @@ from app.schemas.tempo_real import (
     PingDoServidor,
     PongDoServidor,
 )
+from app.services import ranking_ao_vivo
 from app.services.tempo_real import Conexao, LimiteDeMensagens, gerenciador, ouvinte, pode_ouvir
 
 router = APIRouter(tags=["tempo-real"])
@@ -73,6 +74,7 @@ async def gateway(websocket: WebSocket, fabrica: Fabrica = Depends(get_fabrica_d
         )
         return
     ouvinte.garantir()
+    ranking_ao_vivo.agregador.garantir(fabrica)
     conexao.enviar(Autenticado(usuario_id=usuario_id).model_dump())
 
     sessao = _Sessao(websocket, conexao, fabrica, expira)

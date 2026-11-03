@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { LogOut, Moon, Sun } from 'lucide-react'
+import { CentroNotificacoes } from '@/components/layout/CentroNotificacoes'
 import { versaoCurta } from '@/lib/version'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -49,6 +50,8 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto flex flex-col gap-2">
+        <CentroNotificacoes />
+
         <div className="px-4 text-xs text-muted-foreground" title={`Build ${__APP_BUILD__}`}>
           {versaoCurta}
         </div>

@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     ws_conexoes_por_usuario: int = 5
     ws_mensagens_por_janela: int = 30
     ws_janela_segundos: float = 10
+    # De quanto em quanto tempo o ranking em tempo real é publicado (#37): os
+    # pontos do intervalo saem juntos, num evento por ranking.
+    ranking_intervalo_ao_vivo: float = 2
 
     # IA do chat (#11): um modelo só, servido pelo Ollama. `eco` é o provedor de
     # teste, que responde sem rede — para o E2E e para rodar sem o Ollama; em
