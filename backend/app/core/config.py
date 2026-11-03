@@ -89,6 +89,10 @@ class Settings(BaseSettings):
     ia_provedor: str = "ollama"
     ollama_url: str = "http://localhost:11434"
     ollama_modelo: str = "llama3.2"
+    # Modelo do trabalho em segundo plano (leitura da ementa, segmentação,
+    # categorização e exercícios). Na CPU, um modelo menor lê a ementa de 2 a 3
+    # vezes mais rápido, e ali ninguém conversa com ele. Em branco, usa o do chat.
+    ollama_modelo_tarefas: str = ""
     # Embedding do vault das skills (#200). Multilíngue, porque o conteúdo é em
     # português; a dimensão dele (1024) está fixa na tabela `vault_trechos`.
     ollama_modelo_embedding: str = "bge-m3"

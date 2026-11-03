@@ -703,6 +703,13 @@ o prompt muda num lugar só, e o teste dele não precisa de banco. Uma skill nov
 baixa o modelo de `OLLAMA_MODELO` uma vez, no volume `ollama_data`. Sem o Ollama,
 `IA_PROVEDOR=eco` deixa o chat funcionando com a resposta de teste.
 
+**Dois modelos:** o chat usa `OLLAMA_MODELO` (o `llama3.2`). O trabalho do worker
+usa `OLLAMA_MODELO_TAREFAS`: leitura da ementa, segmentação e categorização dos
+vídeos e exercícios. Em branco, vale o do chat, que é o padrão do compose
+também. Dá para testar um modelo menor ali sem mexer no chat, mas o `llama3.2:1b`
+não serve: na leitura do PPC, ele levou 8 minutos numa parte e devolveu JSON
+quebrado. O worker só sobe depois do `ollama-modelo` baixar os modelos.
+
 **GPU:** o Ollama no Docker roda na CPU. Com GPU NVIDIA e o NVIDIA Container
 Toolkit, acrescente ao serviço `ollama` um
 `deploy.resources.reservations.devices` com `capabilities: [gpu]`.
