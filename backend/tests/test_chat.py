@@ -581,4 +581,5 @@ def test_producao_nao_sobe_com_o_provedor_de_teste() -> None:
         Settings(environment="production", jwt_secret=segredo, ia_provedor="eco")
     with pytest.raises(ValidationError, match="IA_PROVEDOR"):
         Settings(ia_provedor="openai")
-    assert Settings(environment="production", jwt_secret=segredo).ia_provedor == "ollama"
+    producao = Settings(environment="production", jwt_secret=segredo, fila="redis")
+    assert producao.ia_provedor == "ollama"
