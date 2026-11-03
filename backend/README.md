@@ -508,6 +508,40 @@ A busca usa o full-text do PostgreSQL em português (índice GIN em
 `mensagens_chat.conteudo`), que acha "laços" buscando "laço". No SQLite dos testes,
 cai num `LIKE`.
 
+### Tempo real (WebSocket)
+
+`WS /api/v1/ws` é uma conexão por aba, multiplexada em canais. O contrato está em
+`app/schemas/tempo_real.py`, e vai para o OpenAPI como `MensagemDoCliente` e
+`MensagemDoServidor`. Por isso o frontend tem os tipos gerados.
+
+- **Autenticação:** o primeiro frame é `{"tipo": "autenticar", "token": ...}`, com o
+  access token, dentro de `WS_TEMPO_PARA_AUTENTICAR`. O token não vai na query
+  string, que acaba no log do proxy. Um novo `autenticar` no meio da conexão estende
+  o prazo.
+- **Canais:**
+  - `notificacoes:{usuario_id}`: só o próprio aluno;
+  - `chat:{conversa_id}`: só as conversas dele;
+  - `ranking:geral` e `ranking:{trilha_id}`: qualquer aluno logado.
+- **Publicar:** de qualquer lugar (rota, serviço, worker), chame
+  `tempo_real.publicar(canal, evento, payload)`. A mensagem passa pelo pub/sub do
+  Redis (`ws:{canal}`), e cada instância da API entrega às suas conexões. Sem Redis,
+  a entrega é só para as conexões da própria instância.
+- **Vida da conexão:** o servidor manda `ping` a cada `WS_INTERVALO_PING`. Uma
+  conexão calada por mais que `WS_TEMPO_MORTO` é derrubada.
+- **Limites:** `WS_CONEXOES_POR_USUARIO` abas por instância e
+  `WS_MENSAGENS_POR_JANELA` mensagens por `WS_JANELA_SEGUNDOS`.
+
+| Fechamento | Quando                                                 |
+| ---------- | ------------------------------------------------------ |
+| 4401       | sem autenticação válida no prazo, ou o token venceu    |
+| 4408       | a conexão ficou calada demais                          |
+| 4429       | abas demais abertas pelo mesmo aluno                   |
+
+O cliente do frontend (`src/services/tempoReal.ts`) reconecta com espera exponencial
+e jitter. Num 4401, renova a sessão antes de reconectar. Ao voltar, refaz as
+inscrições e manda o que ficou na fila offline. O estado da conexão fica no
+`useTempoRealStore`, e `useCanal(canal, aoReceber)` ouve um canal.
+
 A IA mora em `app/ia/`, separada de quem a usa:
 
 | Arquivo       | O que tem                                                                                                   |

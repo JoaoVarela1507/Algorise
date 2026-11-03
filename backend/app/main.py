@@ -6,9 +6,10 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.api import infra, v1
 from app.core.config import settings
 from app.core.erros import registrar_handlers
-from app.core.openapi import RESPOSTAS_PADRAO, TAGS, gerar_operation_id
+from app.core.openapi import RESPOSTAS_PADRAO, TAGS, gerar_operation_id, incluir_esquemas
 from app.core.protecao_http import ProtecaoHTTP
 from app.core.rastreio import Rastreio
+from app.schemas.tempo_real import MensagemDoCliente, MensagemDoServidor
 from app.services import avatar
 
 app = FastAPI(
@@ -68,6 +69,9 @@ registrar_handlers(app)
 
 app.include_router(infra.router)
 app.include_router(v1.router)
+
+# O contrato do WebSocket (#35) entra no OpenAPI para virar tipo TypeScript.
+incluir_esquemas(app, [MensagemDoCliente, MensagemDoServidor])
 
 # Fotos do perfil. Só a pasta dos avatares, e não `diretorio_midia` inteiro: o
 # que mais for parar lá (a ementa em PDF, #28) não é público.

@@ -40,6 +40,11 @@ export function definirAccessToken(token: string | null) {
   accessToken = token
 }
 
+/** O token atual, para o WebSocket mandar no primeiro frame (`services/tempoReal`). */
+export function obterAccessToken() {
+  return accessToken
+}
+
 /**
  * Quem cuida da sessão (o `AuthContext`) registra aqui como renová-la, para
  * `api.ts` não importar React. Sem registro, um 401 só sobe para quem chamou.
@@ -53,6 +58,11 @@ let autenticador: Autenticador | null = null
 
 export function configurarAutenticacao(novo: Autenticador | null) {
   autenticador = novo
+}
+
+/** Renova a sessão por quem a registrou. `false` sem registro ou se falhar. */
+export function renovarAutenticacao(): Promise<boolean> {
+  return autenticador ? autenticador.renovar() : Promise.resolve(false)
 }
 
 interface Opcoes {

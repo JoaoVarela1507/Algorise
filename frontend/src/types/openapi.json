@@ -655,6 +655,45 @@
         "title": "AtualizacaoPreferencias",
         "type": "object"
       },
+      "Autenticado": {
+        "properties": {
+          "tipo": {
+            "const": "autenticado",
+            "default": "autenticado",
+            "title": "Tipo",
+            "type": "string"
+          },
+          "usuario_id": {
+            "title": "Usuario Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "usuario_id"
+        ],
+        "title": "Autenticado",
+        "type": "object"
+      },
+      "Autenticar": {
+        "properties": {
+          "tipo": {
+            "const": "autenticar",
+            "title": "Tipo",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 4000,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "token"
+        ],
+        "title": "Autenticar",
+        "type": "object"
+      },
       "Body_enviarAvatar": {
         "properties": {
           "arquivo": {
@@ -683,6 +722,47 @@
           "arquivo"
         ],
         "title": "Body_enviarEmenta",
+        "type": "object"
+      },
+      "Cancelado": {
+        "properties": {
+          "canal": {
+            "title": "Canal",
+            "type": "string"
+          },
+          "tipo": {
+            "const": "cancelado",
+            "default": "cancelado",
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "canal"
+        ],
+        "title": "Cancelado",
+        "type": "object"
+      },
+      "Cancelar": {
+        "properties": {
+          "canal": {
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "^[a-z_]+:[a-z0-9_]+$",
+            "title": "Canal",
+            "type": "string"
+          },
+          "tipo": {
+            "const": "cancelar",
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "canal"
+        ],
+        "title": "Cancelar",
         "type": "object"
       },
       "Certificado": {
@@ -1290,6 +1370,30 @@
         "title": "ErroComum",
         "type": "object"
       },
+      "ErroDoWebSocket": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "tipo": {
+            "const": "erro",
+            "default": "erro",
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErroDoWebSocket",
+        "type": "object"
+      },
       "EsqueciSenha": {
         "properties": {
           "email": {
@@ -1302,6 +1406,36 @@
           "email"
         ],
         "title": "EsqueciSenha",
+        "type": "object"
+      },
+      "Evento": {
+        "properties": {
+          "canal": {
+            "title": "Canal",
+            "type": "string"
+          },
+          "evento": {
+            "title": "Evento",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Payload",
+            "type": "object"
+          },
+          "tipo": {
+            "const": "evento",
+            "default": "evento",
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "canal",
+          "evento"
+        ],
+        "title": "Evento",
         "type": "object"
       },
       "ExclusaoAgendada": {
@@ -1422,6 +1556,47 @@
           "criado_em"
         ],
         "title": "Grupo",
+        "type": "object"
+      },
+      "Inscrever": {
+        "properties": {
+          "canal": {
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "^[a-z_]+:[a-z0-9_]+$",
+            "title": "Canal",
+            "type": "string"
+          },
+          "tipo": {
+            "const": "inscrever",
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "canal"
+        ],
+        "title": "Inscrever",
+        "type": "object"
+      },
+      "Inscrito": {
+        "properties": {
+          "canal": {
+            "title": "Canal",
+            "type": "string"
+          },
+          "tipo": {
+            "const": "inscrito",
+            "default": "inscrito",
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "canal"
+        ],
+        "title": "Inscrito",
         "type": "object"
       },
       "InstituicaoResumo": {
@@ -1661,6 +1836,74 @@
         ],
         "title": "Mensagem",
         "type": "object"
+      },
+      "MensagemDoCliente": {
+        "discriminator": {
+          "mapping": {
+            "autenticar": "#/components/schemas/Autenticar",
+            "cancelar": "#/components/schemas/Cancelar",
+            "inscrever": "#/components/schemas/Inscrever",
+            "ping": "#/components/schemas/Ping",
+            "pong": "#/components/schemas/Pong"
+          },
+          "propertyName": "tipo"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Autenticar"
+          },
+          {
+            "$ref": "#/components/schemas/Inscrever"
+          },
+          {
+            "$ref": "#/components/schemas/Cancelar"
+          },
+          {
+            "$ref": "#/components/schemas/Ping"
+          },
+          {
+            "$ref": "#/components/schemas/Pong"
+          }
+        ],
+        "title": "MensagemDoCliente"
+      },
+      "MensagemDoServidor": {
+        "discriminator": {
+          "mapping": {
+            "autenticado": "#/components/schemas/Autenticado",
+            "cancelado": "#/components/schemas/Cancelado",
+            "erro": "#/components/schemas/ErroDoWebSocket",
+            "evento": "#/components/schemas/Evento",
+            "inscrito": "#/components/schemas/Inscrito",
+            "ping": "#/components/schemas/PingDoServidor",
+            "pong": "#/components/schemas/PongDoServidor"
+          },
+          "propertyName": "tipo"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Autenticado"
+          },
+          {
+            "$ref": "#/components/schemas/Inscrito"
+          },
+          {
+            "$ref": "#/components/schemas/Cancelado"
+          },
+          {
+            "$ref": "#/components/schemas/Evento"
+          },
+          {
+            "$ref": "#/components/schemas/PingDoServidor"
+          },
+          {
+            "$ref": "#/components/schemas/PongDoServidor"
+          },
+          {
+            "$ref": "#/components/schemas/ErroDoWebSocket"
+          }
+        ],
+        "title": "MensagemDoServidor"
       },
       "MetricasAtividade": {
         "properties": {
@@ -3069,6 +3312,58 @@
           "itens"
         ],
         "title": "PeriodoDeCertificados",
+        "type": "object"
+      },
+      "Ping": {
+        "properties": {
+          "tipo": {
+            "const": "ping",
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo"
+        ],
+        "title": "Ping",
+        "type": "object"
+      },
+      "PingDoServidor": {
+        "properties": {
+          "tipo": {
+            "const": "ping",
+            "default": "ping",
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "title": "PingDoServidor",
+        "type": "object"
+      },
+      "Pong": {
+        "properties": {
+          "tipo": {
+            "const": "pong",
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo"
+        ],
+        "title": "Pong",
+        "type": "object"
+      },
+      "PongDoServidor": {
+        "properties": {
+          "tipo": {
+            "const": "pong",
+            "default": "pong",
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "title": "PongDoServidor",
         "type": "object"
       },
       "Preferencias": {
@@ -9276,6 +9571,10 @@
     {
       "description": "Chat com o tutor de IA, com a resposta em streaming.",
       "name": "chat"
+    },
+    {
+      "description": "`WS /api/v1/ws`. O contrato está nos esquemas `MensagemDoCliente` e `MensagemDoServidor`.",
+      "name": "tempo-real"
     },
     {
       "description": "Vivo e pronto para servir. Fora do contrato versionado.",
