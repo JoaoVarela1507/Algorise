@@ -110,6 +110,39 @@ autenticação. No rate limit é o contrário, falha **aberta**: liberar a requi
 Quem concede XP deve chamar `app/services/xp.py`, não escrever em `xp_eventos` na
 mão — é ele que corrige o ranking em seguida.
 
+## Fila e worker
+
+O trabalho longo, como a leitura da ementa (e, depois, a busca e a transcrição
+dos vídeos), não roda no processo da API. Ele vai para uma fila do **RQ** no
+mesmo Redis, e o serviço `worker` do compose o executa (`app/core/fila.py`,
+tarefas em `app/tarefas/`). A variável `FILA` escolhe o modo:
+
+| `FILA`           | Onde a tarefa roda                                   | Quem usa                     |
+| ---------------- | ---------------------------------------------------- | ---------------------------- |
+| `redis`          | no `worker`, fora da API                             | o compose e a produção       |
+| `local` (padrão) | no processo da API, depois da resposta               | os testes, a CI, o E2E e quem roda sem o worker |
+
+Em produção, a API não sobe sem `FILA=redis`.
+
+- **Idempotência:** cada tarefa tem uma chave (`ementa-12`). Enquanto houver uma
+  na fila ou rodando com a mesma chave, um pedido novo não cria outra.
+- **Tempo e novas tentativas:** a leitura da ementa tem até 2 horas. A tarefa que
+  cai no meio (o worker reiniciou, o banco piscou) é tentada mais duas vezes,
+  depois de 30 s e de 2 min. A falha esperada (PDF ilegível, IA fora) não chega a
+  ser erro da tarefa: ela fica gravada na ementa, com o motivo.
+- **Falha definitiva:** depois da última tentativa, a ementa vira `falhou` com o
+  motivo, para a tela do aluno não ficar esperando para sempre. O erro fica uma
+  semana no registro de falhas do RQ.
+
+```powershell
+docker compose logs -f worker                     # o que o worker está fazendo
+docker compose exec worker rq info --url redis://redis:6379/0           # filas, tarefas e workers
+docker compose exec worker rq requeue --all --url redis://redis:6379/0  # reenfileira as falhas
+```
+
+O `worker` não recarrega sozinho como a API: depois de mudar uma tarefa em
+desenvolvimento, rode `docker compose restart worker`.
+
 ## Autenticação
 
 JWT para a sessão e OAuth2 para os botões de GitHub e Google da tela 5.

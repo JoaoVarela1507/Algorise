@@ -1,0 +1,138 @@
+"""Fila do trabalho longo: a leitura da ementa agora, a transcrição dos vídeos depois.
+
+Quem enfileira fala com `Fila`, nunca com o RQ direto. São duas implementações,
+escolhidas por `FILA`:
+
+- **`redis`** (`FilaRedis`): põe a tarefa na fila do RQ, e o serviço `worker`
+  do compose a executa, fora do processo da API. Um deploy ou uma queda da API
+  não perde o trabalho, e a tarefa que cai no meio é tentada de novo;
+- **`local`** (`FilaLocal`): roda a tarefa no próprio processo da API, depois da
+  resposta (`BackgroundTasks`). É o que os testes, a CI e o E2E usam, e o que
+  deixa rodar o backend sem o worker.
+
+A tarefa tem uma chave (`ementa-12`, `video-abc`): enquanto houver uma na fila
+ou rodando com a mesma chave, um pedido novo não cria outra. É o que impede o
+aluno de, clicando duas vezes em "tentar de novo", pôr duas leituras do mesmo
+PPC para o modelo.
+"""
+
+import logging
+from collections.abc import Callable
+from typing import Protocol
+
+from fastapi import BackgroundTasks, Depends
+from redis import Redis
+from rq import Callback, Queue, Retry
+from rq.exceptions import NoSuchJobError
+from rq.job import Job, JobStatus
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.core.config import settings
+from app.core.database import get_fabrica_de_sessoes
+from app.ia import ProvedorIA, get_provedor_ia_tarefas
+
+logger = logging.getLogger(__name__)
+
+# Uma leitura de PPC na CPU passa de meia hora; o padrão do RQ, três minutos.
+TEMPO_MAXIMO_DA_EMENTA = 2 * 60 * 60
+# A tarefa que cai no meio (o worker reiniciou, o banco piscou) é tentada de
+# novo, esperando cada vez mais. A falha esperada (PDF ilegível, IA fora) não
+# chega aqui: a própria tarefa a grava na ementa e termina sem erro.
+NOVAS_TENTATIVAS = Retry(max=2, interval=[30, 120])
+
+# Estados em que a tarefa ainda vai rodar ou está rodando.
+_PENDENTES = {
+    JobStatus.QUEUED,
+    JobStatus.STARTED,
+    JobStatus.DEFERRED,
+    JobStatus.SCHEDULED,
+}
+
+
+class Fila(Protocol):
+    def ementa(self, ementa_id: int) -> bool:
+        """Põe a leitura da ementa na fila. `False` se já havia uma pendente."""
+        ...
+
+
+class FilaRedis:
+    def __init__(self, conexao: Redis, nome: str = "algorise") -> None:
+        self.fila = Queue(nome, connection=conexao)
+
+    def ementa(self, ementa_id: int) -> bool:
+        # Importado aqui: a tarefa puxa os serviços, que puxam esta fila.
+        from app.tarefas import ementa
+
+        return self.enfileirar(
+            ementa.processar,
+            ementa_id,
+            chave=f"ementa-{ementa_id}",
+            tempo_maximo=TEMPO_MAXIMO_DA_EMENTA,
+            ao_falhar=ementa.falhou,
+        )
+
+    def enfileirar(
+        self,
+        funcao: Callable[..., object],
+        *argumentos: object,
+        chave: str,
+        tempo_maximo: int,
+        ao_falhar: Callable[..., object] | None = None,
+    ) -> bool:
+        """Enfileira `funcao(*argumentos)`, a menos que a tarefa `chave` esteja pendente."""
+        if self._pendente(chave):
+            logger.info("Tarefa %s já está na fila; o pedido novo foi ignorado", chave)
+            return False
+        self.fila.enqueue(
+            funcao,
+            *argumentos,
+            job_id=chave,
+            job_timeout=tempo_maximo,
+            retry=NOVAS_TENTATIVAS,
+            on_failure=Callback(ao_falhar) if ao_falhar else None,
+            # O resultado não interessa (a tarefa grava no banco); a falha fica
+            # uma semana no registro do RQ, para `rq info` mostrar o motivo.
+            result_ttl=0,
+            failure_ttl=7 * 24 * 60 * 60,
+        )
+        return True
+
+    def _pendente(self, chave: str) -> bool:
+        try:
+            tarefa = Job.fetch(chave, connection=self.fila.connection)
+        except NoSuchJobError:
+            return False
+        return tarefa.get_status(refresh=False) in _PENDENTES
+
+
+class FilaLocal:
+    """Roda a tarefa no processo da API, depois da resposta."""
+
+    def __init__(
+        self, tarefas: BackgroundTasks, fabrica: sessionmaker[Session], provedor: ProvedorIA
+    ) -> None:
+        self.tarefas = tarefas
+        self.fabrica = fabrica
+        self.provedor = provedor
+
+    def ementa(self, ementa_id: int) -> bool:
+        from app.services import ementas
+
+        self.tarefas.add_task(ementas.processar, self.fabrica, self.provedor, ementa_id)
+        return True
+
+
+def conexao() -> Redis:
+    """Conexão própria do RQ: ele guarda bytes (pickle), e o cliente do cache decodifica texto."""
+    return Redis.from_url(settings.redis_url)
+
+
+def get_fila(
+    tarefas: BackgroundTasks,
+    fabrica: sessionmaker[Session] = Depends(get_fabrica_de_sessoes),
+    provedor: ProvedorIA = Depends(get_provedor_ia_tarefas),
+) -> Fila:
+    """Dependência do FastAPI: a fila do modo em `FILA`."""
+    if settings.fila == "redis":
+        return FilaRedis(conexao(), settings.fila_nome)
+    return FilaLocal(tarefas, fabrica, provedor)

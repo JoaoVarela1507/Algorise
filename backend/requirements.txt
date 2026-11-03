@@ -7,6 +7,8 @@ sqlalchemy==2.1.6
 psycopg[binary]==3.3.6
 alembic==1.20.1
 redis[hiredis]==8.1.0
+# Fila do trabalho longo (#206), sobre o mesmo Redis; o worker é o `rq worker`.
+rq==3.0.0
 pyjwt[crypto]==2.15.1
 bcrypt==5.0.0
 authlib==1.9.1
