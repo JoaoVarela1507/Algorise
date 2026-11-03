@@ -1,90 +1,117 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowLeft, ArrowRight, Award, Hourglass, Info, Lock } from 'lucide-react'
-import { PERIODOS, coresPeriodo } from '@/components/trilhas/periodos'
+import { ArrowLeft, ArrowRight, Award, Download, Info, Lock } from 'lucide-react'
+import { coresPeriodo } from '@/components/trilhas/periodos'
 import { Button } from '@/components/ui/button'
+import { Carregando, ErroAoCarregar } from '@/components/ui/estados'
+import { useBaixarCertificado, useCertificados } from '@/hooks/useCertificados'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { cn } from '@/lib/utils'
-import { trilhasMock } from '@/mocks/trilhas'
-import type { TrilhaResumo } from '@/types/trilha'
+import type { ItemDeCertificado } from '@/services/certificados'
 import mascotePolvo from '@/assets/images/mascote-polvo.png'
 
-/**
- * Certificados emitidos pelos parceiros. Ainda não há rota que liste os do
- * aluno, então a lista começa vazia e cada trilha aparece como um certificado
- * a conquistar.
- */
-const certificadosEmitidos: { trilhaId: string }[] = []
+/** O período da aba: as optativas, sem período, ficam na aba 0. */
+const chaveDoPeriodo = (periodo: number | null | undefined) => periodo ?? 0
+const nomeDoPeriodo = (chave: number) => (chave ? `${chave}º Período` : 'Optativas')
 
-function ItemCertificado({ trilha, indice }: { trilha: TrilhaResumo; indice: number }) {
-  const concluida = trilha.modulosConcluidos >= trilha.totalModulos
-  const progresso = Math.round((trilha.modulosConcluidos / trilha.totalModulos) * 100)
+function ItemCertificado({ item, indice }: { item: ItemDeCertificado; indice: number }) {
+  const baixar = useBaixarCertificado()
+  const liberado = item.estado === 'liberado'
+  const progresso = item.total_modulos
+    ? Math.round((item.concluidos / item.total_modulos) * 100)
+    : 0
 
   return (
     <motion.li
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: indice * 0.06 }}
+      className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 shadow-sm"
     >
-      <Link
-        to="/trilhas"
-        className="group flex items-center gap-4 rounded-lg border border-border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md"
+      <span
+        className={cn(
+          'flex size-12 shrink-0 items-center justify-center rounded-full',
+          liberado ? 'bg-success/15 text-success' : 'bg-primary/15 text-primary',
+        )}
+        title={`Parceiro: ${item.parceiro}`}
       >
-        <span
-          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"
-          title="Parceiro do Algorise"
-        >
-          <Award className="size-6" aria-hidden />
-        </span>
+        <Award className="size-6" aria-hidden />
+      </span>
 
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-display text-lg font-bold text-foreground">{trilha.nome}</p>
-          {concluida ? (
-            <p className="flex items-center gap-1.5 text-sm font-semibold text-success">
-              <Hourglass className="size-3.5" aria-hidden />
-              Trilha concluída · aguardando emissão pelo parceiro
-            </p>
-          ) : (
-            <div className="mt-1 flex items-center gap-3">
-              <div className="h-2 max-w-48 flex-1 overflow-hidden rounded-full bg-muted">
-                <motion.div
-                  className="h-full rounded-full bg-success"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progresso}%` }}
-                  transition={{ delay: 0.3 + indice * 0.06, duration: 0.6 }}
-                />
-              </div>
-              <span className="text-xs font-bold text-muted-foreground">
-                {trilha.modulosConcluidos}/{trilha.totalModulos} módulos
-              </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-display text-lg font-bold text-foreground">{item.nome}</p>
+        <p className="text-sm text-muted-foreground">
+          {item.parceiro}
+          {item.carga_horaria ? ` · ${item.carga_horaria} horas` : ''}
+        </p>
+        {!liberado && (
+          <div className="mt-1 flex items-center gap-3">
+            <div className="h-2 max-w-48 flex-1 overflow-hidden rounded-full bg-muted">
+              <motion.div
+                className="h-full rounded-full bg-success"
+                initial={{ width: 0 }}
+                animate={{ width: `${progresso}%` }}
+                transition={{ delay: 0.3 + indice * 0.06, duration: 0.6 }}
+              />
             </div>
-          )}
-        </div>
+            <span className="text-xs font-bold text-muted-foreground">
+              {item.concluidos}/{item.total_modulos} módulos
+            </span>
+          </div>
+        )}
+      </div>
 
-        <span
-          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-muted text-locked transition-transform group-hover:scale-110"
-          aria-label="Certificado bloqueado"
+      {liberado && item.certificado_id ? (
+        <Button
+          variant="secondary"
+          disabled={baixar.isPending}
+          onClick={() => baixar.mutate(item.certificado_id as number)}
+        >
+          <Download aria-hidden />
+          Baixar PDF
+        </Button>
+      ) : (
+        <Link
+          to={`/trilhas/${item.slug}`}
+          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-muted text-locked"
+          aria-label={`Certificado bloqueado: continuar a trilha ${item.nome}`}
         >
           <Lock className="size-5" />
-        </span>
-      </Link>
+        </Link>
+      )}
     </motion.li>
   )
 }
 
+/**
+ * Certificados das trilhas de parceiros (tela 20, #32): o liberado, para baixar,
+ * e o que falta para cada um, por período. Só aparecem as trilhas de parceiros.
+ */
 export function CertificadosPage() {
   const usuario = useAuthStore((estado) => estado.usuario)
   const navigate = useNavigate()
+  const certificados = useCertificados()
+  const [escolhido, setEscolhido] = useState<number | null>(null)
 
-  const periodosComTrilha = PERIODOS.filter((p) => trilhasMock.some((t) => t.periodo === p))
-  const [periodo, setPeriodo] = useState<number>(() =>
-    usuario?.periodo && periodosComTrilha.includes(usuario.periodo as (typeof PERIODOS)[number])
-      ? usuario.periodo
-      : (periodosComTrilha[0] ?? 1),
-  )
-  const doPeriodo = trilhasMock.filter((t) => t.periodo === periodo)
-  const total = trilhasMock.length
+  if (certificados.isPending) return <Carregando rotulo="Carregando certificados…" />
+  if (certificados.isError) {
+    return (
+      <ErroAoCarregar
+        erro={certificados.error}
+        aoTentarDeNovo={() => void certificados.refetch()}
+      />
+    )
+  }
+
+  const grupos = certificados.data
+  const chaves = grupos.map((g) => chaveDoPeriodo(g.periodo))
+  const periodo =
+    escolhido ??
+    (usuario?.periodo && chaves.includes(usuario.periodo) ? usuario.periodo : (chaves[0] ?? 0))
+  const doPeriodo = grupos.find((g) => chaveDoPeriodo(g.periodo) === periodo)?.itens ?? []
+  const todos = grupos.flatMap((g) => g.itens)
+  const conquistados = todos.filter((item) => item.estado === 'liberado').length
 
   return (
     <div className="flex min-h-full flex-col gap-6">
@@ -101,7 +128,6 @@ export function CertificadosPage() {
       </header>
 
       <div className="grid flex-1 gap-6 xl:grid-cols-3">
-        {/* Estado vazio: nenhum certificado ainda. */}
         <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -117,34 +143,37 @@ export function CertificadosPage() {
                 animate={{ y: [0, -8, 0] }}
                 transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
               />
-              <motion.span
-                className="absolute -bottom-2 -right-4 flex size-14 items-center justify-center rounded-full border-4 border-card bg-muted text-locked shadow"
-                animate={{ rotate: [0, -10, 10, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              <span
+                className={cn(
+                  'absolute -bottom-2 -right-4 flex size-14 items-center justify-center rounded-full border-4 border-card shadow',
+                  conquistados ? 'bg-success text-success-foreground' : 'bg-muted text-locked',
+                )}
                 aria-hidden
               >
                 <Award className="size-7" />
-              </motion.span>
+              </span>
             </div>
 
             <div>
               <p className="font-display text-5xl font-extrabold text-foreground">
-                {certificadosEmitidos.length}
-                <span className="text-2xl text-muted-foreground"> de {total}</span>
+                {conquistados}
+                <span className="text-2xl text-muted-foreground"> de {todos.length}</span>
               </p>
               <p className="text-sm font-semibold text-muted-foreground">
                 certificados conquistados
               </p>
             </div>
 
-            <div>
-              <h2 className="font-display text-xl font-bold text-foreground">
-                Você ainda não tem certificados
-              </h2>
-              <p className="mx-auto max-w-xs text-muted-foreground">
-                Conclua todos os módulos de uma trilha para liberar o certificado do parceiro.
-              </p>
-            </div>
+            {conquistados === 0 && (
+              <div>
+                <h2 className="font-display text-xl font-bold text-foreground">
+                  Você ainda não tem certificados
+                </h2>
+                <p className="mx-auto max-w-xs text-muted-foreground">
+                  Conclua todos os módulos de uma trilha para liberar o certificado do parceiro.
+                </p>
+              </div>
+            )}
 
             <Button asChild size="lg" className="group">
               <Link to="/trilhas">
@@ -162,7 +191,6 @@ export function CertificadosPage() {
           </p>
         </motion.section>
 
-        {/* Certificados a conquistar, por período. */}
         <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -170,63 +198,63 @@ export function CertificadosPage() {
           className="flex flex-col rounded-lg border border-border bg-card p-6 shadow-sm xl:col-span-2"
         >
           <h2 className="font-display text-xl font-bold text-foreground">Veja seus certificados</h2>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Cada trilha concluída libera um certificado. Escolha o período:
-          </p>
-
-          <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Período">
-            {periodosComTrilha.map((p) => {
-              const ativo = p === periodo
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  role="tab"
-                  aria-selected={ativo}
-                  onClick={() => setPeriodo(p)}
-                  className={cn(
-                    'flex items-center gap-2 rounded-full border-2 py-1.5 pl-3 pr-4 text-sm font-bold transition-colors',
-                    coresPeriodo[p].borda,
-                    ativo
-                      ? cn(coresPeriodo[p].cheio, 'text-periodo-foreground shadow-md')
-                      : 'bg-card text-foreground hover:shadow-sm',
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'size-2.5 rounded-full',
-                      ativo ? 'bg-card' : coresPeriodo[p].cheio,
-                    )}
-                    aria-hidden
-                  />
-                  {p}º Período
-                </button>
-              )
-            })}
-          </div>
-
-          <div
-            className={cn(
-              'flex-1 rounded-lg border-2 p-4',
-              coresPeriodo[periodo]?.borda,
-              coresPeriodo[periodo]?.suave,
-            )}
-          >
-            <AnimatePresence mode="wait">
-              <motion.ol
-                key={periodo}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="flex flex-col gap-3"
+          {grupos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Ainda não há trilhas de parceiros no catálogo.
+            </p>
+          ) : (
+            <>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Cada trilha concluída libera um certificado. Escolha o período:
+              </p>
+              <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Período">
+                {chaves.map((chave) => {
+                  const ativo = chave === periodo
+                  const cores = coresPeriodo[chave]
+                  return (
+                    <button
+                      key={chave}
+                      type="button"
+                      role="tab"
+                      aria-selected={ativo}
+                      onClick={() => setEscolhido(chave)}
+                      className={cn(
+                        'flex items-center gap-2 rounded-full border-2 py-1.5 pl-3 pr-4 text-sm font-bold transition-colors',
+                        cores?.borda ?? 'border-border',
+                        ativo
+                          ? cn(cores?.cheio ?? 'bg-primary', 'text-periodo-foreground shadow-md')
+                          : 'bg-card text-foreground hover:shadow-sm',
+                      )}
+                    >
+                      {nomeDoPeriodo(chave)}
+                    </button>
+                  )
+                })}
+              </div>
+              <div
+                className={cn(
+                  'flex-1 rounded-lg border-2 p-4',
+                  coresPeriodo[periodo]?.borda ?? 'border-border',
+                  coresPeriodo[periodo]?.suave,
+                )}
               >
-                {doPeriodo.map((trilha, i) => (
-                  <ItemCertificado key={trilha.id} trilha={trilha} indice={i} />
-                ))}
-              </motion.ol>
-            </AnimatePresence>
-          </div>
+                <AnimatePresence mode="wait">
+                  <motion.ol
+                    key={periodo}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex flex-col gap-3"
+                  >
+                    {doPeriodo.map((item, i) => (
+                      <ItemCertificado key={item.trilha_id} item={item} indice={i} />
+                    ))}
+                  </motion.ol>
+                </AnimatePresence>
+              </div>
+            </>
+          )}
         </motion.section>
       </div>
     </div>
