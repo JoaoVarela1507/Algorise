@@ -14,6 +14,15 @@ O tipo do commit define o bump:
 - `feat!: ...` ou `BREAKING CHANGE:` no corpo — major (**1**.0.0)
 - `chore:`, `docs:`, `test:` — não geram release
 
+## [0.22.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.21.0...v0.22.0) (2026-11-03)
+
+
+### Adicionado
+
+* busca de videos no YouTube para as lacunas, com prioridade para playlists ([#236](https://github.com/JoaoVarela1507/Algorise/issues/236)) ([476d3dd](https://github.com/JoaoVarela1507/Algorise/commit/476d3dd68b4ee610a834e52ae8973c24bc2d2540))
+* logs estruturados, metricas do Prometheus, auditoria e Sentry ([#233](https://github.com/JoaoVarela1507/Algorise/issues/233)) ([e4d5014](https://github.com/JoaoVarela1507/Algorise/commit/e4d50149524f651c0a6b1fdcde95b4dec9d1fa9a))
+* pipeline dos videos, admin, certificados, gamificacao, chat e WebSocket ([#234](https://github.com/JoaoVarela1507/Algorise/issues/234) a [#240](https://github.com/JoaoVarela1507/Algorise/issues/240) para a main) ([#242](https://github.com/JoaoVarela1507/Algorise/issues/242)) ([6d288a8](https://github.com/JoaoVarela1507/Algorise/commit/6d288a8e88b73ca3999c1517ea5dd581122dc2b6))
+
 ## [0.21.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.20.0...v0.21.0) (2026-11-03)
 
 
