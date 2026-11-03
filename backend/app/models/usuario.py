@@ -4,7 +4,7 @@ from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, false, fu
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
-from app.models.enums import NivelExperiencia, TamanhoFonte, TipoTrilha
+from app.models.enums import NivelExperiencia, PapelUsuario, TamanhoFonte, TipoTrilha
 
 
 class Usuario(Base, TimestampMixin):
@@ -43,6 +43,11 @@ class Usuario(Base, TimestampMixin):
     # Saldo desnormalizado: a verdade são os registros em `xp_eventos`. Existe
     # para o ranking não somar a tabela inteira a cada consulta.
     xp_total: Mapped[int] = mapped_column(default=0, index=True)
+
+    # O que pode além de estudar (#41): cadastrar conteúdo, ver métricas.
+    papel: Mapped[PapelUsuario] = mapped_column(
+        default=PapelUsuario.aluno, server_default=PapelUsuario.aluno.value
+    )
 
     # Pedido de exclusão da conta (#40): a conta fica desativada até esta data e
     # depois é expurgada. Nulo é conta ativa; entrar de novo antes do prazo

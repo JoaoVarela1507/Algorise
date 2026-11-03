@@ -13,6 +13,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     academico,
+    admin,
     atividades,
     auth,
     chat,
@@ -42,3 +43,4 @@ router.include_router(onboarding.router)
 router.include_router(academico.router)
 router.include_router(ementas.router)
 router.include_router(chat.router)
+router.include_router(admin.router)

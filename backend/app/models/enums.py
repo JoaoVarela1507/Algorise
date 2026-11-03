@@ -147,3 +147,16 @@ class StatusGeracao(str, Enum):
     pronto = "pronto"
     sem_conteudo = "sem_conteudo"
     falhou = "falhou"
+
+
+class PapelUsuario(str, Enum):
+    """O que o usuário pode fazer além de estudar (#41).
+
+    `autor` cadastra e mantém trilhas, passos e atividades; `admin` faz o mesmo
+    e ainda vê as métricas. Todo cadastro nasce `aluno`; a promoção é pela linha
+    de comando (`python -m app.tarefas.papeis`).
+    """
+
+    aluno = "aluno"
+    autor = "autor"
+    admin = "admin"
