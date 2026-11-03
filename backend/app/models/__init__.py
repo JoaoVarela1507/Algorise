@@ -13,7 +13,7 @@ from app.models.academico import (
     Lacuna,
 )
 from app.models.base import Base, TimestampMixin
-from app.models.chat import Conversa, MensagemChat
+from app.models.chat import Conversa, GrupoChat, MensagemChat
 from app.models.enums import (
     ModoResposta,
     NivelExperiencia,
@@ -59,6 +59,7 @@ __all__ = [
     "DocumentoVault",
     "Ementa",
     "ExerciciosGerados",
+    "GrupoChat",
     "Instituicao",
     "Lacuna",
     "MensagemChat",
