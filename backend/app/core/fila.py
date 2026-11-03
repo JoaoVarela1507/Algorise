@@ -38,6 +38,8 @@ logger = logging.getLogger(__name__)
 TEMPO_MAXIMO_DA_EMENTA = 2 * 60 * 60
 # A busca de uma disciplina: algumas chamadas à API e embeddings de títulos.
 TEMPO_MAXIMO_DA_BUSCA = 30 * 60
+# Baixar o áudio e transcrever na CPU: perto do tempo do próprio vídeo.
+TEMPO_MAXIMO_DA_TRANSCRICAO = 4 * 60 * 60
 # A tarefa que cai no meio (o worker reiniciou, o banco piscou) é tentada de
 # novo, esperando cada vez mais. A falha esperada (PDF ilegível, IA fora) não
 # chega aqui: a própria tarefa a grava na ementa e termina sem erro.
@@ -59,6 +61,10 @@ class Fila(Protocol):
 
     def busca_de_conteudo(self, disciplina: str) -> bool:
         """Põe na fila a busca de vídeos para as lacunas da disciplina (#207)."""
+        ...
+
+    def transcricao(self, video_id: int) -> bool:
+        """Põe na fila a transcrição do vídeo do YouTube (#208)."""
         ...
 
 
@@ -86,6 +92,17 @@ class FilaRedis:
             disciplina,
             chave=f"busca-{_slug(disciplina)}",
             tempo_maximo=TEMPO_MAXIMO_DA_BUSCA,
+        )
+
+    def transcricao(self, video_id: int) -> bool:
+        from app.tarefas import transcricao
+
+        return self.enfileirar(
+            transcricao.transcrever,
+            video_id,
+            chave=f"video-{video_id}",
+            tempo_maximo=TEMPO_MAXIMO_DA_TRANSCRICAO,
+            ao_falhar=transcricao.falhou,
         )
 
     def enfileirar(
@@ -144,6 +161,12 @@ class FilaLocal:
         self.tarefas.add_task(busca.buscar, disciplina)
         return True
 
+    def transcricao(self, video_id: int) -> bool:
+        from app.tarefas import transcricao
+
+        self.tarefas.add_task(transcricao.transcrever, video_id)
+        return True
+
 
 class FilaImediata:
     """Roda a tarefa agora, na thread de quem chamou.
@@ -162,6 +185,12 @@ class FilaImediata:
         from app.tarefas import busca
 
         busca.buscar(disciplina)
+        return True
+
+    def transcricao(self, video_id: int) -> bool:
+        from app.tarefas import transcricao
+
+        transcricao.transcrever(video_id)
         return True
 
 

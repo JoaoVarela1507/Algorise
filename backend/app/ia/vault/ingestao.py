@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.ia import skills
 from app.ia.base import ProvedorIA
 from app.ia.vault.trechos import Fala, Trecho, dividir, ler_transcricao
-from app.models import DocumentoVault, Modulo, OrigemVault, TrechoVault, Trilha
+from app.models import DocumentoVault, Modulo, OrigemVault, TrechoVault, Trilha, VideoYoutube
 
 # Quantos trechos vão num pedido de embedding. Uma transcrição longa num pedido
 # só pode passar do timeout de leitura do Ollama.
@@ -45,6 +45,30 @@ async def ingerir_transcricao(
         conteudo=conteudo,
         trechos=dividir(ler_transcricao(conteudo, nome_arquivo)),
         modulo_id=modulo_id,
+    )
+
+
+async def ingerir_video(
+    sessao: Session, provedor: ProvedorIA, video: VideoYoutube, falas: list[Fala]
+) -> Ingestao:
+    """Grava a transcrição de um vídeo do YouTube, ainda sem módulo (#208).
+
+    A chave é o id do vídeo: o mesmo vídeo transcrito de novo substitui os
+    trechos, e um vídeo que cobre lacunas de duas ementas é um documento só.
+    """
+    conteudo = "\n".join(
+        f"{fala.inicio}-{fala.fim} {fala.texto}" if fala.inicio is not None else fala.texto
+        for fala in falas
+    )
+    return await _ingerir(
+        sessao,
+        provedor,
+        chave=f"youtube:{video.youtube_id}",
+        origem=OrigemVault.transcricao,
+        titulo=video.titulo[:200],
+        conteudo=conteudo,
+        trechos=dividir(falas),
+        video_id=video.id,
     )
 
 
@@ -122,6 +146,7 @@ async def _ingerir(
     trechos: list[Trecho],
     modulo_id: int | None = None,
     skill: str | None = None,
+    video_id: int | None = None,
 ) -> Ingestao:
     hash_conteudo = hashlib.sha256(conteudo.encode()).hexdigest()
     documento = sessao.scalar(select(DocumentoVault).where(DocumentoVault.chave == chave))
@@ -148,8 +173,11 @@ async def _ingerir(
     documento.hash_conteudo = hash_conteudo
     documento.modulo_id = modulo_id
     documento.skill = skill
+    documento.video_id = video_id
     documento.trechos = [
-        TrechoVault(ordem=i, texto=t.texto, inicio_segundos=t.inicio, embedding=v)
+        TrechoVault(
+            ordem=i, texto=t.texto, inicio_segundos=t.inicio, fim_segundos=t.fim, embedding=v
+        )
         for i, (t, v) in enumerate(zip(trechos, vetores, strict=True))
     ]
     sessao.commit()

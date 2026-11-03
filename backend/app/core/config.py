@@ -107,6 +107,13 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
     # Com valor, `GET /metrics` pede `Authorization: Bearer <token>`.
     metricas_token: str = ""
+
+    # Transcrição dos vídeos (#208), no worker. `small` é o modelo do Whisper
+    # que cabe numa CPU; `int8` reduz a memória à custa de pouca precisão.
+    whisper_modelo: str = "small"
+    whisper_computacao: str = "int8"
+    # Vídeo mais longo que isto não é transcrito: ocuparia o worker por horas.
+    transcricao_duracao_maxima: int = 3 * 60 * 60
     # Tentativas contra o Ollama fora, só antes do primeiro pedaço: depois dele,
     # tentar de novo repetiria o texto que o aluno já viu.
     ia_tentativas: int = 2
