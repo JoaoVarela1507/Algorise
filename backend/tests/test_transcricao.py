@@ -47,7 +47,21 @@ def video(db: Session) -> VideoYoutube:
 
 
 @pytest.fixture
-def no_worker(sessao_factory, monkeypatch: pytest.MonkeyPatch) -> None:
+def segmentacoes(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Os vídeos que a transcrição pôs na fila da segmentação (#209)."""
+    enfileirados: list[int] = []
+
+    class Espia:
+        def segmentacao(self, video_id: int) -> bool:
+            enfileirados.append(video_id)
+            return True
+
+    monkeypatch.setattr(tarefa, "fila_das_tarefas", Espia)
+    return enfileirados
+
+
+@pytest.fixture
+def no_worker(sessao_factory, segmentacoes: list[int], monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(tarefa, "SessionLocal", sessao_factory)
     monkeypatch.setattr(tarefa, "get_provedor_ia_tarefas", Eco)
 
@@ -109,7 +123,7 @@ def test_sem_legenda_ou_legenda_vazia_o_whisper_transcreve_o_audio(
 
 
 def test_video_transcrito_vai_para_o_vault_com_inicio_e_fim(
-    db: Session, video: VideoYoutube, no_worker: None, pastas: list[Path]
+    db: Session, video: VideoYoutube, no_worker: None, pastas: list[Path], segmentacoes: list[int]
 ) -> None:
     """O critério da #208: trechos com início e fim, e nada baixado fica no disco."""
     tarefa.transcrever(video.id)
@@ -125,6 +139,8 @@ def test_video_transcrito_vai_para_o_vault_com_inicio_e_fim(
     [trecho] = documento.trechos
     assert (trecho.inicio_segundos, trecho.fim_segundos) == (0.0, 7.0)
     assert [pasta.exists() for pasta in pastas] == [False]
+    # O próximo passo, as partes do vídeo, foi para a fila.
+    assert segmentacoes == [video.id]
 
 
 def test_busca_no_vault_acha_o_video_ainda_sem_modulo(
