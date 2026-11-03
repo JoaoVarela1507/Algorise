@@ -5,5 +5,6 @@
 - `busca`: a busca de vídeos para as lacunas de uma disciplina, também pelo worker;
 - `transcricao`: a transcrição de cada vídeo escolhido pela busca;
 - `segmentacao`: as partes de cada vídeo transcrito;
-- `categorizacao`: a matéria de cada parte e as lacunas que ela cobre.
+- `categorizacao`: a matéria de cada parte e as lacunas que ela cobre;
+- `exercicios`: os exercícios de prática de um módulo, pedidos pelo aluno.
 """

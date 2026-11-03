@@ -23,6 +23,7 @@ from app.models.enums import (
     PapelMensagem,
     StatusAssuntos,
     StatusEmenta,
+    StatusGeracao,
     StatusLacuna,
     StatusProgresso,
     StatusVideo,
@@ -32,7 +33,7 @@ from app.models.enums import (
 )
 from app.models.gamificacao import Certificado, Streak, XPEvento
 from app.models.progresso import ProgressoUsuario, RespostaUsuario
-from app.models.trilha import Atividade, Modulo, ReporteModulo, Trilha
+from app.models.trilha import Atividade, ExerciciosGerados, Modulo, ReporteModulo, Trilha
 from app.models.usuario import Consentimento, ContaOAuth, Usuario
 from app.models.vault import DocumentoVault, TrechoVault
 from app.models.youtube import (
@@ -56,6 +57,7 @@ __all__ = [
     "DisciplinaEmenta",
     "DocumentoVault",
     "Ementa",
+    "ExerciciosGerados",
     "Instituicao",
     "Lacuna",
     "MensagemChat",
@@ -73,6 +75,7 @@ __all__ = [
     "RespostaUsuario",
     "StatusAssuntos",
     "StatusEmenta",
+    "StatusGeracao",
     "StatusLacuna",
     "StatusProgresso",
     "StatusVideo",

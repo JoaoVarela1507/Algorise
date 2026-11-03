@@ -617,6 +617,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/trilhas/{slug}/passos/{ordem}/exercicios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exercícios de prática do passo, gerados pela IA
+         * @description Gerados a partir do conteúdo do módulo no vault, para o nível do aluno, uma vez por módulo e nível. Na primeira vez, a geração entra na fila e o status vem `gerando`. Não contam para concluir o passo. 403 no passo bloqueado.
+         */
+        get: operations["exerciciosDoPasso"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/trilhas/{slug}/passos/{ordem}/reportar": {
         parameters: {
             query?: never;
@@ -1115,6 +1135,30 @@ export interface components {
             /** Senha */
             senha?: string | null;
         };
+        /** ExercicioDePratica */
+        ExercicioDePratica: {
+            /**
+             * Dica
+             * @default
+             */
+            dica: string;
+            /** Enunciado */
+            enunciado: string;
+            /** Resposta Esperada */
+            resposta_esperada: string;
+        };
+        /**
+         * ExerciciosDoPasso
+         * @description Os exercícios de prática do passo para o nível do aluno (#201).
+         *
+         *     Enquanto `status` for `gerando`, a lista vem vazia: pergunte de novo em
+         *     alguns segundos. `sem_conteudo`: o módulo não tem material para gerar.
+         */
+        ExerciciosDoPasso: {
+            /** Exercicios */
+            exercicios: components["schemas"]["ExercicioDePratica"][];
+            status: components["schemas"]["StatusGeracao"];
+        };
         /** InstituicaoResumo */
         InstituicaoResumo: {
             /** Id */
@@ -1591,6 +1635,15 @@ export interface components {
          * @enum {string}
          */
         StatusEmenta: "pendente" | "processando" | "processada" | "falhou";
+        /**
+         * StatusGeracao
+         * @description Geração dos exercícios de prática de um módulo (#201).
+         *
+         *     `sem_conteudo`: o módulo não tem trecho no vault, e não há do que gerar
+         *     sem inventar.
+         * @enum {string}
+         */
+        StatusGeracao: "gerando" | "pronto" | "sem_conteudo" | "falhou";
         /**
          * StatusLacuna
          * @description Assunto de ementa que o catálogo ainda não cobre (#38).
@@ -3214,6 +3267,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PassoConcluido"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    exerciciosDoPasso: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                ordem: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExerciciosDoPasso"];
                 };
             };
             /** @description Dados inválidos */
