@@ -503,6 +503,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chat/conversas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Histórico de conversas
+         * @description Da mais recente para a mais antiga. `busca` procura a palavra no título e no conteúdo das mensagens (full-text em português no PostgreSQL).
+         */
+        get: operations["listarConversas"];
+        put?: never;
+        /**
+         * Cria uma conversa
+         * @description O título sai da `primeira_mensagem`, se vier; senão, "Nova conversa".
+         */
+        post: operations["criarConversa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/conversas/{conversa_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Apaga a conversa e as mensagens */
+        delete: operations["apagarConversa"];
+        options?: never;
+        head?: never;
+        /** Renomeia, arquiva ou põe a conversa num grupo */
+        patch: operations["editarConversa"];
+        trace?: never;
+    };
+    "/api/v1/chat/conversas/{conversa_id}/mensagens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mensagens da conversa, na ordem */
+        get: operations["listarMensagens"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/grupos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Grupos do aluno */
+        get: operations["listarGrupos"];
+        put?: never;
+        /** Cria um grupo temático com as conversas escolhidas */
+        post: operations["criarGrupo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/grupos/{grupo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Um grupo, com as conversas */
+        get: operations["obterGrupo"];
+        put?: never;
+        post?: never;
+        /** Apaga o grupo; as conversas ficam */
+        delete: operations["apagarGrupo"];
+        options?: never;
+        head?: never;
+        /** Renomeia o grupo ou troca as conversas dele */
+        patch: operations["editarGrupo"];
+        trace?: never;
+    };
     "/api/v1/chat/mensagens": {
         parameters: {
             query?: never;
@@ -528,6 +624,26 @@ export interface paths {
          *     histórico.
          */
         post: operations["enviarMensagem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/sugestoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tópicos sugeridos na tela 21
+         * @description O passo em que o aluno está e as conversas recentes.
+         */
+        get: operations["listarSugestoes"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1404,6 +1520,27 @@ export interface components {
             /** Trilha Id */
             trilha_id: number;
         };
+        /** ConversaResumo */
+        ConversaResumo: {
+            /** Arquivada */
+            arquivada: boolean;
+            /**
+             * Atualizado Em
+             * Format: date-time
+             */
+            atualizado_em: string;
+            /**
+             * Criado Em
+             * Format: date-time
+             */
+            criado_em: string;
+            /** Grupo Id */
+            grupo_id?: number | null;
+            /** Id */
+            id: number;
+            /** Titulo */
+            titulo: string;
+        };
         /**
          * Correcao
          * @description A resposta da submissão.
@@ -1459,6 +1596,22 @@ export interface components {
             nome: string;
             /** Periodo */
             periodo?: number | null;
+        };
+        /** EdicaoDeConversa */
+        EdicaoDeConversa: {
+            /** Arquivada */
+            arquivada?: boolean | null;
+            /** Grupo Id */
+            grupo_id?: number | null;
+            /** Titulo */
+            titulo?: string | null;
+        };
+        /** EdicaoDeGrupo */
+        EdicaoDeGrupo: {
+            /** Conversa Ids */
+            conversa_ids?: number[] | null;
+            /** Nome */
+            nome?: string | null;
         };
         /**
          * EmentaStatus
@@ -1596,6 +1749,20 @@ export interface components {
             exercicios: components["schemas"]["ExercicioDePratica"][];
             status: components["schemas"]["StatusGeracao"];
         };
+        /** Grupo */
+        Grupo: {
+            /** Conversas */
+            conversas: components["schemas"]["ConversaResumo"][];
+            /**
+             * Criado Em
+             * Format: date-time
+             */
+            criado_em: string;
+            /** Id */
+            id: number;
+            /** Nome */
+            nome: string;
+        };
         /** InstituicaoResumo */
         InstituicaoResumo: {
             /** Id */
@@ -1671,6 +1838,21 @@ export interface components {
             lembrar: boolean;
             /** Senha */
             senha: string;
+        };
+        /** Mensagem */
+        Mensagem: {
+            /** Conteudo */
+            conteudo: string;
+            /**
+             * Criado Em
+             * Format: date-time
+             */
+            criado_em: string;
+            /** Id */
+            id: number;
+            /** Incompleta */
+            incompleta: boolean;
+            papel: components["schemas"]["PapelMensagem"];
         };
         /** MetricasAtividade */
         MetricasAtividade: {
@@ -1789,6 +1971,13 @@ export interface components {
          * @enum {string}
          */
         NivelExperiencia: "baixo" | "medio" | "alto";
+        /** NovaConversa */
+        NovaConversa: {
+            /** Primeira Mensagem */
+            primeira_mensagem?: string | null;
+            /** Titulo */
+            titulo?: string | null;
+        };
         /** NovaMensagem */
         NovaMensagem: {
             /**
@@ -1806,6 +1995,16 @@ export interface components {
              * @default medio
              */
             modo: components["schemas"]["ModoResposta"];
+        };
+        /** NovoGrupo */
+        NovoGrupo: {
+            /**
+             * Conversa Ids
+             * @default []
+             */
+            conversa_ids: number[];
+            /** Nome */
+            nome: string;
         };
         /**
          * Onboarding
@@ -1838,6 +2037,56 @@ export interface components {
          * @enum {string}
          */
         OrigemModulo: "manual" | "youtube";
+        /** Pagina[ConversaResumo] */
+        Pagina_ConversaResumo_: {
+            /** Itens */
+            itens: components["schemas"]["ConversaResumo"][];
+            /**
+             * Pagina
+             * @description Página atual, começando em 1
+             */
+            pagina: number;
+            /**
+             * Tamanho Pagina
+             * @description Quantos itens cabem na página
+             */
+            tamanho_pagina: number;
+            /**
+             * Total
+             * @description Total de itens em todas as páginas
+             */
+            total: number;
+            /**
+             * Total Paginas
+             * @description Quantas páginas existem no total
+             */
+            total_paginas: number;
+        };
+        /** Pagina[Mensagem] */
+        Pagina_Mensagem_: {
+            /** Itens */
+            itens: components["schemas"]["Mensagem"][];
+            /**
+             * Pagina
+             * @description Página atual, começando em 1
+             */
+            pagina: number;
+            /**
+             * Tamanho Pagina
+             * @description Quantos itens cabem na página
+             */
+            tamanho_pagina: number;
+            /**
+             * Total
+             * @description Total de itens em todas as páginas
+             */
+            total: number;
+            /**
+             * Total Paginas
+             * @description Quantas páginas existem no total
+             */
+            total_paginas: number;
+        };
         /** Pagina[Trilha] */
         Pagina_Trilha_: {
             /** Itens */
@@ -1881,6 +2130,12 @@ export interface components {
             /** Xp Total */
             xp_total: number;
         };
+        /**
+         * PapelMensagem
+         * @description Quem escreveu a mensagem do chat (telas 21 a 23).
+         * @enum {string}
+         */
+        PapelMensagem: "usuario" | "assistente";
         /** ParceiroAdmin */
         ParceiroAdmin: {
             /** Id */
@@ -2279,6 +2534,15 @@ export interface components {
             conteudo: string;
             /** Tempo Gasto Segundos */
             tempo_gasto_segundos?: number | null;
+        };
+        /** Sugestao */
+        Sugestao: {
+            /** Conversa Id */
+            conversa_id?: number | null;
+            /** Origem */
+            origem: string;
+            /** Texto */
+            texto: string;
         };
         /**
          * TamanhoFonte
@@ -3901,6 +4165,433 @@ export interface operations {
             };
         };
     };
+    listarConversas: {
+        parameters: {
+            query?: {
+                busca?: string | null;
+                /** @description As arquivadas, em vez das ativas */
+                arquivadas?: boolean;
+                /** @description Só as de um grupo */
+                grupo_id?: number | null;
+                /** @description Página, começando em 1 */
+                pagina?: number;
+                /** @description Itens por página (máximo 100) */
+                tamanho_pagina?: number;
+                /** @description Campo de ordenação; cada rota documenta os seus */
+                ordenar_por?: string | null;
+                /** @description Inverte a ordem */
+                decrescente?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pagina_ConversaResumo_"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    criarConversa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NovaConversa"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversaResumo"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    apagarConversa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversa_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    editarConversa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversa_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EdicaoDeConversa"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversaResumo"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    listarMensagens: {
+        parameters: {
+            query?: {
+                /** @description Página, começando em 1 */
+                pagina?: number;
+                /** @description Itens por página (máximo 100) */
+                tamanho_pagina?: number;
+                /** @description Campo de ordenação; cada rota documenta os seus */
+                ordenar_por?: string | null;
+                /** @description Inverte a ordem */
+                decrescente?: boolean;
+            };
+            header?: never;
+            path: {
+                conversa_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pagina_Mensagem_"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    listarGrupos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Grupo"][];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    criarGrupo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NovoGrupo"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Grupo"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterGrupo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grupo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Grupo"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    apagarGrupo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grupo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    editarGrupo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grupo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EdicaoDeGrupo"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Grupo"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
     enviarMensagem: {
         parameters: {
             query?: never;
@@ -3961,6 +4652,44 @@ export interface operations {
             };
             /** @description IA fora do ar */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    listarSugestoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sugestao"][];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
