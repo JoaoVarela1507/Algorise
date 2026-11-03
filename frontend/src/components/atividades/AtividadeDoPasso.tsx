@@ -53,8 +53,9 @@ export function AtividadeDoPasso({
 }
 
 /**
- * Desafio de código (tela 34). Corrigir exige rodar o programa do aluno, o que
- * o backend ainda não faz: a atividade aparece, mas não trava o passo.
+ * Desafio de código (tela 34). O backend já corrige na sandbox (#34, rotas
+ * `/desafios`), mas esta tela ainda não está ligada a ela: por enquanto a
+ * atividade aparece e não trava o passo.
  */
 function AtividadeDesafio({ atividade, numero, total, aoAvancar }: PropsDaAtividade) {
   const correcao = useCorrecao(atividade.id, atividade.concluida)
@@ -75,8 +76,8 @@ function AtividadeDesafio({ atividade, numero, total, aoAvancar }: PropsDaAtivid
     >
       <p className="flex items-start gap-3 rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
         <Code2 className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
-        Este desafio ainda não tem correção automática. Escreva o programa no seu editor, rode no
-        terminal e, quando funcionar, avance.
+        Escreva o programa no seu editor e rode no terminal. Quando ele funcionar com o exemplo do
+        enunciado, avance.
       </p>
     </MolduraAtividade>
   )

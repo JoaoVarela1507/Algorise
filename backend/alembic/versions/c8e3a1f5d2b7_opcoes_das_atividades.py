@@ -1,7 +1,7 @@
 """opções e código das atividades
 
 Revision ID: c8e3a1f5d2b7
-Revises: b4d0f7a3c9e2
+Revises: d6f2b9c5e1a4
 Create Date: 2026-11-03 18:00:00.000000
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "c8e3a1f5d2b7"
-down_revision: str | None = "b4d0f7a3c9e2"
+down_revision: str | None = "d6f2b9c5e1a4"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -503,6 +503,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chat/anexos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Envia um anexo para a próxima mensagem
+         * @description Texto ou código (UTF-8), PDF ou imagem PNG, JPEG ou WebP. O tipo sai do conteúdo. Mande o id em `anexo_ids` da mensagem; só o texto vai para o tutor.
+         */
+        post: operations["enviarAnexo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/anexos/{anexo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Baixa um anexo */
+        get: operations["baixarAnexo"];
+        put?: never;
+        post?: never;
+        /** Desiste de um anexo ainda não enviado */
+        delete: operations["apagarAnexo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chat/conversas": {
         parameters: {
             query?: never;
@@ -667,6 +705,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/desafios/{desafio_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Enunciado, dica e casos de teste públicos */
+        get: operations["obterDesafio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/desafios/{desafio_id}/execucoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Envia o código para rodar na sandbox
+         * @description Responde na hora com o id; o resultado sai em `GET /execucoes/{id}`.
+         */
+        post: operations["executarDesafio"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ementas": {
         parameters: {
             query?: never;
@@ -763,6 +838,23 @@ export interface paths {
          * @description A ementa confirmada por último é a base de `GET /trilha-guiada`. 409 se os assuntos não estão `prontos`.
          */
         post: operations["confirmarEmenta"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/execucoes/{execucao_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status e resultado de uma execução */
+        get: operations["obterExecucao"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1463,6 +1555,17 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Anexo */
+        Anexo: {
+            /** Id */
+            id: number;
+            /** Nome */
+            nome: string;
+            /** Tamanho */
+            tamanho: number;
+            /** Tipo */
+            tipo: string;
+        };
         /** AssuntoLido */
         AssuntoLido: {
             modulo?: components["schemas"]["ModuloDoAssunto"] | null;
@@ -1657,6 +1760,14 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** Body_enviarAnexo */
+        Body_enviarAnexo: {
+            /**
+             * Arquivo
+             * @description Até 2 MB
+             */
+            arquivo: string;
+        };
         /** Body_enviarAvatar */
         Body_enviarAvatar: {
             /**
@@ -1692,6 +1803,15 @@ export interface components {
              * @enum {string}
              */
             tipo: "cancelar";
+        };
+        /** CasoPublico */
+        CasoPublico: {
+            /** Entrada */
+            entrada: string;
+            /** Ordem */
+            ordem: number;
+            /** Saida Esperada */
+            saida_esperada: string;
         };
         /** Certificado */
         Certificado: {
@@ -1782,6 +1902,26 @@ export interface components {
             nome: string;
             /** Total Periodos */
             total_periodos: number;
+        };
+        /** Desafio */
+        Desafio: {
+            /** Casos Publicos */
+            casos_publicos: components["schemas"]["CasoPublico"][];
+            /** Dica */
+            dica?: string | null;
+            /** Enunciado */
+            enunciado: string;
+            /** Id */
+            id: number;
+            /**
+             * Linguagem
+             * @default python
+             */
+            linguagem: string;
+            /** Total Casos */
+            total_casos: number;
+            /** Xp */
+            xp: number;
         };
         /** DigitandoNoChat */
         DigitandoNoChat: {
@@ -1892,6 +2032,12 @@ export interface components {
          * @description A pergunta ao tutor, com os mesmos campos do `POST /chat/mensagens`.
          */
         EnviarMensagemDoChat: {
+            /**
+             * Anexo Ids
+             * @description Anexos já enviados em `POST /chat/anexos`, ainda sem mensagem
+             * @default []
+             */
+            anexo_ids: number[];
             /**
              * Conteudo
              * @description A pergunta do aluno
@@ -2007,6 +2153,37 @@ export interface components {
             confirmacao: string;
             /** Senha */
             senha?: string | null;
+        };
+        /** ExecucaoNaFila */
+        ExecucaoNaFila: {
+            /** Id */
+            id: string;
+            status: components["schemas"]["StatusExecucao"];
+        };
+        /** ExecucaoSaida */
+        ExecucaoSaida: {
+            /** Aprovada */
+            aprovada: boolean;
+            /** Atividade Id */
+            atividade_id: number;
+            /** Casos */
+            casos: components["schemas"]["ResultadoDoCaso"][];
+            /**
+             * Criado Em
+             * Format: date-time
+             */
+            criado_em: string;
+            /** Erro */
+            erro?: string | null;
+            /** Id */
+            id: string;
+            status: components["schemas"]["StatusExecucao"];
+            /** Stderr */
+            stderr: string;
+            /** Stdout */
+            stdout: string;
+            /** Terminada Em */
+            terminada_em?: string | null;
         };
         /** ExercicioDePratica */
         ExercicioDePratica: {
@@ -2149,6 +2326,11 @@ export interface components {
         };
         /** Mensagem */
         Mensagem: {
+            /**
+             * Anexos
+             * @default []
+             */
+            anexos: components["schemas"]["Anexo"][];
             /** Conteudo */
             conteudo: string;
             /**
@@ -2331,8 +2513,19 @@ export interface components {
             /** Titulo */
             titulo?: string | null;
         };
+        /** NovaExecucao */
+        NovaExecucao: {
+            /** Codigo */
+            codigo: string;
+        };
         /** NovaMensagem */
         NovaMensagem: {
+            /**
+             * Anexo Ids
+             * @description Anexos já enviados em `POST /chat/anexos`, ainda sem mensagem
+             * @default []
+             */
+            anexo_ids: number[];
             /**
              * Conteudo
              * @description A pergunta do aluno
@@ -2893,6 +3086,23 @@ export interface components {
         RespostaDeErro: {
             erro: components["schemas"]["Erro"];
         };
+        /** ResultadoDoCaso */
+        ResultadoDoCaso: {
+            /** Entrada */
+            entrada?: string | null;
+            /** Esperado */
+            esperado?: string | null;
+            /** Motivo */
+            motivo?: string | null;
+            /** Obtido */
+            obtido?: string | null;
+            /** Ordem */
+            ordem: number;
+            /** Passou */
+            passou: boolean;
+            /** Publico */
+            publico: boolean;
+        };
         /** Sessao */
         Sessao: {
             /** Access Token */
@@ -2926,6 +3136,12 @@ export interface components {
          * @enum {string}
          */
         StatusEmenta: "pendente" | "processando" | "processada" | "falhou";
+        /**
+         * StatusExecucao
+         * @description Execução do código do desafio na sandbox (#34).
+         * @enum {string}
+         */
+        StatusExecucao: "na_fila" | "executando" | "concluida" | "falhou";
         /**
          * StatusGeracao
          * @description Geração dos exercícios de prática de um módulo (#201).
@@ -4622,6 +4838,126 @@ export interface operations {
             };
         };
     };
+    enviarAnexo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_enviarAnexo"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Anexo"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    baixarAnexo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                anexo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": unknown;
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    apagarAnexo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                anexo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
     listarConversas: {
         parameters: {
             query?: {
@@ -5196,6 +5532,117 @@ export interface operations {
             };
         };
     };
+    obterDesafio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                desafio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Desafio"];
+                };
+            };
+            /** @description Não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    executarDesafio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                desafio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NovaExecucao"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecucaoNaFila"];
+                };
+            };
+            /** @description Não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Execuções demais em pouco tempo */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
     enviarEmenta: {
         parameters: {
             query?: never;
@@ -5458,6 +5905,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmentaStatus"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterExecucao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execucao_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecucaoSaida"];
+                };
+            };
+            /** @description Não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
                 };
             };
             /** @description Dados inválidos */

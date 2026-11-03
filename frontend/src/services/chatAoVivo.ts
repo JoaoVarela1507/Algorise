@@ -108,6 +108,7 @@ export function perguntar(
       conteudo: pedido.conteudo,
       conversa_id: conversaId,
       modo: pedido.modo,
+      anexo_ids: [],
     })
   })
 

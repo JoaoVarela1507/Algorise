@@ -56,6 +56,23 @@ class Settings(BaseSettings):
     rate_limit_chat_requisicoes: int = 20
     rate_limit_chat_janela: int = 60
 
+    # Sandbox do desafio de código (#34). `docker` roda cada caso de teste num
+    # container efêmero; `desligada` recusa a execução (máquina sem Docker).
+    # `SANDBOX_RUNTIME=runsc` usa o gVisor, que isola o kernel também: é o que
+    # se quer em produção.
+    sandbox_modo: str = "docker"
+    sandbox_imagem: str = "python:3.13-alpine"
+    sandbox_runtime: str = ""
+    sandbox_memoria_mb: int = 128
+    sandbox_cpus: float = 0.5
+    sandbox_processos: int = 32
+    sandbox_tempo_segundos: int = 5
+    sandbox_saida_maxima: int = 64 * 1024
+    sandbox_codigo_maximo: int = 20_000
+    # Execuções por aluno por janela: cada uma sobe um container por caso.
+    rate_limit_execucoes_requisicoes: int = 10
+    rate_limit_execucoes_janela: int = 60
+
     # WebSocket (#35). O token vem no primeiro frame, dentro do prazo; o servidor
     # manda `ping` a cada intervalo e derruba a conexão calada por mais tempo
     # que `ws_tempo_morto`. Os limites são por instância da API.
@@ -75,6 +92,10 @@ class Settings(BaseSettings):
     ia_provedor: str = "ollama"
     ollama_url: str = "http://localhost:11434"
     ollama_modelo: str = "llama3.2"
+    # Modelo do trabalho em segundo plano (leitura da ementa, segmentação,
+    # categorização e exercícios). Na CPU, um modelo menor lê a ementa de 2 a 3
+    # vezes mais rápido, e ali ninguém conversa com ele. Em branco, usa o do chat.
+    ollama_modelo_tarefas: str = ""
     # Embedding do vault das skills (#200). Multilíngue, porque o conteúdo é em
     # português; a dimensão dele (1024) está fixa na tabela `vault_trechos`.
     ollama_modelo_embedding: str = "bge-m3"
@@ -151,6 +172,11 @@ class Settings(BaseSettings):
     # da conversa vão como contexto para o modelo.
     chat_maximo_caracteres: int = 4000
     chat_janela_historico: int = 20
+    # Anexos do chat (#33): texto, código, PDF ou imagem. Só o texto vai para o
+    # modelo (até `chat_anexo_texto_maximo` caracteres por anexo).
+    chat_anexo_tamanho_maximo: int = 2 * 1024 * 1024
+    chat_anexos_por_mensagem: int = 3
+    chat_anexo_texto_maximo: int = 8000
 
     # O refresh token vive no Redis e expira sozinho. O prazo longo é o do
     # "manter-se conectado" da tela 5; sem marcar, vale uma semana.

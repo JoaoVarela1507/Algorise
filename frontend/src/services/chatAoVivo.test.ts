@@ -86,6 +86,7 @@ describe('perguntar pelo WebSocket', () => {
       conteudo: 'O que é um laço?',
       conversa_id: null,
       modo: 'medio',
+      anexo_ids: [],
     })
   })
 

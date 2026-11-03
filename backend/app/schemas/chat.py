@@ -23,3 +23,8 @@ class NovaMensagem(BaseModel):
     modo: ModoResposta = Field(
         default=ModoResposta.medio, description="Quanto o tutor se aprofunda na resposta"
     )
+    anexo_ids: list[int] = Field(
+        default=[],
+        max_length=settings.chat_anexos_por_mensagem,
+        description="Anexos já enviados em `POST /chat/anexos`, ainda sem mensagem",
+    )

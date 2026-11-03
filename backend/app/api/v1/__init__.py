@@ -19,6 +19,7 @@ from app.api.v1 import (
     certificados,
     chat,
     conversas,
+    desafios,
     ementas,
     gamificacao,
     notificacoes,
@@ -48,6 +49,7 @@ router.include_router(academico.router)
 router.include_router(ementas.router)
 router.include_router(chat.router)
 router.include_router(conversas.router)
+router.include_router(desafios.router)
 router.include_router(tempo_real.router)
 router.include_router(notificacoes.router)
 router.include_router(admin.router)

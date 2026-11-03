@@ -12,6 +12,7 @@ frontend (`npm run gen:api`). Duas consequências práticas:
   o que vem num 4xx.
 """
 
+from collections.abc import Sequence
 from typing import Any
 
 from fastapi import FastAPI
@@ -32,6 +33,7 @@ TAGS = [
         "description": "Gestão de trilhas, passos e atividades e métricas. Autor e admin.",
     },
     {"name": "ranking", "description": "Pódio e classificação por XP."},
+    {"name": "desafios", "description": "Desafio de código, corrigido numa sandbox isolada."},
     {"name": "notificacoes", "description": "Centro de notificações do aluno."},
     {"name": "academico", "description": "Instituições, cursos e períodos do onboarding."},
     {"name": "ementas", "description": "Upload da ementa em PDF e o status da leitura."},
@@ -65,11 +67,20 @@ def gerar_operation_id(rota: APIRoute) -> str:
     return partes[0] + "".join(parte.title() for parte in partes[1:])
 
 
-def incluir_esquemas(app: FastAPI, modelos: list[type[BaseModel]]) -> None:
+def incluir_esquemas(
+    app: FastAPI,
+    *,
+    entrada: Sequence[type[BaseModel]] = (),
+    saida: Sequence[type[BaseModel]] = (),
+) -> None:
     """Põe no OpenAPI esquemas que nenhuma rota REST usa.
 
     É o caso do contrato do WebSocket (#35): o OpenAPI não descreve WebSocket,
     mas os tipos TypeScript saem dele, e o cliente precisa das mensagens tipadas.
+
+    O que o cliente manda (`entrada`) vai no modo de validação: campo com valor
+    padrão é opcional para quem envia. O que o servidor manda (`saida`) vai no de
+    serialização, em que o campo sempre vem, e o TypeScript estreita pelo `tipo`.
     """
     original = app.openapi
 
@@ -78,7 +89,10 @@ def incluir_esquemas(app: FastAPI, modelos: list[type[BaseModel]]) -> None:
             return app.openapi_schema
         esquema = original()
         _, definicoes = models_json_schema(
-            [(modelo, "serialization") for modelo in modelos],
+            [
+                *((modelo, "validation") for modelo in entrada),
+                *((modelo, "serialization") for modelo in saida),
+            ],
             ref_template="#/components/schemas/{model}",
         )
         esquema.setdefault("components", {}).setdefault("schemas", {}).update(

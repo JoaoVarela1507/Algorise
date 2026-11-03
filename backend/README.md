@@ -537,6 +537,65 @@ A busca usa o full-text do PostgreSQL em português (índice GIN em
 `mensagens_chat.conteudo`), que acha "laços" buscando "laço". No SQLite dos testes,
 cai num `LIKE`.
 
+**Anexos** (`POST /chat/anexos`, multipart):
+- São aceitos texto ou código em UTF-8, PDF e imagem PNG, JPEG ou WebP, até
+  `CHAT_ANEXO_TAMANHO_MAXIMO`. O tipo sai do conteúdo, não da extensão.
+- O id vai em `anexo_ids` da mensagem, até `CHAT_ANEXOS_POR_MENSAGEM`. O texto do
+  anexo (do código, do texto ou do PDF) vai para o tutor junto com a pergunta; da
+  imagem, só o nome.
+- O arquivo fica em `diretorio_midia/chat`, fora da pasta pública, e sai sempre
+  como download (`GET /chat/anexos/{id}`).
+- `DELETE /chat/anexos/{id}` desiste de um anexo ainda não enviado. Apagar a
+  conversa, ou o expurgo da conta, apaga os anexos e os arquivos.
+
+**Resumo do histórico:**
+- O tutor recebe as últimas `CHAT_JANELA_HISTORICO` mensagens e, antes delas, um
+  resumo do que ficou de fora.
+- O resumo é refeito depois de cada resposta, sem o aluno esperar: o resumo
+  anterior e as mensagens que acabaram de sair da janela viram um novo.
+- Se a IA falhar, fica o resumo antigo, e a próxima resposta tenta de novo.
+
+### Desafio de código (sandbox)
+
+O desafio da tela 40 roda o código do aluno contra casos de teste (#34):
+
+| Rota                                | O que faz                                                   |
+| ----------------------------------- | ----------------------------------------------------------- |
+| `GET /desafios/{id}`                | enunciado, dica e os casos públicos                         |
+| `POST /desafios/{id}/execucoes`     | grava, põe na fila e responde 202 com o id                  |
+| `GET /execucoes/{id}`               | status (`na_fila`, `executando`, `concluida`, `falhou`) e resultado |
+
+**Execução:**
+- O worker roda cada caso num container novo (`app/sandbox`): sem rede, com o disco
+  só de leitura, como `nobody`, sem capabilities e com teto de memória, CPU,
+  processos, tempo e tamanho da saída.
+- O primeiro caso que falha encerra a execução, com o motivo: `tempo_esgotado`,
+  `memoria_estourada`, `saida_grande_demais`, `erro_de_execucao` ou
+  `saida_diferente`.
+- O caso público mostra entrada, esperado e obtido; o oculto só diz se passou.
+- A saída volta sem escapes de terminal e com teto.
+- Passar em todos registra o acerto e paga o XP uma vez só.
+
+**Configuração e limites:**
+- **Variáveis:** `SANDBOX_MEMORIA_MB`, `SANDBOX_CPUS`, `SANDBOX_PROCESSOS`,
+  `SANDBOX_TEMPO_SEGUNDOS` e `SANDBOX_SAIDA_MAXIMA`.
+- **Rate limit:** `RATE_LIMIT_EXECUCOES_*` por aluno.
+- **Sem Docker na máquina:** use `SANDBOX_MODO=desligada`, e a execução vira
+  `falhou`, sem rodar nada.
+
+**Riscos e deploy:**
+- O worker fala com o Docker do host pelo socket montado no compose. Quem tem
+  esse socket manda no Docker do host. Em produção, use o gVisor
+  (`SANDBOX_RUNTIME=runsc`), que também isola o kernel, ou um Docker rootless
+  dedicado à sandbox.
+- Baixe a imagem antes (`docker pull python:3.13-alpine`): o primeiro `docker run`
+  baixando a imagem estoura o prazo da execução.
+
+Os testes de contenção (`tests/test_sandbox_contencao.py`) rodam o código
+malicioso de verdade: loop infinito, fork bomb, leitura de `/etc/shadow`, escrita
+no disco, rede, memória e saída gigante. Eles precisam do Docker e de
+`SANDBOX_TESTES=1`; o CI liga os dois.
+
 ### Tempo real (WebSocket)
 
 `WS /api/v1/ws` é uma conexão por aba, multiplexada em canais. O contrato está em
@@ -643,6 +702,13 @@ o prompt muda num lugar só, e o teste dele não precisa de banco. Uma skill nov
 `.env` como no `.env.example`. No `docker compose up`, o serviço `ollama-modelo`
 baixa o modelo de `OLLAMA_MODELO` uma vez, no volume `ollama_data`. Sem o Ollama,
 `IA_PROVEDOR=eco` deixa o chat funcionando com a resposta de teste.
+
+**Dois modelos:** o chat usa `OLLAMA_MODELO` (o `llama3.2`). O trabalho do worker
+usa `OLLAMA_MODELO_TAREFAS`: leitura da ementa, segmentação e categorização dos
+vídeos e exercícios. Em branco, vale o do chat, que é o padrão do compose
+também. Dá para testar um modelo menor ali sem mexer no chat, mas o `llama3.2:1b`
+não serve: na leitura do PPC, ele levou 8 minutos numa parte e devolveu JSON
+quebrado. O worker só sobe depois do `ollama-modelo` baixar os modelos.
 
 **GPU:** o Ollama no Docker roda na CPU. Com GPU NVIDIA e o NVIDIA Container
 Toolkit, acrescente ao serviço `ollama` um

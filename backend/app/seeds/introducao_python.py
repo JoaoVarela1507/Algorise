@@ -13,7 +13,7 @@ import json
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Atividade, Modulo, Trilha
+from app.models import Atividade, CasoDeTeste, Modulo, Trilha
 from app.models.enums import TipoAtividade
 
 SLUG = "introducao-python"
@@ -701,10 +701,19 @@ MODULOS: list[dict] = [
                 "ordem": 7,
                 "tipo": TipoAtividade.desafio_codigo,
                 "enunciado": (
-                    "Crie um programa de planejamento capaz de salvar em lista seu gasto diário"
+                    "Crie um programa de planejamento que salve em lista os gastos do dia. "
+                    "Ele lê um gasto por linha, até uma linha vazia, e mostra o total com "
+                    'duas casas decimais, assim: "Total: 12.50".'
                 ),
-                "dica": "Instale python, crie o arquivo .py e use condicionais",
+                "dica": "Guarde cada valor numa lista com append e some no fim com sum().",
                 "xp": 40,
+                # Corrigido na sandbox (#34): o primeiro é o exemplo da tela, os
+                # outros ficam ocultos.
+                "casos": [
+                    ("10\n2.5\n\n", "Total: 12.50", True),
+                    ("\n", "Total: 0.00", False),
+                    ("1.333\n1.333\n1.334\n\n", "Total: 4.00", False),
+                ],
             },
         ],
     },
@@ -764,6 +773,26 @@ def aplicar(db: Session) -> Trilha:
 
             for campo in CAMPOS_DA_ATIVIDADE:
                 setattr(atividade, campo, dados_atividade.get(campo))
+            db.flush()
+            _aplicar_casos(db, atividade, dados_atividade.get("casos", []))
 
     db.commit()
     return trilha
+
+
+def _aplicar_casos(db: Session, atividade: Atividade, casos: list[tuple[str, str, bool]]) -> None:
+    """Os casos de teste do desafio, na ordem. Rodar o seed de novo atualiza no lugar.
+
+    Os que sobram saem: a atividade que deixou de ser desafio (a 1 do módulo 10
+    já foi o desafio) não pode continuar com os casos dele.
+    """
+    existentes = {
+        caso.ordem: caso
+        for caso in db.scalars(select(CasoDeTeste).where(CasoDeTeste.atividade_id == atividade.id))
+    }
+    for ordem, (entrada, saida, publico) in enumerate(casos, start=1):
+        caso = existentes.pop(ordem, None) or CasoDeTeste(atividade_id=atividade.id, ordem=ordem)
+        caso.entrada, caso.saida_esperada, caso.publico = entrada, saida, publico
+        db.add(caso)
+    for sobra in existentes.values():
+        db.delete(sobra)
