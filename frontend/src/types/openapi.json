@@ -732,6 +732,50 @@
         "title": "ExclusaoConta",
         "type": "object"
       },
+      "ExercicioDePratica": {
+        "properties": {
+          "dica": {
+            "default": "",
+            "title": "Dica",
+            "type": "string"
+          },
+          "enunciado": {
+            "title": "Enunciado",
+            "type": "string"
+          },
+          "resposta_esperada": {
+            "title": "Resposta Esperada",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enunciado",
+          "resposta_esperada"
+        ],
+        "title": "ExercicioDePratica",
+        "type": "object"
+      },
+      "ExerciciosDoPasso": {
+        "description": "Os exercícios de prática do passo para o nível do aluno (#201).\n\nEnquanto `status` for `gerando`, a lista vem vazia: pergunte de novo em\nalguns segundos. `sem_conteudo`: o módulo não tem material para gerar.",
+        "properties": {
+          "exercicios": {
+            "items": {
+              "$ref": "#/components/schemas/ExercicioDePratica"
+            },
+            "title": "Exercicios",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusGeracao"
+          }
+        },
+        "required": [
+          "status",
+          "exercicios"
+        ],
+        "title": "ExerciciosDoPasso",
+        "type": "object"
+      },
       "InstituicaoResumo": {
         "properties": {
           "id": {
@@ -1851,6 +1895,17 @@
           "falhou"
         ],
         "title": "StatusEmenta",
+        "type": "string"
+      },
+      "StatusGeracao": {
+        "description": "Geração dos exercícios de prática de um módulo (#201).\n\n`sem_conteudo`: o módulo não tem trecho no vault, e não há do que gerar\nsem inventar.",
+        "enum": [
+          "gerando",
+          "pronto",
+          "sem_conteudo",
+          "falhou"
+        ],
+        "title": "StatusGeracao",
         "type": "string"
       },
       "StatusLacuna": {
@@ -4397,6 +4452,73 @@
           }
         ],
         "summary": "Fecha o passo e concede o XP",
+        "tags": [
+          "trilhas"
+        ]
+      }
+    },
+    "/api/v1/trilhas/{slug}/passos/{ordem}/exercicios": {
+      "get": {
+        "description": "Gerados a partir do conteúdo do módulo no vault, para o nível do aluno, uma vez por módulo e nível. Na primeira vez, a geração entra na fila e o status vem `gerando`. Não contam para concluir o passo. 403 no passo bloqueado.",
+        "operationId": "exerciciosDoPasso",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ordem",
+            "required": true,
+            "schema": {
+              "title": "Ordem",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciciosDoPasso"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Exercícios de prática do passo, gerados pela IA",
         "tags": [
           "trilhas"
         ]

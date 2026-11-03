@@ -37,3 +37,10 @@ export type ReporteDoModuloApi = components['schemas']['ReporteDoModulo']
 export function reportarPasso(slug: string, ordem: number): Promise<ReporteDoModuloApi> {
   return apiPost<ReporteDoModuloApi>(`/trilhas/${slug}/passos/${ordem}/reportar`, {})
 }
+
+export type ExerciciosDoPassoApi = components['schemas']['ExerciciosDoPasso']
+
+/** Os exercícios de prática do passo, gerados pela IA para o nível do aluno (#201). */
+export function buscarExercicios(slug: string, ordem: number): Promise<ExerciciosDoPassoApi> {
+  return apiGet<ExerciciosDoPassoApi>(`/trilhas/${slug}/passos/${ordem}/exercicios`)
+}

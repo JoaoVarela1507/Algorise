@@ -11,11 +11,14 @@ from app.core import cache
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.erros import ErroDeNegocio
+from app.core.fila import Fila, get_fila
 from app.models import StatusProgresso, Usuario
 from app.models import Trilha as TrilhaModelo
 from app.schemas.pagina import Pagina, PaginacaoAtual
 from app.schemas.submissao import PassoConcluido
 from app.schemas.trilha import (
+    ExercicioDePratica,
+    ExerciciosDoPasso,
     ModuloDetalhe,
     PassoDetalhe,
     ReporteDoModulo,
@@ -23,6 +26,7 @@ from app.schemas.trilha import (
     TrilhaDetalhe,
     TrilhaRecomendada,
 )
+from app.services import exercicios as servico_exercicios
 from app.services import modulos_de_videos, submissoes
 from app.services import progresso as servico_progresso
 from app.services import trilhas as servico
@@ -318,3 +322,49 @@ def reportar_passo(
             message="Só o vídeo de um módulo gerado automaticamente pode ser reportado",
         ) from erro
     return ReporteDoModulo(reportes=reportes, removido=removido)
+
+
+@router.get(
+    "/{slug}/passos/{ordem}/exercicios",
+    response_model=ExerciciosDoPasso,
+    summary="Exercícios de prática do passo, gerados pela IA",
+    description=(
+        "Gerados a partir do conteúdo do módulo no vault, para o nível do aluno, uma vez "
+        "por módulo e nível. Na primeira vez, a geração entra na fila e o status vem "
+        "`gerando`. Não contam para concluir o passo. 403 no passo bloqueado."
+    ),
+)
+def exercicios_do_passo(
+    slug: str,
+    ordem: int,
+    usuario: UsuarioAtual,
+    db: Session = Depends(get_db),
+    fila: Fila = Depends(get_fila),
+) -> ExerciciosDoPasso:
+    trilha = _buscar(db, slug)
+    try:
+        modulo = servico_progresso.conteudo_do_passo(
+            db, usuario=usuario, trilha=trilha, ordem=ordem
+        )
+    except LookupError as erro:
+        raise ErroDeNegocio(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="passo_nao_encontrado",
+            message="Esse passo não existe nesta trilha",
+            details={"trilha": slug, "ordem": ordem},
+        ) from erro
+    except servico_progresso.PassoBloqueado as erro:
+        raise ErroDeNegocio(
+            status_code=status.HTTP_403_FORBIDDEN,
+            code="passo_bloqueado",
+            message="Conclua o passo anterior para abrir este",
+            details={"trilha": slug, "ordem": ordem},
+        ) from erro
+
+    geracao, enfileirar = servico_exercicios.pedir(db, modulo, usuario.nivel_experiencia)
+    if enfileirar:
+        fila.exercicios(geracao.id)
+    return ExerciciosDoPasso(
+        status=geracao.status,
+        exercicios=[ExercicioDePratica(**exercicio) for exercicio in geracao.exercicios or []],
+    )
