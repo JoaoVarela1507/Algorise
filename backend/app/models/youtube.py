@@ -3,10 +3,11 @@
 A busca escolhe vídeos, de preferência de uma playlist, para os assuntos que o
 catálogo ainda não tem. O vídeo não é hospedado: o aluno assiste pelo player do
 YouTube, e o que fica aqui é o que o identifica e a lacuna que ele cobre. A
-transcrição (#208) parte dos vídeos em `aguardando`.
+transcrição (#208) parte dos vídeos em `aguardando`, e a segmentação (#209)
+corta os transcritos em partes.
 """
 
-from sqlalchemy import JSON, ForeignKey, String, Text
+from sqlalchemy import JSON, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.academico import Lacuna
@@ -33,6 +34,33 @@ class VideoYoutube(Base, TimestampMixin):
     lacunas: Mapped[list["VideoLacuna"]] = relationship(
         back_populates="video", cascade="all, delete-orphan"
     )
+    partes: Mapped[list["ParteVideo"]] = relationship(
+        back_populates="video", cascade="all, delete-orphan", order_by="ParteVideo.ordem"
+    )
+
+
+class ParteVideo(Base, TimestampMixin):
+    """Um pedaço do vídeo sobre um assunto só (#209): o que vira módulo da trilha (#210).
+
+    O vídeo curto, o caso comum nas playlists, tem uma parte só, o vídeo
+    inteiro. A parte não é um arquivo: é o intervalo que o player do YouTube
+    toca (`?start=&end=`).
+    """
+
+    __tablename__ = "partes_video"
+    __table_args__ = (UniqueConstraint("video_id", "ordem", name="uq_partes_video_video_ordem"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    video_id: Mapped[int] = mapped_column(
+        ForeignKey("videos_youtube.id", ondelete="CASCADE"), index=True
+    )
+    ordem: Mapped[int]
+    inicio_segundos: Mapped[float]
+    fim_segundos: Mapped[float]
+    titulo: Mapped[str] = mapped_column(String(200))
+    resumo: Mapped[str | None] = mapped_column(Text)
+
+    video: Mapped[VideoYoutube] = relationship(back_populates="partes")
 
 
 class VideoLacuna(Base):

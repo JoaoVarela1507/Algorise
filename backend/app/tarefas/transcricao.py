@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import SessionLocal
+from app.core.fila import fila_das_tarefas
 from app.ia import get_provedor_ia_tarefas
 from app.ia.vault import ingerir_video
 from app.models import StatusVideo, VideoYoutube
@@ -53,6 +54,8 @@ def transcrever(video_id: int) -> None:
         video.status = StatusVideo.transcrito
         db.commit()
         logger.info("Vídeo %s transcrito pela %s: %d falas", video.youtube_id, fonte, len(falas))
+        # Próximo passo: as partes do vídeo (#209).
+        fila_das_tarefas().segmentacao(video.id)
 
 
 def falhou(job: Job, connection: object, tipo: type, valor: BaseException, tb: object) -> None:

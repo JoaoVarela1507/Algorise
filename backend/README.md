@@ -560,6 +560,17 @@ módulo; cada trecho guarda `inicio_segundos` e `fim_segundos`.
   A API, a CI e os testes não os instalam. O modelo do Whisper (uns 500 MB) é
   baixado na primeira transcrição para o volume `modelos_whisper`.
 
+**Partes do vídeo.** Transcrito o vídeo, a tarefa `segmentacao` o corta em partes
+de um assunto só, cada uma um futuro módulo (`partes_video`, com início, fim,
+título e resumo). O vídeo de até `SEGMENTACAO_DURACAO_MAXIMA` (25 min), o caso
+comum nas playlists, é uma parte só, sem IA. O longo vai para a skill
+`segmentar_video` com um índice da transcrição (uma linha por trecho, com o
+intervalo e o começo do texto), e a resposta é ajustada: as partes ficam em
+ordem, encostadas, e cada corte vai para a fronteira de trecho mais próxima. A
+introdução e o encerramento podem ficar de fora. Uma resposta que não valida
+vira um corte por duração ("Aula (parte 2)"); a IA fora do ar é tentada de novo
+pela fila.
+
 **Termos do YouTube:** baixar o áudio vai contra os termos de uso do YouTube,
 exceto quando o dono do vídeo permite, como nos vídeos com licença Creative
 Commons. Para o projeto acadêmico o risco foi aceito. Antes de qualquer uso
