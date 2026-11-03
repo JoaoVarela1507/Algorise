@@ -748,6 +748,20 @@ evita.
 O `GET /api/v1/gamificacao/me` **não** mexe no streak: só o check-in registra
 acesso. Uma tela que exibe não deveria alterar a sequência de ninguém.
 
+**Regras de pontuação** (`app/services/submissoes.py`):
+
+| Quando                                   | XP                         |
+| ---------------------------------------- | -------------------------- |
+| acertar uma atividade                    | o `xp` da atividade (10)   |
+| fechar um passo, na primeira vez         | 20                         |
+| fechar o último passo da trilha, uma vez | 40, além dos 20 do passo   |
+
+Tudo passa pelo teto por janela contra farm. **Ranking:** `GET /api/v1/ranking`
+(ou `/geral`), `GET /api/v1/ranking/me` e `GET /api/v1/ranking/trilhas/{id}`, que
+soma o XP das atividades, dos passos e da conclusão daquela trilha. No empate de
+XP, fica na frente quem chegou antes (`usuarios.xp_alcancado_em`). **Streak:** o
+dia vira no fuso `FUSO_HORARIO` (`America/Recife`), não no do servidor.
+
 ### Atividades e submissões
 
 | Rota                                                  | O que faz                                          |
