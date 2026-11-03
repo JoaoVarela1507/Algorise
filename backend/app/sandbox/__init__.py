@@ -11,7 +11,7 @@ no nosso servidor. Cada execução é um container novo, descartado no fim, com:
 | memória                    | `--memory` igual a `--memory-swap`: sem swap para fugir      |
 | CPU                        | `--cpus`                                                    |
 | fork bomb                  | `--pids-limit`                                              |
-| tempo                      | `timeout -s KILL` dentro do container, e `docker kill` fora |
+| tempo                      | `timeout -s KILL` dentro (com `--init`), e `docker kill` fora |
 | tamanho da saída           | a leitura para no teto e o container é morto                |
 | arquivos grandes           | `--ulimit fsize`                                            |
 
@@ -71,6 +71,10 @@ def comando(nome: str, codigo: str) -> list[str]:
         "--name",
         nome,
         "--interactive",
+        # O tini do Docker fica como PID 1. Sem ele, o `timeout` do BusyBox faz
+        # `exec` do Python, que vira o PID 1, e o kernel ignora o SIGKILL mandado
+        # ao PID 1 de dentro do container: o loop infinito não seria cortado.
+        "--init",
         "--network",
         "none",
         "--read-only",
@@ -136,14 +140,18 @@ def executar(codigo: str, entrada: str = "") -> Resultado:
 
     def ler(nome_do_fluxo: str, fluxo: IO[bytes]) -> None:
         lido = bytearray()
-        while chunk := fluxo.read(4096):
-            lido += chunk
-            if len(lido) > limite:
-                # Passou do teto: para de ler e mata o container, senão um
-                # `while True: print()` enche a memória do worker.
-                cortada.set()
-                _matar(nome)
-                break
+        try:
+            while chunk := fluxo.read(4096):
+                lido += chunk
+                if len(lido) > limite:
+                    # Passou do teto: para de ler e mata o container, senão um
+                    # `while True: print()` enche a memória do worker.
+                    cortada.set()
+                    _matar(nome)
+                    break
+        except (ValueError, OSError):
+            # O pipe fechou no meio da leitura: fica o que já chegou.
+            pass
         saidas[nome_do_fluxo] = bytes(lido)
 
     leitores = [
@@ -170,6 +178,9 @@ def executar(codigo: str, entrada: str = "") -> Resultado:
     finally:
         for leitor in leitores:
             leitor.join(timeout=5)
+        for fluxo in (processo.stdin, processo.stdout, processo.stderr):
+            if fluxo is not None:
+                fluxo.close()
         memoria = _morto_por_memoria(nome)
         _remover(nome)
 

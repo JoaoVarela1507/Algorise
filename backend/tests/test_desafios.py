@@ -312,6 +312,7 @@ def test_comando_liga_todas_as_contencoes(monkeypatch: pytest.MonkeyPatch) -> No
 
     for trecho in (
         "--network none",
+        "--init",
         "--read-only",
         "--user 65534:65534",
         "--cap-drop ALL",
