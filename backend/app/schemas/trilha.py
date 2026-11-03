@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 
-from app.models.enums import OrigemModulo, StatusProgresso, TipoAtividade
+from app.models.enums import OrigemModulo, StatusGeracao, StatusProgresso, TipoAtividade
 
 
 class AtividadeResumo(BaseModel):
@@ -90,3 +90,20 @@ class ReporteDoModulo(BaseModel):
     # Com reportes suficientes, o módulo saiu da trilha e a lacuna voltou para
     # a busca de conteúdo.
     removido: bool
+
+
+class ExercicioDePratica(BaseModel):
+    enunciado: str
+    resposta_esperada: str
+    dica: str = ""
+
+
+class ExerciciosDoPasso(BaseModel):
+    """Os exercícios de prática do passo para o nível do aluno (#201).
+
+    Enquanto `status` for `gerando`, a lista vem vazia: pergunte de novo em
+    alguns segundos. `sem_conteudo`: o módulo não tem material para gerar.
+    """
+
+    status: StatusGeracao
+    exercicios: list[ExercicioDePratica]

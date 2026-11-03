@@ -600,6 +600,16 @@ trilha (os passos seguintes sobem uma posição), as lacunas voltam para
 `pendente`, a parte não é publicada de novo, e a busca procura outro vídeo sem
 escolher este.
 
+**Exercícios de prática.** `GET /api/v1/trilhas/{slug}/passos/{ordem}/exercicios`
+devolve exercícios gerados pela skill `exercicios` a partir do conteúdo do
+módulo no vault, no nível do aluno: a transcrição e o texto do módulo do
+catálogo, ou, no módulo de vídeo, só os trechos do intervalo dele. São gerados
+uma vez por módulo e nível (`exercicios_gerados`), na fila: o primeiro pedido
+volta `gerando`, e os seguintes, a lista. Sem conteúdo no vault, `sem_conteudo`,
+sem gerar nada. A geração que falhou é refeita no pedido seguinte. Os exercícios
+não contam para concluir o passo: são para o aluno treinar, com a dica e a
+resposta na tela.
+
 **Termos do YouTube:** baixar o áudio vai contra os termos de uso do YouTube,
 exceto quando o dono do vídeo permite, como nos vídeos com licença Creative
 Commons. Para o projeto acadêmico o risco foi aceito. Antes de qualquer uso
