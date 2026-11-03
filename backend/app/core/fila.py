@@ -17,6 +17,7 @@ PPC para o modelo.
 """
 
 import logging
+import re
 from collections.abc import Callable
 from typing import Protocol
 
@@ -35,6 +36,8 @@ logger = logging.getLogger(__name__)
 
 # Uma leitura de PPC na CPU passa de meia hora; o padrão do RQ, três minutos.
 TEMPO_MAXIMO_DA_EMENTA = 2 * 60 * 60
+# A busca de uma disciplina: algumas chamadas à API e embeddings de títulos.
+TEMPO_MAXIMO_DA_BUSCA = 30 * 60
 # A tarefa que cai no meio (o worker reiniciou, o banco piscou) é tentada de
 # novo, esperando cada vez mais. A falha esperada (PDF ilegível, IA fora) não
 # chega aqui: a própria tarefa a grava na ementa e termina sem erro.
@@ -54,6 +57,10 @@ class Fila(Protocol):
         """Põe a leitura da ementa na fila. `False` se já havia uma pendente."""
         ...
 
+    def busca_de_conteudo(self, disciplina: str) -> bool:
+        """Põe na fila a busca de vídeos para as lacunas da disciplina (#207)."""
+        ...
+
 
 class FilaRedis:
     def __init__(self, conexao: Redis, nome: str = "algorise") -> None:
@@ -69,6 +76,16 @@ class FilaRedis:
             chave=f"ementa-{ementa_id}",
             tempo_maximo=TEMPO_MAXIMO_DA_EMENTA,
             ao_falhar=ementa.falhou,
+        )
+
+    def busca_de_conteudo(self, disciplina: str) -> bool:
+        from app.tarefas import busca
+
+        return self.enfileirar(
+            busca.buscar,
+            disciplina,
+            chave=f"busca-{_slug(disciplina)}",
+            tempo_maximo=TEMPO_MAXIMO_DA_BUSCA,
         )
 
     def enfileirar(
@@ -121,10 +138,50 @@ class FilaLocal:
         self.tarefas.add_task(ementas.processar, self.fabrica, self.provedor, ementa_id)
         return True
 
+    def busca_de_conteudo(self, disciplina: str) -> bool:
+        from app.tarefas import busca
+
+        self.tarefas.add_task(busca.buscar, disciplina)
+        return True
+
+
+class FilaImediata:
+    """Roda a tarefa agora, na thread de quem chamou.
+
+    É a fila de quem já está fora do request (uma tarefa que dispara outra) no
+    modo `local`: não há `BackgroundTasks` ali, e já não há aluno esperando.
+    """
+
+    def ementa(self, ementa_id: int) -> bool:
+        from app.tarefas import ementa
+
+        ementa.processar(ementa_id)
+        return True
+
+    def busca_de_conteudo(self, disciplina: str) -> bool:
+        from app.tarefas import busca
+
+        busca.buscar(disciplina)
+        return True
+
 
 def conexao() -> Redis:
     """Conexão própria do RQ: ele guarda bytes (pickle), e o cliente do cache decodifica texto."""
     return Redis.from_url(settings.redis_url)
+
+
+def fila_das_tarefas() -> Fila:
+    """A fila para uma tarefa enfileirar outra, fora do request."""
+    if settings.fila == "redis":
+        return FilaRedis(conexao(), settings.fila_nome)
+    return FilaImediata()
+
+
+def _slug(texto: str) -> str:
+    """Só letras, números e hífen: o formato que o RQ aceita no id da tarefa."""
+    from app.ia.skills.ler_ementa import normalizar
+
+    return re.sub(r"\s+", "-", normalizar(texto))[:100] or "sem-nome"
 
 
 def get_fila(

@@ -24,6 +24,7 @@ from app.models.enums import (
     StatusEmenta,
     StatusLacuna,
     StatusProgresso,
+    StatusVideo,
     TamanhoFonte,
     TipoAtividade,
     TipoTrilha,
@@ -33,11 +34,13 @@ from app.models.progresso import ProgressoUsuario, RespostaUsuario
 from app.models.trilha import Atividade, Modulo, Trilha
 from app.models.usuario import Consentimento, ContaOAuth, Usuario
 from app.models.vault import DocumentoVault, TrechoVault
+from app.models.youtube import BuscaYoutube, VideoLacuna, VideoYoutube
 
 __all__ = [
     "AssuntoEmenta",
     "Atividade",
     "Base",
+    "BuscaYoutube",
     "Certificado",
     "Consentimento",
     "ContaOAuth",
@@ -61,6 +64,7 @@ __all__ = [
     "StatusEmenta",
     "StatusLacuna",
     "StatusProgresso",
+    "StatusVideo",
     "Streak",
     "TamanhoFonte",
     "TimestampMixin",
@@ -69,5 +73,7 @@ __all__ = [
     "TrechoVault",
     "Trilha",
     "Usuario",
+    "VideoLacuna",
+    "VideoYoutube",
     "XPEvento",
 ]
