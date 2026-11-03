@@ -9,6 +9,7 @@ SEGREDO_DE_DESENVOLVIMENTO = "inseguro-so-para-desenvolvimento"
 
 PROVEDORES_DE_IA = ("ollama", "eco")
 MODOS_DA_FILA = ("local", "redis")
+FORMATOS_DE_LOG = ("json", "texto")
 
 
 class Settings(BaseSettings):
@@ -84,6 +85,15 @@ class Settings(BaseSettings):
     fila: str = "local"
     # Nome da fila no RQ: o worker escuta esta.
     fila_nome: str = "algorise"
+
+    # Observabilidade (#39). `json` para o agregador, `texto` para o terminal;
+    # vazio, `json` em produção e `texto` no resto (ver `formato_de_log`).
+    log_formato: str = ""
+    log_nivel: str = "INFO"
+    # Sentry: sem o DSN, a captura de exceções fica desligada.
+    sentry_dsn: str = ""
+    # Com valor, `GET /metrics` pede `Authorization: Bearer <token>`.
+    metricas_token: str = ""
     # Tentativas contra o Ollama fora, só antes do primeiro pedaço: depois dele,
     # tentar de novo repetiria o texto que o aluno já viu.
     ia_tentativas: int = 2
@@ -155,6 +165,10 @@ class Settings(BaseSettings):
     # novo nesse prazo cancela a exclusão.
     prazo_exclusao_dias: int = 30
 
+    @property
+    def formato_de_log(self) -> str:
+        return self.log_formato or ("json" if self.environment == "production" else "texto")
+
     @model_validator(mode="after")
     def _conferir_segredo(self) -> "Settings":
         """Impede subir em produção sem um segredo próprio.
@@ -190,6 +204,9 @@ class Settings(BaseSettings):
         # finge responder.
         if self.environment == "production" and self.ia_provedor != "ollama":
             raise ValueError("Em produção, IA_PROVEDOR precisa ser 'ollama'")
+
+        if self.log_formato and self.log_formato not in FORMATOS_DE_LOG:
+            raise ValueError(f"LOG_FORMATO precisa ser um de: {', '.join(FORMATOS_DE_LOG)}")
 
         if self.fila not in MODOS_DA_FILA:
             raise ValueError(f"FILA precisa ser um de: {', '.join(MODOS_DA_FILA)}")
