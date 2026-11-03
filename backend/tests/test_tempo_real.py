@@ -228,6 +228,22 @@ def test_sem_redis_a_entrega_e_local(
         assert ws.receive_json()["payload"] == {"xp": 10}
 
 
+def test_ouvinte_ignora_o_que_a_propria_instancia_publicou(
+    redis_falso: fakeredis.FakeRedis,
+) -> None:
+    mesma_instancia = GerenciadorQueAnota()
+    ouvinte = Ouvinte(mesma_instancia)
+    ouvinte.garantir()
+    try:
+        assert ouvinte.inscrito.wait(timeout=5)
+
+        publicar("ranking:geral", "ranking.atualizado")
+
+        assert not mesma_instancia.chegou.wait(timeout=0.5)
+    finally:
+        ouvinte.parar()
+
+
 class GerenciadorQueAnota(Gerenciador):
     def __init__(self) -> None:
         super().__init__()
@@ -242,7 +258,7 @@ class GerenciadorQueAnota(Gerenciador):
 
 def test_evento_publicado_chega_as_outras_instancias(redis_falso: fakeredis.FakeRedis) -> None:
     outra_instancia = GerenciadorQueAnota()
-    ouvinte = Ouvinte(outra_instancia)
+    ouvinte = Ouvinte(outra_instancia, instancia="outra")
     ouvinte.garantir()
     try:
         assert ouvinte.inscrito.wait(timeout=5)

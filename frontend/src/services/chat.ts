@@ -53,9 +53,11 @@ export interface EventoDoChat {
 export async function perguntarAoTutor(
   { conversaId, conteudo, modo }: PedidoAoTutor,
   aoReceber?: (parcial: string) => void,
+  sinal?: AbortSignal,
 ): Promise<RespostaDoTutor> {
   const resposta = await apiResposta('/chat/mensagens', {
     method: 'POST',
+    signal: sinal,
     headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
     body: JSON.stringify({ conversa_id: conversaId ?? null, conteudo, modo }),
   })
@@ -64,17 +66,22 @@ export async function perguntarAoTutor(
   let texto = ''
   let incompleta = true
 
-  for await (const { evento, dados } of lerEventos(resposta.body)) {
-    if (evento === 'chat.conversa') {
-      conversa = { conversaId: Number(dados.conversa_id), titulo: String(dados.titulo) }
-    } else if (evento === 'chat.token') {
-      texto += String(dados.texto)
-      aoReceber?.(texto)
-    } else if (evento === 'chat.fim') {
-      incompleta = false
+  try {
+    for await (const { evento, dados } of lerEventos(resposta.body)) {
+      if (evento === 'chat.conversa') {
+        conversa = { conversaId: Number(dados.conversa_id), titulo: String(dados.titulo) }
+      } else if (evento === 'chat.token') {
+        texto += String(dados.texto)
+        aoReceber?.(texto)
+      } else if (evento === 'chat.fim') {
+        incompleta = false
+      }
+      // `chat.erro` não precisa de nada: sem o `chat.fim`, a resposta fica
+      // incompleta, que é o que ele quer dizer.
     }
-    // `chat.erro` não precisa de nada: sem o `chat.fim`, a resposta fica
-    // incompleta, que é o que ele quer dizer.
+  } catch (erro) {
+    // O aluno parou: o servidor grava o parcial, e aqui ele volta incompleto.
+    if (!sinal?.aborted) throw erro
   }
 
   return { ...conversa, resposta: texto, incompleta }
