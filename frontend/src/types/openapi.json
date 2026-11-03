@@ -963,6 +963,25 @@
         "title": "CursoResumo",
         "type": "object"
       },
+      "DigitandoNoChat": {
+        "properties": {
+          "conversa_id": {
+            "title": "Conversa Id",
+            "type": "integer"
+          },
+          "tipo": {
+            "const": "chat.digitando",
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "conversa_id"
+        ],
+        "title": "DigitandoNoChat",
+        "type": "object"
+      },
       "DisciplinaLida": {
         "properties": {
           "assuntos": {
@@ -1304,6 +1323,47 @@
           "xp"
         ],
         "title": "EntradaRanking",
+        "type": "object"
+      },
+      "EnviarMensagemDoChat": {
+        "description": "A pergunta ao tutor, com os mesmos campos do `POST /chat/mensagens`.",
+        "properties": {
+          "conteudo": {
+            "description": "A pergunta do aluno",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Conteudo",
+            "type": "string"
+          },
+          "conversa_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Conversa em que a mensagem entra. Sem ele, abre uma nova.",
+            "title": "Conversa Id"
+          },
+          "modo": {
+            "$ref": "#/components/schemas/ModoResposta",
+            "default": "medio",
+            "description": "Quanto o tutor se aprofunda na resposta"
+          },
+          "tipo": {
+            "const": "chat.mensagem.enviar",
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conteudo",
+          "tipo"
+        ],
+        "title": "EnviarMensagemDoChat",
         "type": "object"
       },
       "Erro": {
@@ -1842,6 +1902,9 @@
           "mapping": {
             "autenticar": "#/components/schemas/Autenticar",
             "cancelar": "#/components/schemas/Cancelar",
+            "chat.digitando": "#/components/schemas/DigitandoNoChat",
+            "chat.mensagem.enviar": "#/components/schemas/EnviarMensagemDoChat",
+            "chat.parar": "#/components/schemas/PararChat",
             "inscrever": "#/components/schemas/Inscrever",
             "ping": "#/components/schemas/Ping",
             "pong": "#/components/schemas/Pong"
@@ -1863,6 +1926,15 @@
           },
           {
             "$ref": "#/components/schemas/Pong"
+          },
+          {
+            "$ref": "#/components/schemas/EnviarMensagemDoChat"
+          },
+          {
+            "$ref": "#/components/schemas/PararChat"
+          },
+          {
+            "$ref": "#/components/schemas/DigitandoNoChat"
           }
         ],
         "title": "MensagemDoCliente"
@@ -2560,6 +2632,25 @@
         ],
         "title": "PapelMensagem",
         "type": "string"
+      },
+      "PararChat": {
+        "properties": {
+          "conversa_id": {
+            "title": "Conversa Id",
+            "type": "integer"
+          },
+          "tipo": {
+            "const": "chat.parar",
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "conversa_id"
+        ],
+        "title": "PararChat",
+        "type": "object"
       },
       "ParceiroAdmin": {
         "properties": {

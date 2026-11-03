@@ -1628,6 +1628,16 @@ export interface components {
             /** Total Periodos */
             total_periodos: number;
         };
+        /** DigitandoNoChat */
+        DigitandoNoChat: {
+            /** Conversa Id */
+            conversa_id: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "chat.digitando";
+        };
         /** DisciplinaLida */
         DisciplinaLida: {
             /** Assuntos */
@@ -1721,6 +1731,33 @@ export interface components {
             usuario_id: number;
             /** Xp */
             xp: number;
+        };
+        /**
+         * EnviarMensagemDoChat
+         * @description A pergunta ao tutor, com os mesmos campos do `POST /chat/mensagens`.
+         */
+        EnviarMensagemDoChat: {
+            /**
+             * Conteudo
+             * @description A pergunta do aluno
+             */
+            conteudo: string;
+            /**
+             * Conversa Id
+             * @description Conversa em que a mensagem entra. Sem ele, abre uma nova.
+             * @default null
+             */
+            conversa_id: number | null;
+            /**
+             * @description Quanto o tutor se aprofunda na resposta
+             * @default medio
+             */
+            modo: components["schemas"]["ModoResposta"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "chat.mensagem.enviar";
         };
         /**
          * Erro
@@ -1966,7 +2003,7 @@ export interface components {
             papel: components["schemas"]["PapelMensagem"];
         };
         /** MensagemDoCliente */
-        MensagemDoCliente: components["schemas"]["Autenticar"] | components["schemas"]["Inscrever"] | components["schemas"]["Cancelar"] | components["schemas"]["Ping"] | components["schemas"]["Pong"];
+        MensagemDoCliente: components["schemas"]["Autenticar"] | components["schemas"]["Inscrever"] | components["schemas"]["Cancelar"] | components["schemas"]["Ping"] | components["schemas"]["Pong"] | components["schemas"]["EnviarMensagemDoChat"] | components["schemas"]["PararChat"] | components["schemas"]["DigitandoNoChat"];
         /** MensagemDoServidor */
         MensagemDoServidor: components["schemas"]["Autenticado"] | components["schemas"]["Inscrito"] | components["schemas"]["Cancelado"] | components["schemas"]["Evento"] | components["schemas"]["PingDoServidor"] | components["schemas"]["PongDoServidor"] | components["schemas"]["ErroDoWebSocket"];
         /** MetricasAtividade */
@@ -2251,6 +2288,16 @@ export interface components {
          * @enum {string}
          */
         PapelMensagem: "usuario" | "assistente";
+        /** PararChat */
+        PararChat: {
+            /** Conversa Id */
+            conversa_id: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "chat.parar";
+        };
         /** ParceiroAdmin */
         ParceiroAdmin: {
             /** Id */
