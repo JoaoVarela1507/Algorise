@@ -17,11 +17,13 @@ from app.models.chat import Conversa, MensagemChat
 from app.models.enums import (
     ModoResposta,
     NivelExperiencia,
+    OrigemModulo,
     OrigemVault,
     OrigemXP,
     PapelMensagem,
     StatusAssuntos,
     StatusEmenta,
+    StatusGeracao,
     StatusLacuna,
     StatusProgresso,
     StatusVideo,
@@ -31,10 +33,16 @@ from app.models.enums import (
 )
 from app.models.gamificacao import Certificado, Streak, XPEvento
 from app.models.progresso import ProgressoUsuario, RespostaUsuario
-from app.models.trilha import Atividade, Modulo, Trilha
+from app.models.trilha import Atividade, ExerciciosGerados, Modulo, ReporteModulo, Trilha
 from app.models.usuario import Consentimento, ContaOAuth, Usuario
 from app.models.vault import DocumentoVault, TrechoVault
-from app.models.youtube import BuscaYoutube, VideoLacuna, VideoYoutube
+from app.models.youtube import (
+    BuscaYoutube,
+    ParteLacuna,
+    ParteVideo,
+    VideoLacuna,
+    VideoYoutube,
+)
 
 __all__ = [
     "AssuntoEmenta",
@@ -49,19 +57,25 @@ __all__ = [
     "DisciplinaEmenta",
     "DocumentoVault",
     "Ementa",
+    "ExerciciosGerados",
     "Instituicao",
     "Lacuna",
     "MensagemChat",
     "ModoResposta",
     "Modulo",
     "NivelExperiencia",
+    "OrigemModulo",
     "OrigemVault",
     "OrigemXP",
     "PapelMensagem",
+    "ParteLacuna",
+    "ParteVideo",
     "ProgressoUsuario",
+    "ReporteModulo",
     "RespostaUsuario",
     "StatusAssuntos",
     "StatusEmenta",
+    "StatusGeracao",
     "StatusLacuna",
     "StatusProgresso",
     "StatusVideo",

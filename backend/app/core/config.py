@@ -99,6 +99,22 @@ class Settings(BaseSettings):
     # Distância de cosseno máxima entre o assunto e o título do vídeo. Mais
     # folgada que a da ementa: o título é curto e diz pouco.
     youtube_distancia_maxima: float = 0.45
+
+    # Transcrição dos vídeos (#208), no worker. `small` é o modelo do Whisper
+    # que cabe numa CPU; `int8` reduz a memória à custa de pouca precisão.
+    whisper_modelo: str = "small"
+    whisper_computacao: str = "int8"
+    # Vídeo mais longo que isto não é transcrito: ocuparia o worker por horas.
+    transcricao_duracao_maxima: int = 3 * 60 * 60
+    # Duração máxima de uma parte do vídeo, em segundos (#209). O vídeo mais
+    # curto que isto vira uma parte só, sem chamar a IA.
+    segmentacao_duracao_maxima: int = 25 * 60
+    # Confiança mínima da IA para uma parte de vídeo entrar na trilha (#202).
+    # Abaixo, a parte é descartada, como a que não é de matéria nenhuma.
+    categorizacao_confianca_minima: float = 0.6
+    # Quantos alunos precisam reportar o vídeo de um módulo automático para ele
+    # sair da trilha e a lacuna voltar para a busca (#210).
+    reportes_para_remover: int = 3
     # Observabilidade (#39). `json` para o agregador, `texto` para o terminal;
     # vazio, `json` em produção e `texto` no resto (ver `formato_de_log`).
     log_formato: str = ""

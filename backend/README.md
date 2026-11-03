@@ -569,6 +569,82 @@ para e o resto fica `pendente` até o dia seguinte. A resposta de cada consulta
 fica 30 dias em `buscas_youtube`, então duas ementas com a mesma lacuna não pagam
 a mesma busca duas vezes.
 
+### Transcrição dos vídeos
+
+Cada vídeo escolhido pela busca vai para a fila da transcrição, na ordem da
+playlist (tarefa `transcricao`, `app/services/transcricao.py`). O worker tenta
+primeiro a **legenda manual** em português, que sai em segundos; sem ela, baixa
+**só o áudio** com o `yt-dlp` e transcreve com o **Whisper** (`faster-whisper`,
+modelo `WHISPER_MODELO`, `small` em int8 na CPU). As falas, com início e fim,
+entram no vault como o documento `youtube:<id>`, ligado ao vídeo e ainda sem
+módulo; cada trecho guarda `inicio_segundos` e `fim_segundos`.
+
+- **O vídeo não é hospedado:** só a legenda ou o áudio é baixado, numa pasta
+  temporária apagada no fim, com sucesso ou com falha.
+- **Falhas:** vídeo privado ou removido e vídeo acima de
+  `TRANSCRICAO_DURACAO_MAXIMA` (3 h) ficam `falhou`, com o motivo em
+  `videos_youtube.erro`. O erro inesperado é tentado de novo pela fila.
+- **Só no worker:** o `yt-dlp` e o `faster-whisper` estão em
+  `requirements-transcricao.txt`, instalado só no estágio `worker` do Dockerfile.
+  A API, a CI e os testes não os instalam. O modelo do Whisper (uns 500 MB) é
+  baixado na primeira transcrição para o volume `modelos_whisper`.
+
+**Partes do vídeo.** Transcrito o vídeo, a tarefa `segmentacao` o corta em partes
+de um assunto só, cada uma um futuro módulo (`partes_video`, com início, fim,
+título e resumo). O vídeo de até `SEGMENTACAO_DURACAO_MAXIMA` (25 min), o caso
+comum nas playlists, é uma parte só, sem IA. O longo vai para a skill
+`segmentar_video` com um índice da transcrição (uma linha por trecho, com o
+intervalo e o começo do texto), e a resposta é ajustada: as partes ficam em
+ordem, encostadas, e cada corte vai para a fronteira de trecho mais próxima. A
+introdução e o encerramento podem ficar de fora. Uma resposta que não valida
+vira um corte por duração ("Aula (parte 2)"); a IA fora do ar é tentada de novo
+pela fila.
+
+**Categorização.** Cortado o vídeo, a tarefa `categorizacao` pergunta à skill
+`categorizar_videos`, parte por parte, de que matéria ela é e quais das lacunas
+ligadas ao vídeo ela ensina de fato. As matérias possíveis vêm do banco (as
+disciplinas das trilhas e das lacunas), e a skill só aceita uma delas ou
+"nenhuma": uma matéria inventada vira "nenhuma". A parte com matéria e confiança
+de pelo menos `CATEGORIZACAO_CONFIANCA_MINIMA` (0,6) é aprovada, com as lacunas
+que cobre (`parte_lacunas`); a outra é descartada. A lacuna que nenhuma parte
+aprovada cobre tem a ligação com o vídeo recusada (`video_lacunas.recusada`):
+volta para `pendente`, se nenhum outro vídeo estiver a caminho, e a busca roda de
+novo sem escolher aquele vídeo para ela.
+
+**Módulos.** Categorizado o vídeo, cada parte aprovada vira um módulo
+(`app/services/modulos_de_videos.py`), publicado direto, sem aprovação: entra no
+fim da trilha da disciplina da parte (criada, publicada, se não existir), com
+`origem = youtube`, o intervalo em `inicio_segundos` e `fim_segundos` e a parte
+de origem (`parte_video_id`, única: a mesma parte não vira dois módulos). As
+lacunas que a parte cobre ficam `coberta`, apontando para o módulo, e a trilha
+guiada passa a mostrar o módulo no lugar do "em preparação". O player toca só o
+intervalo (`?start=&end=`), e o módulo mostra "Gerado automaticamente" e o canal.
+
+| Rota                                          | O que faz                                        |
+| --------------------------------------------- | ------------------------------------------------ |
+| `POST /api/v1/trilhas/{slug}/passos/{ordem}/reportar` | reporta o vídeo de um módulo automático (409 nos outros) |
+
+Um reporte por aluno. Com `REPORTES_PARA_REMOVER` (3) alunos, o módulo sai da
+trilha (os passos seguintes sobem uma posição), as lacunas voltam para
+`pendente`, a parte não é publicada de novo, e a busca procura outro vídeo sem
+escolher este.
+
+**Exercícios de prática.** `GET /api/v1/trilhas/{slug}/passos/{ordem}/exercicios`
+devolve exercícios gerados pela skill `exercicios` a partir do conteúdo do
+módulo no vault, no nível do aluno: a transcrição e o texto do módulo do
+catálogo, ou, no módulo de vídeo, só os trechos do intervalo dele. São gerados
+uma vez por módulo e nível (`exercicios_gerados`), na fila: o primeiro pedido
+volta `gerando`, e os seguintes, a lista. Sem conteúdo no vault, `sem_conteudo`,
+sem gerar nada. A geração que falhou é refeita no pedido seguinte. Os exercícios
+não contam para concluir o passo: são para o aluno treinar, com a dica e a
+resposta na tela.
+
+**Termos do YouTube:** baixar o áudio vai contra os termos de uso do YouTube,
+exceto quando o dono do vídeo permite, como nos vídeos com licença Creative
+Commons. Para o projeto acadêmico o risco foi aceito. Antes de qualquer uso
+comercial, esta parte precisa ser revista; a busca pode ficar restrita a
+`videoLicense=creativeCommon`.
+
 ### Vault das skills
 
 O vault (#200) guarda o que as skills consultam: as transcrições dos vídeos dos

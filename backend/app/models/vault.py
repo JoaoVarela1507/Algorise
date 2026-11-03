@@ -1,7 +1,8 @@
 """Vault das skills de IA (#200): o conhecimento que as skills consultam.
 
-Um documento é uma transcrição de vídeo (ligada ao módulo) ou o prompt de uma
-skill. Ele é dividido em trechos, e cada trecho guarda o embedding para a busca
+Um documento é uma transcrição de vídeo (ligada ao módulo, ou ao vídeo do
+YouTube que ainda não virou módulo), o texto de um módulo do catálogo ou o
+prompt de uma skill. Ele é dividido em trechos, e cada trecho guarda o embedding para a busca
 por similaridade, que no PostgreSQL é feita pelo pgvector.
 """
 
@@ -29,6 +30,11 @@ class DocumentoVault(Base, TimestampMixin):
     )
     # Prompt: o nome do módulo em `app/ia/skills/`.
     skill: Mapped[str | None] = mapped_column(String(80))
+    # Transcrição de um vídeo do YouTube ainda sem módulo (#208): o vídeo
+    # guarda o título, o canal, a duração e a playlist.
+    video_id: Mapped[int | None] = mapped_column(
+        ForeignKey("videos_youtube.id", ondelete="CASCADE"), index=True
+    )
     # SHA-256 do conteúdo. Igual ao guardado, a ingestão não refaz nada.
     hash_conteudo: Mapped[str] = mapped_column(String(64))
     # Sobe a cada conteúdo novo com a mesma chave.
@@ -61,6 +67,8 @@ class TrechoVault(Base):
     # Em que segundo do vídeo o trecho começa, quando a transcrição tem tempo
     # (.srt e .vtt). Serve para a skill apontar o momento do vídeo.
     inicio_segundos: Mapped[float | None]
+    # E em que segundo termina: a busca pode recortar um intervalo do vídeo.
+    fim_segundos: Mapped[float | None]
     # No SQLite dos testes não há pgvector: o vetor vira uma lista em JSON, e a
     # busca calcula a distância em Python (ver `app/ia/vault/busca.py`).
     embedding: Mapped[list[float]] = mapped_column(

@@ -164,3 +164,10 @@ class Lacuna(Base, TimestampMixin):
     disciplina: Mapped[str] = mapped_column(String(200))
     assunto: Mapped[str] = mapped_column(String(300))
     status: Mapped[StatusLacuna] = mapped_column(default=StatusLacuna.pendente, index=True)
+    # O módulo, feito de um vídeo, que cobriu a lacuna (#210). A trilha guiada
+    # passa a mostrar o módulo no lugar do "em preparação".
+    modulo_id: Mapped[int | None] = mapped_column(
+        ForeignKey("modulos.id", ondelete="SET NULL"), index=True
+    )
+
+    modulo: Mapped["Modulo | None"] = relationship()

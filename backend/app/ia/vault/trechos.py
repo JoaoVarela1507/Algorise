@@ -7,7 +7,7 @@ Os cortes caem em fim de frase, e cada trecho repete o fim do anterior
 """
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import PurePath
 
 TAMANHO_DO_TRECHO = 800
@@ -15,7 +15,7 @@ SOBREPOSICAO = 150
 
 # "00:01:02,500" (.srt) ou "00:01:02.500" e "01:02.500" (.vtt).
 _TEMPO = r"(?:(\d+):)?(\d{1,2}):(\d{2})[,.](\d{3})"
-_LINHA_DE_TEMPO = re.compile(rf"^\s*{_TEMPO}\s*-->")
+_LINHA_DE_TEMPO = re.compile(rf"^\s*{_TEMPO}\s*-->\s*{_TEMPO}")
 # Marcações do WebVTT dentro da fala: <v Professor>, <c.destaque>, <00:01.000>.
 _MARCACAO = re.compile(r"<[^>]+>")
 _FIM_DE_FRASE = re.compile(r"(?<=[.!?…])\s+")
@@ -24,14 +24,18 @@ _FIM_DE_FRASE = re.compile(r"(?<=[.!?…])\s+")
 @dataclass(frozen=True)
 class Fala:
     texto: str
-    # Segundo do vídeo em que a fala começa; `None` em texto sem tempo.
+    # Segundo do vídeo em que a fala começa e termina; `None` em texto sem tempo.
     inicio: float | None = None
+    fim: float | None = None
 
 
 @dataclass(frozen=True)
 class Trecho:
     texto: str
     inicio: float | None = None
+    # O fim deixa a busca recortar um intervalo do vídeo: o módulo que é só um
+    # pedaço de uma aula longa (#209, #210) usa os trechos daquele pedaço.
+    fim: float | None = None
 
 
 def ler_transcricao(conteudo: str, nome_arquivo: str) -> list[Fala]:
@@ -54,19 +58,26 @@ def _ler_legenda(conteudo: str) -> list[Fala]:
         texto = _espacos(_MARCACAO.sub("", " ".join(linhas[tempo + 1 :])))
         if not texto:
             continue
-        inicio = _segundos(_LINHA_DE_TEMPO.match(linhas[tempo]))
-        # Legendas de vídeo repetem a linha anterior enquanto ela rola na tela.
+        inicio, fim = _intervalo(_LINHA_DE_TEMPO.match(linhas[tempo]))
+        # Legendas de vídeo repetem a linha anterior enquanto ela rola na tela:
+        # é a mesma fala, que fica mais tempo.
         if falas and falas[-1].texto == texto:
+            falas[-1] = replace(falas[-1], fim=fim)
             continue
-        falas.append(Fala(texto, inicio))
+        falas.append(Fala(texto, inicio, fim))
     return falas
 
 
-def _segundos(tempo: re.Match[str] | None) -> float | None:
+def _intervalo(tempo: re.Match[str] | None) -> tuple[float | None, float | None]:
     if tempo is None:
-        return None
-    horas, minutos, segundos, milesimos = tempo.groups()
-    return int(horas or 0) * 3600 + int(minutos) * 60 + int(segundos) + int(milesimos) / 1000
+        return None, None
+    grupos = tempo.groups()
+    return _segundos(grupos[:4]), _segundos(grupos[4:])
+
+
+def _segundos(partes: tuple[str | None, ...]) -> float:
+    horas, minutos, segundos, milesimos = partes
+    return int(horas or 0) * 3600 + int(minutos or 0) * 60 + int(segundos) + int(milesimos) / 1000
 
 
 def _espacos(texto: str) -> str:
@@ -78,7 +89,7 @@ def dividir(
 ) -> list[Trecho]:
     """Junta as frases em trechos de até `tamanho` caracteres, cortando entre frases."""
     frases = [
-        Fala(parte, fala.inicio)
+        Fala(parte, fala.inicio, fala.fim)
         for fala in falas
         for frase in _FIM_DE_FRASE.split(fala.texto)
         for parte in _quebrar(frase, tamanho)
@@ -122,7 +133,7 @@ def _tamanho(frases: list[Fala]) -> int:
 
 
 def _juntar(frases: list[Fala]) -> Trecho:
-    return Trecho(" ".join(f.texto for f in frases), frases[0].inicio)
+    return Trecho(" ".join(f.texto for f in frases), frases[0].inicio, frases[-1].fim)
 
 
 def _cauda(frases: list[Fala], sobreposicao: int) -> list[Fala]:

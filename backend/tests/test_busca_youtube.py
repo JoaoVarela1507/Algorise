@@ -322,10 +322,21 @@ def test_tarefa_com_chave_busca_e_grava(
         lambda db, chave: ClienteYoutube(db, chave, transport=httpx2.MockTransport(api)),
     )
 
+    transcricoes: list[int] = []
+
+    class Espia:
+        def transcricao(self, video_id: int) -> bool:
+            transcricoes.append(video_id)
+            return True
+
+    monkeypatch.setattr(tarefa_busca, "fila_das_tarefas", Espia)
+
     tarefa_busca.buscar(DISCIPLINA)
 
     db.expire_all()
     assert db.scalars(select(Lacuna)).one().status is StatusLacuna.em_preparacao
+    # O vídeo escolhido vai para a fila da transcrição (#208).
+    assert transcricoes == [db.scalars(select(VideoYoutube)).one().id]
 
 
 def test_busca_entra_na_fila_uma_vez_por_disciplina() -> None:

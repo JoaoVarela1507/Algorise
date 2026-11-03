@@ -58,12 +58,17 @@ async def buscar(
     vetores = await _vetores(provedor, [f"{disciplina}: {lacuna.assunto}" for lacuna in lacunas])
     restantes = dict(zip((lacuna.id for lacuna in lacunas), vetores, strict=True))
     por_id = {lacuna.id: lacuna for lacuna in lacunas}
+    recusados = _recusados(db, list(por_id))
 
     try:
-        await _pela_playlist(db, cliente, provedor, disciplina, por_id, restantes, resultado)
+        await _pela_playlist(
+            db, cliente, provedor, disciplina, por_id, restantes, recusados, resultado
+        )
         for lacuna_id in list(restantes):
             lacuna = por_id[lacuna_id]
-            achado = await _avulso(cliente, provedor, disciplina, lacuna, restantes[lacuna_id])
+            achado = await _avulso(
+                cliente, provedor, disciplina, lacuna, restantes[lacuna_id], recusados
+            )
             if achado is None:
                 lacuna.status = StatusLacuna.sem_conteudo
                 resultado.sem_conteudo += 1
@@ -96,6 +101,7 @@ async def _pela_playlist(
     disciplina: str,
     por_id: dict[int, Lacuna],
     restantes: dict[int, list[float]],
+    recusados: dict[int, set[str]],
     resultado: Resultado,
 ) -> None:
     melhor: tuple[str, dict[int, tuple[Video, float]]] | None = None
@@ -103,9 +109,8 @@ async def _pela_playlist(
         aulas = cliente.itens_da_playlist(playlist.id)
         if not aulas:
             continue
-        cobertura = _cobertura(
-            restantes, aulas, await _vetores(provedor, [_texto(v) for v in aulas])
-        )
+        vetores = await _vetores(provedor, [_texto(v) for v in aulas])
+        cobertura = _cobertura(restantes, aulas, vetores, recusados)
         # Empate: a primeira, que é a mais relevante para a API.
         if cobertura and (melhor is None or len(cobertura) > len(melhor[1])):
             melhor = (playlist.id, cobertura)
@@ -131,8 +136,13 @@ async def _avulso(
     disciplina: str,
     lacuna: Lacuna,
     vetor: list[float],
+    recusados: dict[int, set[str]],
 ) -> tuple[Video, int, float] | None:
-    candidatos = cliente.videos(f"{disciplina} {lacuna.assunto}", maximo=VIDEOS_POR_BUSCA)
+    candidatos = [
+        video
+        for video in cliente.videos(f"{disciplina} {lacuna.assunto}", maximo=VIDEOS_POR_BUSCA)
+        if video.id not in recusados.get(lacuna.id, set())
+    ]
     duracoes = cliente.duracoes([video.id for video in candidatos])
     aceitos = [
         video
@@ -154,15 +164,25 @@ async def _avulso(
 
 
 def _cobertura(
-    restantes: dict[int, list[float]], aulas: list[Video], vetores: list[list[float]]
+    restantes: dict[int, list[float]],
+    aulas: list[Video],
+    vetores: list[list[float]],
+    recusados: dict[int, set[str]],
 ) -> dict[int, tuple[Video, float]]:
-    """Para cada lacuna, a aula mais próxima, se ela for perto o bastante."""
+    """Para cada lacuna, a aula mais próxima, se ela for perto o bastante.
+
+    A aula que a categorização (#202) já recusou para a lacuna não conta.
+    """
     cobertura = {}
     for lacuna_id, vetor in restantes.items():
-        distancia, aula = min(
-            ((distancia_cosseno(vetor, v), aula) for aula, v in zip(aulas, vetores, strict=True)),
-            key=lambda par: par[0],
-        )
+        candidatas = [
+            (distancia_cosseno(vetor, v), aula)
+            for aula, v in zip(aulas, vetores, strict=True)
+            if aula.id not in recusados.get(lacuna_id, set())
+        ]
+        if not candidatas:
+            continue
+        distancia, aula = min(candidatas, key=lambda par: par[0])
         if distancia <= settings.youtube_distancia_maxima:
             cobertura[lacuna_id] = (aula, distancia)
     return cobertura
@@ -192,6 +212,19 @@ def _ligar(
         registro.lacunas.append(VideoLacuna(lacuna=lacuna, distancia=distancia))
     lacuna.status = StatusLacuna.em_preparacao
     resultado.cobertas += 1
+
+
+def _recusados(db: Session, lacuna_ids: list[int]) -> dict[int, set[str]]:
+    """Por lacuna, os vídeos que a categorização (#202) já recusou para ela."""
+    recusados: dict[int, set[str]] = {}
+    linhas = db.execute(
+        select(VideoLacuna.lacuna_id, VideoYoutube.youtube_id)
+        .join(VideoLacuna.video)
+        .where(VideoLacuna.lacuna_id.in_(lacuna_ids), VideoLacuna.recusada.is_(True))
+    )
+    for lacuna_id, youtube_id in linhas:
+        recusados.setdefault(lacuna_id, set()).add(youtube_id)
+    return recusados
 
 
 def _texto(video: Video) -> str:

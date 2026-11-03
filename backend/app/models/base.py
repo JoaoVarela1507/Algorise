@@ -8,11 +8,13 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from app.core.database import metadata
 from app.models.enums import (
     NivelExperiencia,
+    OrigemModulo,
     OrigemVault,
     OrigemXP,
     PapelMensagem,
     StatusAssuntos,
     StatusEmenta,
+    StatusGeracao,
     StatusLacuna,
     StatusProgresso,
     StatusVideo,
@@ -48,10 +50,12 @@ class Base(DeclarativeBase):
         StatusAssuntos: _enum(StatusAssuntos),
         StatusLacuna: _enum(StatusLacuna),
         StatusVideo: _enum(StatusVideo),
+        StatusGeracao: _enum(StatusGeracao),
         OrigemXP: _enum(OrigemXP),
         TamanhoFonte: _enum(TamanhoFonte),
         PapelMensagem: _enum(PapelMensagem),
         OrigemVault: _enum(OrigemVault),
+        OrigemModulo: _enum(OrigemModulo),
     }
 
 
