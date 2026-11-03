@@ -11,6 +11,7 @@ import { useConcluirPasso, useReportarPasso } from '@/hooks/useAtividades'
 import { useIniciarTrilha, usePasso } from '@/hooks/useTrilhas'
 import { roteiroDaAtividade } from '@/lib/terminal/mapa'
 import type { PassoConcluidoApi } from '@/services/atividades'
+import { PraticaDoPasso } from '@/components/atividades/PraticaDoPasso'
 
 /**
  * As atividades de um passo da trilha (telas 28 a 33).
@@ -173,6 +174,9 @@ function Passo() {
           }
         />
       )}
+
+      {/* Exercícios de prática gerados do vault (#201), sob pedido do aluno. */}
+      {trilhaId && <PraticaDoPasso slug={trilhaId} ordem={ordem} />}
 
       {concluido && (
         <ModuloConcluido

@@ -12,7 +12,14 @@ import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { criarQueryClient, deveTentarDeNovo } from '@/lib/query'
 import { ApiError } from '@/services/api'
-import { useCatalogoDeTrilhas, useIniciarTrilha, useTrilhasRecomendadas } from '@/hooks/useTrilhas'
+import {
+  useCatalogoDeTrilhas,
+  useIniciarTrilha,
+  usePasso,
+  useTrilha,
+  useTrilhaAtual,
+  useTrilhasRecomendadas,
+} from '@/hooks/useTrilhas'
 
 const TRILHA = {
   id: 1,
@@ -169,6 +176,71 @@ describe('iniciar trilha', () => {
     expect(queryClient.getQueryData(['trilhas', 'detalhe', 'introducao-python'])).toMatchObject({
       slug: 'introducao-python',
     })
+  })
+})
+
+describe('trilha atual da home', () => {
+  it('traduz a trilha em andamento para o card', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          respostaJson({ ...TRILHA, proximo_modulo: 'Laços de repetição', progresso: 4 }),
+        ),
+    )
+
+    const { result } = renderHook(() => useTrilhaAtual(), { wrapper: Envolvido })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toEqual({
+      id: 'introducao-python',
+      nome: 'Introdução a Python',
+      disciplina: 'Algoritmos',
+      periodo: 1,
+      modulosConcluidos: 4,
+      totalModulos: 10,
+      proximoModulo: 'Laços de repetição',
+    })
+  })
+
+  it('sem trilha publicada, devolve null', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(respostaJson(null)))
+
+    const { result } = renderHook(() => useTrilhaAtual(), { wrapper: Envolvido })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toBeNull()
+  })
+})
+
+describe('trilha e passo', () => {
+  it('busca a trilha pelo slug, e sem slug não busca', async () => {
+    const fetchFalso = vi.fn().mockResolvedValue(respostaJson({ ...TRILHA, modulos: [] }))
+    vi.stubGlobal('fetch', fetchFalso)
+
+    const sem = renderHook(() => useTrilha(undefined), { wrapper: Envolvido })
+    const com = renderHook(() => useTrilha('introducao-python'), { wrapper: Envolvido })
+
+    await waitFor(() => expect(com.result.current.isSuccess).toBe(true))
+    expect(sem.result.current.fetchStatus).toBe('idle')
+    expect(fetchFalso).toHaveBeenCalledOnce()
+    expect(String(fetchFalso.mock.calls[0][0])).toMatch(/\/trilhas\/introducao-python$/)
+  })
+
+  it('busca o passo pela ordem, e sem trilha ou ordem inteira não busca', async () => {
+    const fetchFalso = vi.fn().mockResolvedValue(respostaJson({ ordem: 2, titulo: 'Laços' }))
+    vi.stubGlobal('fetch', fetchFalso)
+
+    const sem = renderHook(() => usePasso('introducao-python', undefined), { wrapper: Envolvido })
+    const semTrilha = renderHook(() => usePasso(undefined, 2), { wrapper: Envolvido })
+    const com = renderHook(() => usePasso('introducao-python', 2), { wrapper: Envolvido })
+
+    await waitFor(() => expect(com.result.current.isSuccess).toBe(true))
+    expect(sem.result.current.fetchStatus).toBe('idle')
+    expect(semTrilha.result.current.fetchStatus).toBe('idle')
+    expect(fetchFalso).toHaveBeenCalledOnce()
+    expect(String(fetchFalso.mock.calls[0][0])).toMatch(/\/trilhas\/introducao-python\/passos\/2$/)
   })
 })
 
