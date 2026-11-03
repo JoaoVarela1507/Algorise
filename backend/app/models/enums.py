@@ -127,3 +127,10 @@ class StatusVideo(str, Enum):
     transcrevendo = "transcrevendo"
     transcrito = "transcrito"
     falhou = "falhou"
+
+
+class OrigemModulo(str, Enum):
+    """Quem fez o módulo: o seed e o professor (`manual`) ou a busca de vídeos (#210)."""
+
+    manual = "manual"
+    youtube = "youtube"
