@@ -7,7 +7,7 @@ transcrição (#208) parte dos vídeos em `aguardando`, e a segmentação (#209)
 corta os transcritos em partes.
 """
 
-from sqlalchemy import JSON, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import JSON, ForeignKey, String, Text, UniqueConstraint, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.academico import Lacuna
@@ -59,8 +59,29 @@ class ParteVideo(Base, TimestampMixin):
     fim_segundos: Mapped[float]
     titulo: Mapped[str] = mapped_column(String(200))
     resumo: Mapped[str | None] = mapped_column(Text)
+    # A categorização (#202): a matéria da parte, a confiança da IA e a frase da
+    # transcrição que justifica. `aprovada` é `None` antes de categorizar; a
+    # parte aprovada vira módulo (#210), com as lacunas que cobre.
+    disciplina: Mapped[str | None] = mapped_column(String(200))
+    confianca: Mapped[float | None]
+    justificativa: Mapped[str | None] = mapped_column(Text)
+    aprovada: Mapped[bool | None]
 
     video: Mapped[VideoYoutube] = relationship(back_populates="partes")
+    lacunas: Mapped[list[Lacuna]] = relationship(secondary="parte_lacunas")
+
+
+class ParteLacuna(Base):
+    """Que lacunas uma parte aprovada cobre, segundo a categorização."""
+
+    __tablename__ = "parte_lacunas"
+
+    parte_id: Mapped[int] = mapped_column(
+        ForeignKey("partes_video.id", ondelete="CASCADE"), primary_key=True
+    )
+    lacuna_id: Mapped[int] = mapped_column(
+        ForeignKey("lacunas.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
 
 
 class VideoLacuna(Base):
@@ -76,6 +97,9 @@ class VideoLacuna(Base):
     )
     # Distância de cosseno entre o assunto e o título do vídeo.
     distancia: Mapped[float]
+    # A categorização (#202) viu que nenhuma parte do vídeo ensina o assunto: a
+    # lacuna volta para a busca, que não escolhe este vídeo de novo para ela.
+    recusada: Mapped[bool] = mapped_column(default=False, server_default=false())
 
     video: Mapped[VideoYoutube] = relationship(back_populates="lacunas")
     lacuna: Mapped[Lacuna] = relationship()

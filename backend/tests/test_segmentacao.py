@@ -205,6 +205,14 @@ def test_tarefa_so_segmenta_video_transcrito(
 ) -> None:
     monkeypatch.setattr(tarefa, "SessionLocal", sessao_factory)
     monkeypatch.setattr(tarefa, "get_provedor_ia_tarefas", lambda: ProvedorDeSegmentacao("x"))
+    categorizacoes: list[int] = []
+
+    class Espia:
+        def categorizacao(self, video_id: int) -> bool:
+            categorizacoes.append(video_id)
+            return True
+
+    monkeypatch.setattr(tarefa, "fila_das_tarefas", Espia)
     pronto = video_transcrito(db, 600, FALAS[:10])
     aguardando = VideoYoutube(youtube_id="novo", titulo="Novo", duracao_segundos=600)
     db.add(aguardando)
@@ -216,6 +224,8 @@ def test_tarefa_so_segmenta_video_transcrito(
     db.expire_all()
     assert len(db.get(VideoYoutube, pronto.id).partes) == 1
     assert db.get(VideoYoutube, aguardando.id).partes == []
+    # O vídeo segmentado vai para a categorização (#202).
+    assert categorizacoes == [pronto.id]
 
 
 def test_segmentacao_entra_na_fila_uma_vez_por_video() -> None:
