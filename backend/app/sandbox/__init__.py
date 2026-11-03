@@ -24,6 +24,7 @@ Fica de fora o kernel: o container divide o do host. Em produção, use o gVisor
 precisa falar com o Docker: veja o README sobre o socket.
 """
 
+import logging
 import re
 import subprocess
 import threading
@@ -48,6 +49,8 @@ class Resultado:
     memoria_estourada: bool = False
     saida_cortada: bool = False
 
+
+logger = logging.getLogger(__name__)
 
 DOCKER = "docker"
 # Códigos que o `timeout -s KILL` e o kernel devolvem quando matam o processo.
@@ -142,17 +145,19 @@ def executar(codigo: str, entrada: str = "") -> Resultado:
         lido = bytearray()
         try:
             while chunk := fluxo.read(4096):
-                lido += chunk
-                if len(lido) > limite:
-                    # Passou do teto: para de ler e mata o container, senão um
-                    # `while True: print()` enche a memória do worker.
+                if len(lido) <= limite:
+                    lido += chunk
+                elif not cortada.is_set():
+                    # Passou do teto: guarda só até ele e mata o container, senão
+                    # um `while True: print()` enche a memória do worker. O pipe
+                    # continua sendo esvaziado (e descartado): parar de ler
+                    # bloquearia o `docker run`, e com ele o próprio `docker kill`.
                     cortada.set()
-                    _matar(nome)
-                    break
+                    threading.Thread(target=_matar, args=(nome,), daemon=True).start()
         except (ValueError, OSError):
             # O pipe fechou no meio da leitura: fica o que já chegou.
             pass
-        saidas[nome_do_fluxo] = bytes(lido)
+        saidas[nome_do_fluxo] = bytes(lido[: limite + 1])
 
     leitores = [
         threading.Thread(target=ler, args=("stdout", processo.stdout), daemon=True),
@@ -174,7 +179,13 @@ def executar(codigo: str, entrada: str = "") -> Resultado:
         processo.wait(timeout=prazo)
     except subprocess.TimeoutExpired:
         _matar(nome)
-        processo.wait(timeout=10)
+        try:
+            processo.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            # Nem o cliente do Docker respondeu: ele sai à força, e o container
+            # é removido logo abaixo.
+            processo.kill()
+            processo.wait(timeout=10)
     finally:
         for leitor in leitores:
             leitor.join(timeout=5)
@@ -200,7 +211,10 @@ def executar(codigo: str, entrada: str = "") -> Resultado:
 
 
 def _matar(nome: str) -> None:
-    subprocess.run([DOCKER, "kill", nome], capture_output=True, timeout=15, check=False)
+    try:
+        subprocess.run([DOCKER, "kill", nome], capture_output=True, timeout=15, check=False)
+    except subprocess.TimeoutExpired:
+        logger.warning("O docker kill de %s não respondeu", nome)
 
 
 def _morto_por_memoria(nome: str) -> bool:
