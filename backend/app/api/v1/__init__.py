@@ -24,6 +24,7 @@ from app.api.v1 import (
     oauth,
     onboarding,
     ranking,
+    tempo_real,
     trilha_guiada,
     trilhas,
     usuarios,
@@ -46,5 +47,6 @@ router.include_router(academico.router)
 router.include_router(ementas.router)
 router.include_router(chat.router)
 router.include_router(conversas.router)
+router.include_router(tempo_real.router)
 router.include_router(admin.router)
 router.include_router(certificados.router)

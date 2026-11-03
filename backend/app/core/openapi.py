@@ -14,7 +14,10 @@ frontend (`npm run gen:api`). Duas consequências práticas:
 
 from typing import Any
 
+from fastapi import FastAPI
 from fastapi.routing import APIRoute
+from pydantic import BaseModel
+from pydantic.json_schema import models_json_schema
 
 from app.core.erros import RespostaDeErro
 
@@ -32,6 +35,13 @@ TAGS = [
     {"name": "academico", "description": "Instituições, cursos e períodos do onboarding."},
     {"name": "ementas", "description": "Upload da ementa em PDF e o status da leitura."},
     {"name": "chat", "description": "Chat com o tutor de IA, com a resposta em streaming."},
+    {
+        "name": "tempo-real",
+        "description": (
+            "`WS /api/v1/ws`. O contrato está nos esquemas `MensagemDoCliente` e "
+            "`MensagemDoServidor`."
+        ),
+    },
     {"name": "health", "description": "Vivo e pronto para servir. Fora do contrato versionado."},
     {"name": "version", "description": "Versão, commit e ambiente da API."},
 ]
@@ -52,3 +62,27 @@ def gerar_operation_id(rota: APIRoute) -> str:
     """
     partes = rota.name.split("_")
     return partes[0] + "".join(parte.title() for parte in partes[1:])
+
+
+def incluir_esquemas(app: FastAPI, modelos: list[type[BaseModel]]) -> None:
+    """Põe no OpenAPI esquemas que nenhuma rota REST usa.
+
+    É o caso do contrato do WebSocket (#35): o OpenAPI não descreve WebSocket,
+    mas os tipos TypeScript saem dele, e o cliente precisa das mensagens tipadas.
+    """
+    original = app.openapi
+
+    def gerar() -> dict[str, Any]:
+        if app.openapi_schema:
+            return app.openapi_schema
+        esquema = original()
+        _, definicoes = models_json_schema(
+            [(modelo, "serialization") for modelo in modelos],
+            ref_template="#/components/schemas/{model}",
+        )
+        esquema.setdefault("components", {}).setdefault("schemas", {}).update(
+            definicoes.get("$defs", {})
+        )
+        return esquema
+
+    app.openapi = gerar  # type: ignore[method-assign]
