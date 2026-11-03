@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, Field
 
-__all__ = ["Painel"]
+__all__ = ["Conquista", "MetaDiaria", "Painel"]
 
 
 class Painel(BaseModel):
@@ -16,3 +16,24 @@ class Painel(BaseModel):
     xp_para_o_proximo: int = Field(ge=0)
     streak_dias: int = Field(ge=0)
     maior_streak: int = Field(ge=0)
+
+
+class MetaDiaria(BaseModel):
+    """O anel de meta do dia da home (tela 16), no fuso do aluno."""
+
+    xp_hoje: int = Field(ge=0)
+    xp_meta: int = Field(ge=1)
+    desafios_resolvidos: int = Field(ge=0)
+    minutos_estudados: int = Field(ge=0)
+
+
+class Conquista(BaseModel):
+    """Uma medalha do card de conquistas (tela 16).
+
+    O `id` é estável: o frontend escolhe o ícone por ele.
+    """
+
+    id: str
+    titulo: str
+    descricao: str
+    desbloqueada: bool

@@ -9,12 +9,21 @@ export function TrilhaAtualCard({
   trilha,
   className,
 }: {
-  trilha: TrilhaAtual
+  /** `null` quando ainda não há trilha publicada para sugerir. */
+  trilha: TrilhaAtual | null
   className?: string
 }) {
+  if (!trilha) return <SemTrilha className={className} />
+
   const { modulosConcluidos, totalModulos } = trilha
   const moduloAtual = Math.min(modulosConcluidos + 1, totalModulos)
   const naoComecou = modulosConcluidos === 0
+  // Trilha sem módulo ainda cadastrado dividiria por zero.
+  const porcentagem = totalModulos ? Math.round((modulosConcluidos / totalModulos) * 100) : 0
+  const detalhes = [
+    trilha.periodo ? `${trilha.periodo}º período` : trilha.disciplina,
+    trilha.proximoModulo && `Próximo: ${trilha.proximoModulo}`,
+  ].filter(Boolean)
 
   return (
     <div
@@ -38,9 +47,7 @@ export function TrilhaAtualCard({
           <h2 className="font-display text-xl font-bold leading-tight text-foreground">
             {trilha.nome}
           </h2>
-          <p className="truncate text-sm text-muted-foreground">
-            {trilha.disciplina} · Próximo: {trilha.proximoModulo}
-          </p>
+          <p className="truncate text-sm text-muted-foreground">{detalhes.join(' · ')}</p>
         </div>
       </div>
 
@@ -49,9 +56,7 @@ export function TrilhaAtualCard({
           <span className="text-foreground">
             Módulo {moduloAtual} de {totalModulos}
           </span>
-          <span className="text-muted-foreground">
-            {Math.round((modulosConcluidos / totalModulos) * 100)}%
-          </span>
+          <span className="text-muted-foreground">{porcentagem}%</span>
         </div>
 
         <div
@@ -89,6 +94,35 @@ export function TrilhaAtualCard({
         <Button asChild full size="lg" className="group">
           <Link to={`/trilhas/${trilha.id}`}>
             {naoComecou ? 'Começar trilha' : 'Continuar trilha'}
+            <ArrowRight className="transition-transform group-hover:translate-x-1" />
+          </Link>
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function SemTrilha({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        'flex flex-col rounded-lg border border-border bg-card p-6 shadow-sm',
+        className,
+      )}
+    >
+      <span className="self-start rounded-full bg-secondary px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+        Trilha atual
+      </span>
+      <h2 className="mt-4 font-display text-xl font-bold leading-tight text-foreground">
+        Nenhuma trilha por aqui ainda
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        Escolha uma trilha no catálogo para começar a estudar.
+      </p>
+      <div className="mt-auto pt-6">
+        <Button asChild full size="lg" className="group">
+          <Link to="/trilhas">
+            Ver trilhas
             <ArrowRight className="transition-transform group-hover:translate-x-1" />
           </Link>
         </Button>

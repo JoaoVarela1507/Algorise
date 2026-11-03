@@ -13,8 +13,15 @@ class AtividadeResumo(BaseModel):
     tipo: TipoAtividade
     enunciado: str
     dica: str | None = None
+    # Alternativas, itens a ordenar ou banco de palavras, conforme o tipo.
+    opcoes: list[str] | None = None
+    # Trecho de código da atividade; na lacuna, cada `___` é um buraco.
+    codigo: str | None = None
     tempo_sugerido_segundos: int | None = None
     xp: int
+    # Se o aluno já acertou: é o "2/4 atividades" do detalhe do módulo (tela 26).
+    # Sempre falso para visitante.
+    concluida: bool = False
 
 
 class Modulo(BaseModel):
@@ -44,6 +51,8 @@ class Modulo(BaseModel):
 
 class ModuloDetalhe(Modulo):
     atividades: list[AtividadeResumo] = []
+    # O que o passo paga ao todo: as atividades mais o bônus de fechá-lo.
+    xp: int = 0
 
 
 class Trilha(BaseModel):
@@ -63,7 +72,17 @@ class Trilha(BaseModel):
 
 class TrilhaDetalhe(Trilha):
     descricao: str | None = None
+    # Só trilha de parceiro emite certificado (#32): a tela 26 avisa quando há.
+    parceiro_nome: str | None = None
     modulos: list[ModuloDetalhe] = []
+
+
+class TrilhaAtual(Trilha):
+    """Card "trilha atual" da home (tela 16)."""
+
+    # Título do primeiro passo que falta. `None` só quando a trilha não tem
+    # módulos ainda.
+    proximo_modulo: str | None = None
 
 
 class TrilhaRecomendada(Trilha):

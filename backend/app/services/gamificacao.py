@@ -10,14 +10,17 @@ fixa, como o rate limit das rotas.
 """
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from redis import Redis
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.cache import chave
 from app.core.config import settings
 from app.core.redis import executar
-from app.models import Usuario
+from app.models import RespostaUsuario, Usuario, XPEvento
 from app.services import niveis, streak
 
 
@@ -60,6 +63,63 @@ def checkin(db: Session, usuario: Usuario) -> Painel:
     """
     streak.registrar_acesso(db, usuario.id)
     return painel(db, usuario)
+
+
+@dataclass(frozen=True)
+class MetaDiaria:
+    """O anel de "meta diária" da tela 16: o que o aluno fez hoje."""
+
+    xp_hoje: int
+    xp_meta: int
+    desafios_resolvidos: int
+    minutos_estudados: int
+
+
+def meta_diaria(db: Session, usuario: Usuario) -> MetaDiaria:
+    """XP, desafios e minutos de hoje, no fuso do aluno.
+
+    O dia é o mesmo do streak (`FUSO_HORARIO`): quem estuda às 23h no Recife
+    ainda está no dia de hoje, mesmo que em UTC já seja amanhã.
+    """
+    inicio, fim = janela_do_dia()
+
+    xp_hoje = db.scalar(
+        select(func.coalesce(func.sum(XPEvento.valor), 0)).where(
+            XPEvento.usuario_id == usuario.id,
+            XPEvento.criado_em >= inicio,
+            XPEvento.criado_em < fim,
+        )
+    )
+    do_dia = (
+        RespostaUsuario.usuario_id == usuario.id,
+        RespostaUsuario.criado_em >= inicio,
+        RespostaUsuario.criado_em < fim,
+    )
+    # Desafio resolvido é atividade acertada: errar três vezes e acertar na
+    # quarta conta um, não quatro.
+    desafios = db.scalar(
+        select(func.count(func.distinct(RespostaUsuario.atividade_id))).where(
+            *do_dia, RespostaUsuario.correta.is_(True)
+        )
+    )
+    segundos = db.scalar(
+        select(func.coalesce(func.sum(RespostaUsuario.tempo_gasto_segundos), 0)).where(*do_dia)
+    )
+
+    return MetaDiaria(
+        xp_hoje=int(xp_hoje or 0),
+        xp_meta=settings.xp_meta_diaria,
+        desafios_resolvidos=int(desafios or 0),
+        minutos_estudados=int(segundos or 0) // 60,
+    )
+
+
+def janela_do_dia(agora: datetime | None = None) -> tuple[datetime, datetime]:
+    """Meia-noite de hoje e de amanhã no fuso do aluno, em UTC, para filtrar no banco."""
+    fuso = ZoneInfo(settings.fuso_horario)
+    dia = (agora or datetime.now(fuso)).astimezone(fuso).date()
+    inicio = datetime.combine(dia, time.min, tzinfo=fuso)
+    return inicio.astimezone(UTC), (inicio + timedelta(days=1)).astimezone(UTC)
 
 
 def xp_permitido(usuario_id: int, valor: int) -> int:

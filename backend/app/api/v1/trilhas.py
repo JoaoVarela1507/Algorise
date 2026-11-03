@@ -23,6 +23,7 @@ from app.schemas.trilha import (
     PassoDetalhe,
     ReporteDoModulo,
     Trilha,
+    TrilhaAtual,
     TrilhaDetalhe,
     TrilhaRecomendada,
 )
@@ -111,6 +112,31 @@ def listar_recomendadas(
     ]
 
 
+@router.get(
+    "/atual",
+    response_model=TrilhaAtual | None,
+    summary="Trilha que o aluno está fazendo",
+    description=(
+        "A última trilha que o aluno mexeu e não terminou; sem nenhuma, a primeira "
+        "sugestão. `null` quando não há trilha publicada."
+    ),
+)
+def obter_trilha_atual(usuario: UsuarioAtual, db: Session = Depends(get_db)) -> TrilhaAtual | None:
+    # Antes de `/{slug}` pelo mesmo motivo de `/recomendadas`.
+    encontrada = servico.trilha_atual(db, usuario)
+    if encontrada is None:
+        return None
+
+    trilha, feitos, proximo = encontrada
+    return TrilhaAtual.model_validate(trilha).model_copy(
+        update={
+            "total_modulos": len(trilha.modulos),
+            "progresso": feitos,
+            "proximo_modulo": proximo.titulo if proximo else None,
+        }
+    )
+
+
 @router.get("/{slug}", response_model=TrilhaDetalhe, summary="Trilha com os passos e seus estados")
 def obter_trilha(
     slug: str, usuario: UsuarioOpcional, db: Session = Depends(get_db)
@@ -119,12 +145,17 @@ def obter_trilha(
     estados = servico_progresso.estados_dos_passos(db, usuario=usuario, trilha=trilha)
 
     detalhe = TrilhaDetalhe.model_validate(trilha)
-    detalhe.modulos = [_com_estado(modulo, estados[modulo.id]) for modulo in detalhe.modulos]
+    acertadas = _acertadas(db, usuario, detalhe.modulos)
+    detalhe.modulos = [
+        _com_feitas(_com_estado(modulo, estados[modulo.id]), acertadas)
+        for modulo in detalhe.modulos
+    ]
 
     return detalhe.model_copy(
         update={
             "total_modulos": len(detalhe.modulos),
             "progresso": sum(1 for m in detalhe.modulos if m.concluido),
+            "parceiro_nome": trilha.parceiro.nome if trilha.parceiro else None,
         }
     )
 
@@ -172,7 +203,8 @@ def obter_passo(
         total_passos=len(ordens),
         proximo=ordem + 1 if ordem < max(ordens) else None,
     )
-    return _com_estado(passo, estados[modulo.id])
+    acertadas = _acertadas(db, usuario, [passo])
+    return _com_feitas(_com_estado(passo, estados[modulo.id]), acertadas)
 
 
 @router.post(
@@ -275,6 +307,27 @@ def _com_progresso(db: Session, pagina: Pagina[Trilha], usuario: Usuario | None)
         for trilha in pagina.itens
     ]
     return pagina
+
+
+def _acertadas(db: Session, usuario: Usuario | None, modulos: list[ModuloDetalhe]) -> set[int]:
+    """As atividades destes módulos que o aluno já acertou; nenhuma para visitante."""
+    if usuario is None:
+        return set()
+    return submissoes.acertadas(
+        db, usuario_id=usuario.id, atividade_ids=[a.id for m in modulos for a in m.atividades]
+    )
+
+
+def _com_feitas[T: ModuloDetalhe](modulo: T, acertadas: set[int]) -> T:
+    """Marca as atividades já acertadas e soma o XP que o passo paga ao todo."""
+    return modulo.model_copy(
+        update={
+            "atividades": [
+                a.model_copy(update={"concluida": a.id in acertadas}) for a in modulo.atividades
+            ],
+            "xp": sum(a.xp for a in modulo.atividades) + submissoes.XP_POR_PASSO,
+        }
+    )
 
 
 def _com_estado[T: ModuloDetalhe](modulo: T, estado: StatusProgresso) -> T:

@@ -8,9 +8,9 @@ import { StreakCard } from '@/components/home/StreakCard'
 import { TrilhaAtualCard } from '@/components/home/TrilhaAtualCard'
 import { Carregando, ErroAoCarregar } from '@/components/ui/estados'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { useCheckin, usePainel } from '@/hooks/useGamificacao'
+import { useCheckin, useConquistas, useMetaDiaria, usePainel } from '@/hooks/useGamificacao'
 import { useRanking } from '@/hooks/useRanking'
-import { conquistasMock, metaDiariaMock, trilhaAtualMock } from '@/mocks/home'
+import { useTrilhaAtual } from '@/hooks/useTrilhas'
 
 const container: Variants = {
   oculto: {},
@@ -29,6 +29,9 @@ export function HomePage() {
   const ranking = useRanking({ limite: 8, usuarioId: Number(usuario?.id) || undefined })
   const painel = usePainel()
   const checkin = useCheckin()
+  const trilhaAtual = useTrilhaAtual()
+  const conquistas = useConquistas()
+  const metaDiaria = useMetaDiaria()
 
   // Abrir a home é o acesso do dia: é aqui que o streak da tela 16 avança. A
   // API conta um por dia, então repetir não estraga nada — só gasta rede, e por
@@ -75,10 +78,28 @@ export function HomePage() {
 
           <div className="flex flex-col gap-6 xl:col-span-4">
             <motion.section variants={secao}>
-              <TrilhaAtualCard trilha={trilhaAtualMock} />
+              {trilhaAtual.isPending ? (
+                <Carregando rotulo="Carregando trilha…" />
+              ) : trilhaAtual.isError ? (
+                <ErroAoCarregar
+                  erro={trilhaAtual.error}
+                  aoTentarDeNovo={() => void trilhaAtual.refetch()}
+                />
+              ) : (
+                <TrilhaAtualCard trilha={trilhaAtual.data} />
+              )}
             </motion.section>
             <motion.section variants={secao} className="flex-1">
-              <ConquistasCard conquistas={conquistasMock} className="h-full" />
+              {conquistas.isPending ? (
+                <Carregando rotulo="Carregando conquistas…" />
+              ) : conquistas.isError ? (
+                <ErroAoCarregar
+                  erro={conquistas.error}
+                  aoTentarDeNovo={() => void conquistas.refetch()}
+                />
+              ) : (
+                <ConquistasCard conquistas={conquistas.data} className="h-full" />
+              )}
             </motion.section>
           </div>
 
@@ -87,7 +108,16 @@ export function HomePage() {
               <StreakCard dias={painel.data?.streak_dias ?? usuario?.streakDias ?? 0} />
             </motion.section>
             <motion.section variants={secao} className="flex-1">
-              <MetaDiariaCard meta={metaDiariaMock} className="h-full" />
+              {metaDiaria.isPending ? (
+                <Carregando rotulo="Carregando meta do dia…" />
+              ) : metaDiaria.isError ? (
+                <ErroAoCarregar
+                  erro={metaDiaria.error}
+                  aoTentarDeNovo={() => void metaDiaria.refetch()}
+                />
+              ) : (
+                <MetaDiariaCard meta={metaDiaria.data} className="h-full" />
+              )}
             </motion.section>
           </div>
         </div>

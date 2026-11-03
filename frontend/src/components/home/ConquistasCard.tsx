@@ -1,7 +1,27 @@
 import { motion } from 'framer-motion'
-import { Lock, Trophy } from 'lucide-react'
+import {
+  Flame,
+  Footprints,
+  GraduationCap,
+  Lock,
+  Medal,
+  Moon,
+  Timer,
+  Trophy,
+  type LucideIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Conquista } from '@/types/gamificacao'
+
+/** O desenho de cada conquista, pelo `id` que a API manda. */
+const ICONES: Record<string, LucideIcon> = {
+  'primeiro-passo': Footprints,
+  'em-chamas': Flame,
+  'top-10': Medal,
+  coruja: Moon,
+  maratonista: Timer,
+  'trilha-completa': GraduationCap,
+}
 
 export function ConquistasCard({
   conquistas,
@@ -31,47 +51,52 @@ export function ConquistasCard({
 
       {/* Na coluna estreita do desktop cabem 3 por linha; em tablet, 6 numa linha só. */}
       <ul className="mt-4 grid flex-1 grid-cols-3 content-center gap-x-3 gap-y-5 sm:grid-cols-6 xl:grid-cols-3">
-        {conquistas.map((conquista, i) => (
-          <motion.li
-            key={conquista.id}
-            initial={{ opacity: 0, scale: 0.6 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4 + i * 0.07, type: 'spring', stiffness: 300, damping: 16 }}
-            className="group flex flex-col items-center gap-2 text-center"
-            title={conquista.descricao}
-          >
-            <motion.span
-              whileHover={
-                conquista.desbloqueada ? { rotate: [0, -12, 12, -6, 0], scale: 1.1 } : undefined
-              }
-              transition={{ duration: 0.5 }}
-              className={cn(
-                'relative flex size-14 items-center justify-center rounded-full border-2',
-                conquista.desbloqueada
-                  ? 'border-xp bg-xp/20 text-streak shadow-sm'
-                  : 'border-dashed border-locked/60 bg-muted text-locked',
-              )}
+        {conquistas.map((conquista, i) => {
+          // Conquista nova no backend antes de ganhar ícone aqui: troféu genérico.
+          const Icone = ICONES[conquista.id] ?? Trophy
+          return (
+            <motion.li
+              key={conquista.id}
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.4 + i * 0.07, type: 'spring', stiffness: 300, damping: 16 }}
+              className="group flex flex-col items-center gap-2 text-center"
+              title={conquista.descricao}
             >
-              <conquista.icone className="size-6" aria-hidden />
-              {!conquista.desbloqueada && (
-                <span className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-card">
-                  <Lock className="size-3" aria-hidden />
+              <motion.span
+                whileHover={
+                  conquista.desbloqueada ? { rotate: [0, -12, 12, -6, 0], scale: 1.1 } : undefined
+                }
+                transition={{ duration: 0.5 }}
+                className={cn(
+                  'relative flex size-14 items-center justify-center rounded-full border-2',
+                  conquista.desbloqueada
+                    ? 'border-xp bg-xp/20 text-streak shadow-sm'
+                    : 'border-dashed border-locked/60 bg-muted text-locked',
+                )}
+              >
+                <Icone className="size-6" aria-hidden />
+                {!conquista.desbloqueada && (
+                  <span className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-card">
+                    <Lock className="size-3" aria-hidden />
+                  </span>
+                )}
+              </motion.span>
+              <span
+                className={cn(
+                  'text-xs font-bold leading-tight',
+                  conquista.desbloqueada ? 'text-foreground' : 'text-muted-foreground',
+                )}
+              >
+                {conquista.titulo}
+                <span className="sr-only">
+                  {conquista.desbloqueada ? ' (desbloqueada)' : ' (bloqueada)'}:{' '}
+                  {conquista.descricao}
                 </span>
-              )}
-            </motion.span>
-            <span
-              className={cn(
-                'text-xs font-bold leading-tight',
-                conquista.desbloqueada ? 'text-foreground' : 'text-muted-foreground',
-              )}
-            >
-              {conquista.titulo}
-              <span className="sr-only">
-                {conquista.desbloqueada ? ' (desbloqueada)' : ' (bloqueada)'}: {conquista.descricao}
               </span>
-            </span>
-          </motion.li>
-        ))}
+            </motion.li>
+          )
+        })}
       </ul>
     </div>
   )

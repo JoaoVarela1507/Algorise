@@ -1,5 +1,3 @@
-import type { LucideIcon } from 'lucide-react'
-
 export interface MetaDiaria {
   xpHoje: number
   xpMeta: number
@@ -7,10 +5,10 @@ export interface MetaDiaria {
   minutosEstudados: number
 }
 
+/** O ícone sai do `id`, no `ConquistasCard`: a API não fala de desenho. */
 export interface Conquista {
   id: string
   titulo: string
   descricao: string
-  icone: LucideIcon
   desbloqueada: boolean
 }

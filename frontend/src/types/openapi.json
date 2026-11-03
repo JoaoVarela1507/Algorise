@@ -513,6 +513,22 @@
       "AtividadeResumo": {
         "description": "Atividade sem gabarito — é o que pode ir para o cliente.",
         "properties": {
+          "codigo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo"
+          },
+          "concluida": {
+            "default": false,
+            "title": "Concluida",
+            "type": "boolean"
+          },
           "dica": {
             "anyOf": [
               {
@@ -531,6 +547,20 @@
           "id": {
             "title": "Id",
             "type": "integer"
+          },
+          "opcoes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opcoes"
           },
           "ordem": {
             "title": "Ordem",
@@ -919,6 +949,35 @@
           "codigo"
         ],
         "title": "Certificado",
+        "type": "object"
+      },
+      "Conquista": {
+        "description": "Uma medalha do card de conquistas (tela 16).\n\nO `id` é estável: o frontend escolhe o ícone por ele.",
+        "properties": {
+          "desbloqueada": {
+            "title": "Desbloqueada",
+            "type": "boolean"
+          },
+          "descricao": {
+            "title": "Descricao",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "descricao",
+          "desbloqueada"
+        ],
+        "title": "Conquista",
         "type": "object"
       },
       "ContagemDeNotificacoes": {
@@ -2230,6 +2289,39 @@
         ],
         "title": "MensagemDoServidor"
       },
+      "MetaDiaria": {
+        "description": "O anel de meta do dia da home (tela 16), no fuso do aluno.",
+        "properties": {
+          "desafios_resolvidos": {
+            "minimum": 0.0,
+            "title": "Desafios Resolvidos",
+            "type": "integer"
+          },
+          "minutos_estudados": {
+            "minimum": 0.0,
+            "title": "Minutos Estudados",
+            "type": "integer"
+          },
+          "xp_hoje": {
+            "minimum": 0.0,
+            "title": "Xp Hoje",
+            "type": "integer"
+          },
+          "xp_meta": {
+            "minimum": 1.0,
+            "title": "Xp Meta",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "xp_hoje",
+          "xp_meta",
+          "desafios_resolvidos",
+          "minutos_estudados"
+        ],
+        "title": "MetaDiaria",
+        "type": "object"
+      },
       "MetricasAtividade": {
         "properties": {
           "abandono": {
@@ -2445,6 +2537,11 @@
               }
             ],
             "title": "Video Url"
+          },
+          "xp": {
+            "default": 0,
+            "title": "Xp",
+            "type": "integer"
           }
         },
         "required": [
@@ -3386,6 +3483,11 @@
               }
             ],
             "title": "Video Url"
+          },
+          "xp": {
+            "default": 0,
+            "title": "Xp",
+            "type": "integer"
           }
         },
         "required": [
@@ -4500,6 +4602,78 @@
         "title": "TrilhaAdmin",
         "type": "object"
       },
+      "TrilhaAtual": {
+        "description": "Card \"trilha atual\" da home (tela 16).",
+        "properties": {
+          "categoria": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categoria"
+          },
+          "disciplina": {
+            "title": "Disciplina",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "periodo": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo"
+          },
+          "progresso": {
+            "default": 0,
+            "title": "Progresso",
+            "type": "integer"
+          },
+          "proximo_modulo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proximo Modulo"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "total_modulos": {
+            "default": 0,
+            "title": "Total Modulos",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "nome",
+          "disciplina"
+        ],
+        "title": "TrilhaAtual",
+        "type": "object"
+      },
       "TrilhaCriacao": {
         "properties": {
           "carga_horaria": {
@@ -4632,6 +4806,17 @@
           "nome": {
             "title": "Nome",
             "type": "string"
+          },
+          "parceiro_nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parceiro Nome"
           },
           "periodo": {
             "anyOf": [
@@ -8669,6 +8854,56 @@
         ]
       }
     },
+    "/api/v1/gamificacao/conquistas": {
+      "get": {
+        "operationId": "listarConquistas",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Conquista"
+                  },
+                  "title": "Response Listarconquistas",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Conquistas do aluno, desbloqueadas ou não",
+        "tags": [
+          "gamificacao"
+        ]
+      }
+    },
     "/api/v1/gamificacao/me": {
       "get": {
         "description": "Só leitura: não registra acesso nem mexe no streak.",
@@ -8711,6 +8946,53 @@
           }
         ],
         "summary": "XP, nível e streak do aluno",
+        "tags": [
+          "gamificacao"
+        ]
+      }
+    },
+    "/api/v1/gamificacao/meta-diaria": {
+      "get": {
+        "description": "O dia vira à meia-noite no fuso do aluno, como o streak.",
+        "operationId": "obterMetaDiaria",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetaDiaria"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "XP, desafios e minutos de hoje",
         "tags": [
           "gamificacao"
         ]
@@ -9672,6 +9954,61 @@
           }
         ],
         "summary": "Catálogo de trilhas",
+        "tags": [
+          "trilhas"
+        ]
+      }
+    },
+    "/api/v1/trilhas/atual": {
+      "get": {
+        "description": "A última trilha que o aluno mexeu e não terminou; sem nenhuma, a primeira sugestão. `null` quando não há trilha publicada.",
+        "operationId": "obterTrilhaAtual",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TrilhaAtual"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Obtertrilhaatual"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Trilha que o aluno está fazendo",
         "tags": [
           "trilhas"
         ]
