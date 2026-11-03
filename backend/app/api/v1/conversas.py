@@ -3,13 +3,16 @@
 O envio de mensagens, com a resposta em streaming, fica em `chat.py`.
 """
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import UsuarioAtual
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.erros import ErroDeNegocio
 from app.schemas.conversas import (
+    Anexo,
     ConversaResumo,
     EdicaoDeConversa,
     EdicaoDeGrupo,
@@ -20,6 +23,7 @@ from app.schemas.conversas import (
     Sugestao,
 )
 from app.schemas.pagina import Pagina, PaginacaoAtual
+from app.services import anexos
 from app.services import conversas as servico
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -187,10 +191,93 @@ def apagar_grupo(grupo_id: int, usuario: UsuarioAtual, db: Session = Depends(get
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+# --- anexos -------------------------------------------------------------------------------
+
+
+@router.post(
+    "/anexos",
+    response_model=Anexo,
+    status_code=status.HTTP_201_CREATED,
+    summary="Envia um anexo para a próxima mensagem",
+    description=(
+        "Texto ou código (UTF-8), PDF ou imagem PNG, JPEG ou WebP. O tipo sai do conteúdo. "
+        "Mande o id em `anexo_ids` da mensagem; só o texto vai para o tutor."
+    ),
+)
+def enviar_anexo(
+    usuario: UsuarioAtual,
+    arquivo: UploadFile = File(description="Até 2 MB"),
+    db: Session = Depends(get_db),
+) -> Anexo:
+    # Um byte além do limite basta para saber que passou, sem ler o resto.
+    conteudo = arquivo.file.read(settings.chat_anexo_tamanho_maximo + 1)
+    try:
+        return Anexo.model_validate(
+            anexos.salvar(db, usuario, arquivo.filename or "anexo", conteudo)
+        )
+    except anexos.AnexoGrandeDemais as erro:
+        megabytes = settings.chat_anexo_tamanho_maximo // (1024 * 1024)
+        raise ErroDeNegocio(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            code="anexo_grande_demais",
+            message=f"O anexo pode ter até {megabytes} MB.",
+            details={"limite_bytes": settings.chat_anexo_tamanho_maximo},
+        ) from erro
+    except anexos.AnexoInvalido as erro:
+        raise ErroDeNegocio(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            code="anexo_invalido",
+            message=str(erro),
+        ) from erro
+
+
+@router.get(
+    "/anexos/{anexo_id}",
+    response_class=FileResponse,
+    summary="Baixa um anexo",
+    responses={200: {"content": {"application/octet-stream": {}}}},
+)
+def baixar_anexo(anexo_id: int, usuario: UsuarioAtual, db: Session = Depends(get_db)) -> Response:
+    try:
+        anexo = anexos.do_aluno(db, usuario.id, anexo_id)
+    except anexos.AnexoNaoEncontrado as erro:
+        raise _nao_encontrada("anexo", anexo_id) from erro
+    # Sempre download, nunca aberto no navegador: um HTML anexado não roda na
+    # origem da API.
+    return FileResponse(
+        anexos.caminho(anexo),
+        filename=anexo.nome,
+        media_type="application/octet-stream",
+        content_disposition_type="attachment",
+        headers={"X-Content-Type-Options": "nosniff"},
+    )
+
+
+@router.delete(
+    "/anexos/{anexo_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Desiste de um anexo ainda não enviado",
+)
+def apagar_anexo(anexo_id: int, usuario: UsuarioAtual, db: Session = Depends(get_db)) -> Response:
+    try:
+        anexo = anexos.do_aluno(db, usuario.id, anexo_id)
+    except anexos.AnexoNaoEncontrado as erro:
+        raise _nao_encontrada("anexo", anexo_id) from erro
+    if anexo.mensagem_id is not None:
+        raise ErroDeNegocio(
+            status_code=status.HTTP_409_CONFLICT,
+            code="anexo_ja_enviado",
+            message="O anexo já faz parte de uma mensagem; apague a conversa para tirá-lo.",
+        )
+    anexos.apagar(db, anexo)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 def _nao_encontrada(o_que: str, identificador: int | None) -> ErroDeNegocio:
     codigo, mensagem = {
         "conversa": ("conversa_nao_encontrada", "Conversa não encontrada"),
         "grupo": ("grupo_nao_encontrado", "Grupo não encontrado"),
+        "anexo": ("anexo_nao_encontrado", "Anexo não encontrado"),
     }[o_que]
     return ErroDeNegocio(
         status_code=status.HTTP_404_NOT_FOUND,

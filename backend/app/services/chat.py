@@ -10,6 +10,7 @@ do banco. O fluxo de uma mensagem tem três tempos, e a rota é quem os encadeia
 3. `registrar_resposta`: grava a resposta, inteira ou o que deu tempo de gerar.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from sqlalchemy import func, select
@@ -31,6 +32,7 @@ from app.models import (
     Trilha,
     Usuario,
 )
+from app.services import anexos
 
 TAMANHO_DO_TITULO = 80
 
@@ -47,15 +49,27 @@ class Preparo:
 
 
 def preparar(
-    db: Session, usuario: Usuario, conversa_id: int | None, conteudo: str, modo: ModoResposta
+    db: Session,
+    usuario: Usuario,
+    conversa_id: int | None,
+    conteudo: str,
+    modo: ModoResposta,
+    anexo_ids: Sequence[int] = (),
 ) -> Preparo:
-    """Monta o pedido ao modelo: instrução, histórico da conversa e a pergunta."""
+    """Monta o pedido ao modelo: instrução, resumo, histórico, a pergunta e os anexos.
+
+    Levanta `anexos.AnexoNaoEncontrado` ou `anexos.AnexoInvalido` se algum anexo
+    pedido não é do aluno, já foi usado ou passa do limite por mensagem.
+    """
     historico: list[MensagemChat] = []
+    resumo: str | None = None
     if conversa_id is not None:
         conversa = db.get(Conversa, conversa_id)
         if conversa is None or conversa.usuario_id != usuario.id:
             raise ConversaNaoEncontrada
         historico = _ultimas_mensagens(db, conversa_id)
+        resumo = conversa.resumo
+    escolhidos = anexos.soltos(db, usuario.id, list(anexo_ids)) if anexo_ids else []
 
     contexto = tutor.mensagens(
         aluno_do_tutor(db, usuario),
@@ -64,7 +78,8 @@ def preparar(
             MensagemIA("user" if m.papel is PapelMensagem.usuario else "assistant", m.conteudo)
             for m in historico
         ],
-        conteudo,
+        anexos.para_o_modelo(conteudo, escolhidos),
+        resumo,
     )
     return Preparo(conversa_id, contexto, tutor.max_tokens(modo))
 
@@ -102,9 +117,13 @@ def trilha_atual(db: Session, usuario: Usuario) -> tuple[Trilha, Modulo] | None:
 
 
 def registrar_pergunta(
-    db: Session, usuario: Usuario, conversa_id: int | None, conteudo: str
+    db: Session,
+    usuario: Usuario,
+    conversa_id: int | None,
+    conteudo: str,
+    anexo_ids: Sequence[int] = (),
 ) -> tuple[Conversa, MensagemChat]:
-    """Grava a pergunta, abrindo a conversa se for a primeira mensagem."""
+    """Grava a pergunta, abrindo a conversa se for a primeira mensagem, e liga os anexos."""
     if conversa_id is None:
         conversa = Conversa(usuario_id=usuario.id, titulo=titulo_de(conteudo))
         db.add(conversa)
@@ -115,6 +134,8 @@ def registrar_pergunta(
     mensagem = MensagemChat(conversa=conversa, papel=PapelMensagem.usuario, conteudo=conteudo)
     db.add(mensagem)
     db.commit()
+    if anexo_ids:
+        anexos.vincular(db, anexos.soltos(db, usuario.id, list(anexo_ids)), mensagem)
     db.refresh(conversa)
     return conversa, mensagem
 

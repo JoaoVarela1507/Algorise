@@ -12,10 +12,10 @@ buscando "laço"; no SQLite dos testes, um `LIKE`.
 from sqlalchemy import Select, exists, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import Conversa, GrupoChat, MensagemChat, Usuario
+from app.models import AnexoChat, Conversa, GrupoChat, MensagemChat, Usuario
 from app.schemas.conversas import EdicaoDeConversa, EdicaoDeGrupo, NovaConversa, NovoGrupo
 from app.schemas.pagina import Paginacao
-from app.services import chat
+from app.services import anexos, chat
 
 TITULO_PADRAO = "Nova conversa"
 SUGESTOES_RECENTES = 4
@@ -92,9 +92,18 @@ def editar(db: Session, usuario: Usuario, conversa_id: int, dados: EdicaoDeConve
 
 
 def apagar(db: Session, usuario: Usuario, conversa_id: int) -> None:
-    """Apaga a conversa e as mensagens (cascade); o grupo continua."""
-    db.delete(do_aluno(db, usuario, conversa_id))
+    """Apaga a conversa, as mensagens e os anexos (cascade), e os arquivos; o grupo continua."""
+    conversa = do_aluno(db, usuario, conversa_id)
+    arquivos = list(
+        db.scalars(
+            select(AnexoChat.arquivo)
+            .join(MensagemChat)
+            .where(MensagemChat.conversa_id == conversa.id)
+        )
+    )
+    db.delete(conversa)
     db.commit()
+    anexos.apagar_arquivos(arquivos)
 
 
 def do_aluno(db: Session, usuario: Usuario, conversa_id: int) -> Conversa:

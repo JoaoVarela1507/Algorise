@@ -35,6 +35,16 @@ class ConversaResumo(BaseModel):
     atualizado_em: datetime
 
 
+class Anexo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    nome: str
+    # `texto`, `pdf` ou `imagem`.
+    tipo: str
+    tamanho: int
+
+
 class Mensagem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -43,6 +53,7 @@ class Mensagem(BaseModel):
     conteudo: str
     incompleta: bool
     criado_em: datetime
+    anexos: list[Anexo] = []
 
 
 class NovoGrupo(BaseModel):

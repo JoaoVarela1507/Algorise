@@ -40,7 +40,7 @@ from app.ia import IAIndisponivel, ProvedorIA
 from app.models import Usuario
 from app.schemas.chat import NovaMensagem
 from app.schemas.tempo_real import ErroDoWebSocket, Inscrito
-from app.services import chat
+from app.services import anexos, chat, resumo_chat
 from app.services.tempo_real import Conexao, gerenciador, publicar
 
 logger = logging.getLogger(__name__)
@@ -106,6 +106,12 @@ async def responder(
     except chat.ConversaNaoEncontrada:
         _erro(remetente, "conversa_nao_encontrada", "Conversa não encontrada")
         return
+    except anexos.AnexoNaoEncontrado:
+        _erro(remetente, "anexo_nao_encontrado", "Anexo não encontrado ou já usado")
+        return
+    except anexos.AnexoInvalido as erro:
+        _erro(remetente, "anexo_invalido", str(erro))
+        return
 
     escopo = anyio.CancelScope()
     if preparo.conversa_id is not None and not _registrar(preparo.conversa_id, escopo):
@@ -123,7 +129,12 @@ async def responder(
         return
 
     conversa_id, titulo, pergunta_id = await run_in_threadpool(
-        _registrar_pergunta, fabrica, usuario_id, preparo.conversa_id, dados.conteudo
+        _registrar_pergunta,
+        fabrica,
+        usuario_id,
+        preparo.conversa_id,
+        dados.conteudo,
+        dados.anexo_ids,
     )
     if preparo.conversa_id is None:
         _registrar(conversa_id, escopo)
@@ -147,6 +158,8 @@ async def responder(
             "pergunta": dados.conteudo,
         },
     )
+    # O aluno já tem a resposta: o que saiu da janela de contexto vira resumo.
+    await resumo_chat.atualizar(fabrica, provedor, conversa_id)
 
 
 async def _transmitir(
@@ -237,15 +250,21 @@ def _soltar(conversa_id: int | None) -> None:
 def _preparar(fabrica: Fabrica, usuario_id: int, dados: NovaMensagem) -> chat.Preparo:
     with fabrica() as db:
         usuario = db.get_one(Usuario, usuario_id)
-        return chat.preparar(db, usuario, dados.conversa_id, dados.conteudo, dados.modo)
+        return chat.preparar(
+            db, usuario, dados.conversa_id, dados.conteudo, dados.modo, dados.anexo_ids
+        )
 
 
 def _registrar_pergunta(
-    fabrica: Fabrica, usuario_id: int, conversa_id: int | None, conteudo: str
+    fabrica: Fabrica,
+    usuario_id: int,
+    conversa_id: int | None,
+    conteudo: str,
+    anexo_ids: list[int],
 ) -> tuple[int, str, int]:
     with fabrica() as db:
         usuario = db.get_one(Usuario, usuario_id)
-        conversa, pergunta = chat.registrar_pergunta(db, usuario, conversa_id, conteudo)
+        conversa, pergunta = chat.registrar_pergunta(db, usuario, conversa_id, conteudo, anexo_ids)
         return conversa.id, conversa.titulo, pergunta.id
 
 

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, sessionmaker
+from starlette.background import BackgroundTask
 
 from app.api.deps import UsuarioAtual
 from app.core.database import get_db, get_fabrica_de_sessoes
@@ -17,7 +18,7 @@ from app.core.erros import ErroDeNegocio, RespostaDeErro
 from app.core.rate_limit import LimiteDoChat
 from app.ia import IAIndisponivel, ProvedorIA, get_provedor_ia
 from app.schemas.chat import NovaMensagem
-from app.services import chat
+from app.services import anexos, chat, resumo_chat
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +66,26 @@ async def enviar_mensagem(
     # segurar o streaming dos outros alunos.
     try:
         preparo = await run_in_threadpool(
-            chat.preparar, db, usuario, dados.conversa_id, dados.conteudo, dados.modo
+            chat.preparar,
+            db,
+            usuario,
+            dados.conversa_id,
+            dados.conteudo,
+            dados.modo,
+            dados.anexo_ids,
         )
+    except anexos.AnexoNaoEncontrado as erro:
+        raise ErroDeNegocio(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="anexo_nao_encontrado",
+            message="Anexo não encontrado ou já usado em outra mensagem",
+        ) from erro
+    except anexos.AnexoInvalido as erro:
+        raise ErroDeNegocio(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            code="anexo_invalido",
+            message=str(erro),
+        ) from erro
     except chat.ConversaNaoEncontrada as erro:
         # A de outro aluno responde igual à inexistente.
         raise ErroDeNegocio(
@@ -88,7 +107,12 @@ async def enviar_mensagem(
         ) from erro
 
     conversa, pergunta = await run_in_threadpool(
-        chat.registrar_pergunta, db, usuario, preparo.conversa_id, dados.conteudo
+        chat.registrar_pergunta,
+        db,
+        usuario,
+        preparo.conversa_id,
+        dados.conteudo,
+        dados.anexo_ids,
     )
     return StreamingResponse(
         transmitir(
@@ -98,6 +122,9 @@ async def enviar_mensagem(
             {"conversa_id": conversa.id, "titulo": conversa.titulo, "mensagem_id": pergunta.id},
         ),
         media_type="text/event-stream",
+        # Depois da resposta, sem o aluno esperar: o que saiu da janela de
+        # contexto vira resumo (#33).
+        background=BackgroundTask(resumo_chat.atualizar, fabrica, provedor, conversa.id),
         headers={
             "Cache-Control": "no-cache",
             # Sem isso, um nginx na frente junta a resposta inteira antes de
