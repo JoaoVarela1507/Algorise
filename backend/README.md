@@ -540,6 +540,32 @@ para e o resto fica `pendente` até o dia seguinte. A resposta de cada consulta
 fica 30 dias em `buscas_youtube`, então duas ementas com a mesma lacuna não pagam
 a mesma busca duas vezes.
 
+### Transcrição dos vídeos
+
+Cada vídeo escolhido pela busca vai para a fila da transcrição, na ordem da
+playlist (tarefa `transcricao`, `app/services/transcricao.py`). O worker tenta
+primeiro a **legenda manual** em português, que sai em segundos; sem ela, baixa
+**só o áudio** com o `yt-dlp` e transcreve com o **Whisper** (`faster-whisper`,
+modelo `WHISPER_MODELO`, `small` em int8 na CPU). As falas, com início e fim,
+entram no vault como o documento `youtube:<id>`, ligado ao vídeo e ainda sem
+módulo; cada trecho guarda `inicio_segundos` e `fim_segundos`.
+
+- **O vídeo não é hospedado:** só a legenda ou o áudio é baixado, numa pasta
+  temporária apagada no fim, com sucesso ou com falha.
+- **Falhas:** vídeo privado ou removido e vídeo acima de
+  `TRANSCRICAO_DURACAO_MAXIMA` (3 h) ficam `falhou`, com o motivo em
+  `videos_youtube.erro`. O erro inesperado é tentado de novo pela fila.
+- **Só no worker:** o `yt-dlp` e o `faster-whisper` estão em
+  `requirements-transcricao.txt`, instalado só no estágio `worker` do Dockerfile.
+  A API, a CI e os testes não os instalam. O modelo do Whisper (uns 500 MB) é
+  baixado na primeira transcrição para o volume `modelos_whisper`.
+
+**Termos do YouTube:** baixar o áudio vai contra os termos de uso do YouTube,
+exceto quando o dono do vídeo permite, como nos vídeos com licença Creative
+Commons. Para o projeto acadêmico o risco foi aceito. Antes de qualquer uso
+comercial, esta parte precisa ser revista; a busca pode ficar restrita a
+`videoLicense=creativeCommon`.
+
 ### Vault das skills
 
 O vault (#200) guarda o que as skills consultam: as transcrições dos vídeos dos
