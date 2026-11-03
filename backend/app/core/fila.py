@@ -46,6 +46,9 @@ TEMPO_MAXIMO_DA_SEGMENTACAO = 30 * 60
 TEMPO_MAXIMO_DA_CATEGORIZACAO = 60 * 60
 # Uma chamada ao modelo com o conteúdo do módulo.
 TEMPO_MAXIMO_DOS_EXERCICIOS = 30 * 60
+# Desafio de código (#34): os casos rodam em sequência, cada um com o seu teto
+# na sandbox. Passando disso, o job é cancelado e a execução vira `falhou`.
+TEMPO_MAXIMO_DA_EXECUCAO = 5 * 60
 # A tarefa que cai no meio (o worker reiniciou, o banco piscou) é tentada de
 # novo, esperando cada vez mais. A falha esperada (PDF ilegível, IA fora) não
 # chega aqui: a própria tarefa a grava na ementa e termina sem erro.
@@ -83,6 +86,10 @@ class Fila(Protocol):
 
     def exercicios(self, geracao_id: int) -> bool:
         """Põe na fila a geração dos exercícios de um módulo (#201)."""
+        ...
+
+    def execucao(self, execucao_id: str) -> bool:
+        """Põe na fila a execução do código do desafio na sandbox (#34)."""
         ...
 
 
@@ -153,6 +160,19 @@ class FilaRedis:
             tempo_maximo=TEMPO_MAXIMO_DOS_EXERCICIOS,
         )
 
+    def execucao(self, execucao_id: str) -> bool:
+        from app.tarefas import execucao
+
+        return self.enfileirar(
+            execucao.executar,
+            execucao_id,
+            chave=f"execucao-{execucao_id}",
+            tempo_maximo=TEMPO_MAXIMO_DA_EXECUCAO,
+            ao_falhar=execucao.falhou,
+            # Rodar o código do aluno de novo sozinho não ajuda: ele que tente.
+            novas_tentativas=None,
+        )
+
     def enfileirar(
         self,
         funcao: Callable[..., object],
@@ -160,6 +180,7 @@ class FilaRedis:
         chave: str,
         tempo_maximo: int,
         ao_falhar: Callable[..., object] | None = None,
+        novas_tentativas: Retry | None = NOVAS_TENTATIVAS,
     ) -> bool:
         """Enfileira `funcao(*argumentos)`, a menos que a tarefa `chave` esteja pendente."""
         if self._pendente(chave):
@@ -170,7 +191,7 @@ class FilaRedis:
             *argumentos,
             job_id=chave,
             job_timeout=tempo_maximo,
-            retry=NOVAS_TENTATIVAS,
+            retry=novas_tentativas,
             on_failure=Callback(ao_falhar) if ao_falhar else None,
             # O resultado não interessa (a tarefa grava no banco); a falha fica
             # uma semana no registro do RQ, para `rq info` mostrar o motivo.
@@ -233,6 +254,12 @@ class FilaLocal:
         self.tarefas.add_task(exercicios.gerar_com, self.fabrica, self.provedor, geracao_id)
         return True
 
+    def execucao(self, execucao_id: str) -> bool:
+        from app.tarefas import execucao
+
+        self.tarefas.add_task(execucao.executar_com, self.fabrica, execucao_id)
+        return True
+
 
 class FilaImediata:
     """Roda a tarefa agora, na thread de quem chamou.
@@ -275,6 +302,12 @@ class FilaImediata:
         from app.tarefas import exercicios
 
         exercicios.gerar(geracao_id)
+        return True
+
+    def execucao(self, execucao_id: str) -> bool:
+        from app.tarefas import execucao
+
+        execucao.executar(execucao_id)
         return True
 
 

@@ -173,13 +173,20 @@ jobs:
           python backend/scripts/exportar_openapi.py
           git diff --exit-code frontend/src/types/openapi.json             || { echo "::error::Rode 'npm run gen:api' e commite o resultado"; exit 1; }
 
+      # A imagem em que a sandbox do desafio (#34) roda o código do aluno.
+      - name: Imagem da sandbox
+        run: docker pull python:3.13-alpine
+
       # A suíte usa SQLite e `fakeredis`, então não depende dos serviços acima;
       # eles continuam existindo para as migrações e o smoke.
       # `TESTE_POSTGRES_URL` liga os testes marcados `postgres`, que conferem
       # no banco de verdade o que o SQLite não tem (a busca do pgvector).
+      # `SANDBOX_TESTES` liga os de contenção da sandbox (#34), contra o Docker
+      # do runner: loop infinito, fork bomb, leitura de arquivo, rede.
       - name: Testes (Pytest)
         env:
           TESTE_POSTGRES_URL: postgresql+psycopg://algorise:algorise@localhost:5432/algorise
+          SANDBOX_TESTES: '1'
         run: pytest --cov=app --cov-report=term --cov-fail-under=80
 
   e2e:

@@ -45,6 +45,9 @@ markers = [
     # Só roda com `TESTE_POSTGRES_URL` apontando para um PostgreSQL com pgvector
     # (o CI liga); fora dele, o teste é pulado.
     "postgres: precisa de um PostgreSQL de verdade",
+    # Só roda com `SANDBOX_TESTES=1` e o Docker de pé (o CI liga): a contenção
+    # da sandbox do desafio de código (#34).
+    "sandbox: precisa do Docker, para os testes de contenção da sandbox",
 ]
 filterwarnings = [
     # Aviso vira erro: é assim que um `datetime.utcnow()` novo aparece antes de

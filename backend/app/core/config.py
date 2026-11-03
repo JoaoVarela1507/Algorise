@@ -53,6 +53,23 @@ class Settings(BaseSettings):
     rate_limit_chat_requisicoes: int = 20
     rate_limit_chat_janela: int = 60
 
+    # Sandbox do desafio de código (#34). `docker` roda cada caso de teste num
+    # container efêmero; `desligada` recusa a execução (máquina sem Docker).
+    # `SANDBOX_RUNTIME=runsc` usa o gVisor, que isola o kernel também: é o que
+    # se quer em produção.
+    sandbox_modo: str = "docker"
+    sandbox_imagem: str = "python:3.13-alpine"
+    sandbox_runtime: str = ""
+    sandbox_memoria_mb: int = 128
+    sandbox_cpus: float = 0.5
+    sandbox_processos: int = 32
+    sandbox_tempo_segundos: int = 5
+    sandbox_saida_maxima: int = 64 * 1024
+    sandbox_codigo_maximo: int = 20_000
+    # Execuções por aluno por janela: cada uma sobe um container por caso.
+    rate_limit_execucoes_requisicoes: int = 10
+    rate_limit_execucoes_janela: int = 60
+
     # WebSocket (#35). O token vem no primeiro frame, dentro do prazo; o servidor
     # manda `ping` a cada intervalo e derruba a conexão calada por mais tempo
     # que `ws_tempo_morto`. Os limites são por instância da API.

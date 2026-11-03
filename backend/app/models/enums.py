@@ -160,3 +160,13 @@ class PapelUsuario(str, Enum):
     aluno = "aluno"
     autor = "autor"
     admin = "admin"
+
+
+class StatusExecucao(str, Enum):
+    """Execução do código do desafio na sandbox (#34)."""
+
+    na_fila = "na_fila"
+    executando = "executando"
+    concluida = "concluida"
+    # A sandbox não pôde rodar (sem Docker, imagem ausente): não é culpa do código.
+    falhou = "falhou"

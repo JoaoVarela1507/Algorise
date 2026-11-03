@@ -765,6 +765,29 @@
         "title": "Cancelar",
         "type": "object"
       },
+      "CasoPublico": {
+        "properties": {
+          "entrada": {
+            "title": "Entrada",
+            "type": "string"
+          },
+          "ordem": {
+            "title": "Ordem",
+            "type": "integer"
+          },
+          "saida_esperada": {
+            "title": "Saida Esperada",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ordem",
+          "entrada",
+          "saida_esperada"
+        ],
+        "title": "CasoPublico",
+        "type": "object"
+      },
       "Certificado": {
         "properties": {
           "carga_horaria": {
@@ -974,6 +997,58 @@
           "total_periodos"
         ],
         "title": "CursoResumo",
+        "type": "object"
+      },
+      "Desafio": {
+        "properties": {
+          "casos_publicos": {
+            "items": {
+              "$ref": "#/components/schemas/CasoPublico"
+            },
+            "title": "Casos Publicos",
+            "type": "array"
+          },
+          "dica": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dica"
+          },
+          "enunciado": {
+            "title": "Enunciado",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "linguagem": {
+            "default": "python",
+            "title": "Linguagem",
+            "type": "string"
+          },
+          "total_casos": {
+            "title": "Total Casos",
+            "type": "integer"
+          },
+          "xp": {
+            "title": "Xp",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "enunciado",
+          "xp",
+          "casos_publicos",
+          "total_casos"
+        ],
+        "title": "Desafio",
         "type": "object"
       },
       "DigitandoNoChat": {
@@ -1553,6 +1628,97 @@
           "confirmacao"
         ],
         "title": "ExclusaoConta",
+        "type": "object"
+      },
+      "ExecucaoNaFila": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusExecucao"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "ExecucaoNaFila",
+        "type": "object"
+      },
+      "ExecucaoSaida": {
+        "properties": {
+          "aprovada": {
+            "title": "Aprovada",
+            "type": "boolean"
+          },
+          "atividade_id": {
+            "title": "Atividade Id",
+            "type": "integer"
+          },
+          "casos": {
+            "items": {
+              "$ref": "#/components/schemas/ResultadoDoCaso"
+            },
+            "title": "Casos",
+            "type": "array"
+          },
+          "criado_em": {
+            "format": "date-time",
+            "title": "Criado Em",
+            "type": "string"
+          },
+          "erro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erro"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusExecucao"
+          },
+          "stderr": {
+            "title": "Stderr",
+            "type": "string"
+          },
+          "stdout": {
+            "title": "Stdout",
+            "type": "string"
+          },
+          "terminada_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terminada Em"
+          }
+        },
+        "required": [
+          "id",
+          "atividade_id",
+          "status",
+          "aprovada",
+          "stdout",
+          "stderr",
+          "casos",
+          "criado_em"
+        ],
+        "title": "ExecucaoSaida",
         "type": "object"
       },
       "ExercicioDePratica": {
@@ -2379,6 +2545,21 @@
           }
         },
         "title": "NovaConversa",
+        "type": "object"
+      },
+      "NovaExecucao": {
+        "properties": {
+          "codigo": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Codigo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "codigo"
+        ],
+        "title": "NovaExecucao",
         "type": "object"
       },
       "NovaMensagem": {
@@ -3771,6 +3952,73 @@
         "title": "RespostaDeErro",
         "type": "object"
       },
+      "ResultadoDoCaso": {
+        "properties": {
+          "entrada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entrada"
+          },
+          "esperado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Esperado"
+          },
+          "motivo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo"
+          },
+          "obtido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Obtido"
+          },
+          "ordem": {
+            "title": "Ordem",
+            "type": "integer"
+          },
+          "passou": {
+            "title": "Passou",
+            "type": "boolean"
+          },
+          "publico": {
+            "title": "Publico",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ordem",
+          "publico",
+          "passou"
+        ],
+        "title": "ResultadoDoCaso",
+        "type": "object"
+      },
       "Sessao": {
         "properties": {
           "access_token": {
@@ -3834,6 +4082,17 @@
           "falhou"
         ],
         "title": "StatusEmenta",
+        "type": "string"
+      },
+      "StatusExecucao": {
+        "description": "Execução do código do desafio na sandbox (#34).",
+        "enum": [
+          "na_fila",
+          "executando",
+          "concluida",
+          "falhou"
+        ],
+        "title": "StatusExecucao",
         "type": "string"
       },
       "StatusGeracao": {
@@ -7519,6 +7778,156 @@
         ]
       }
     },
+    "/api/v1/desafios/{desafio_id}": {
+      "get": {
+        "operationId": "obterDesafio",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "desafio_id",
+            "required": true,
+            "schema": {
+              "title": "Desafio Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Desafio"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Não encontrado"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "summary": "Enunciado, dica e casos de teste públicos",
+        "tags": [
+          "desafios"
+        ]
+      }
+    },
+    "/api/v1/desafios/{desafio_id}/execucoes": {
+      "post": {
+        "description": "Responde na hora com o id; o resultado sai em `GET /execucoes/{id}`.",
+        "operationId": "executarDesafio",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "desafio_id",
+            "required": true,
+            "schema": {
+              "title": "Desafio Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NovaExecucao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecucaoNaFila"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Não encontrado"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Execuções demais em pouco tempo"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Envia o código para rodar na sandbox",
+        "tags": [
+          "desafios"
+        ]
+      }
+    },
     "/api/v1/ementas": {
       "post": {
         "description": "Responde na hora com status `pendente`; o texto é extraído em segundo plano, e depois a IA lê as disciplinas e os assuntos (`status_assuntos`). Acompanhe por `GET /ementas/{id}`.",
@@ -7914,6 +8323,73 @@
         "summary": "Confirma os assuntos e gera a trilha guiada",
         "tags": [
           "ementas"
+        ]
+      }
+    },
+    "/api/v1/execucoes/{execucao_id}": {
+      "get": {
+        "operationId": "obterExecucao",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "execucao_id",
+            "required": true,
+            "schema": {
+              "title": "Execucao Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecucaoSaida"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Não encontrado"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Status e resultado de uma execução",
+        "tags": [
+          "desafios"
         ]
       }
     },
@@ -10085,6 +10561,10 @@
     {
       "description": "Pódio e classificação por XP.",
       "name": "ranking"
+    },
+    {
+      "description": "Desafio de código, corrigido numa sandbox isolada.",
+      "name": "desafios"
     },
     {
       "description": "Centro de notificações do aluno.",
