@@ -20,6 +20,9 @@ class Resultado:
     origem: OrigemVault
     modulo_id: int | None
     inicio_segundos: float | None
+    fim_segundos: float | None = None
+    # O vídeo do YouTube ainda sem módulo (#208).
+    video_id: int | None = None
 
 
 async def buscar(
@@ -86,6 +89,8 @@ def buscar_por_vetor(
             origem=documento.origem,
             modulo_id=documento.modulo_id,
             inicio_segundos=trecho.inicio_segundos,
+            fim_segundos=trecho.fim_segundos,
+            video_id=documento.video_id,
         )
         for trecho, documento, distancia in linhas
     ]

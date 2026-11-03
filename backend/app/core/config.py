@@ -98,6 +98,13 @@ class Settings(BaseSettings):
     # Distância de cosseno máxima entre o assunto e o título do vídeo. Mais
     # folgada que a da ementa: o título é curto e diz pouco.
     youtube_distancia_maxima: float = 0.45
+
+    # Transcrição dos vídeos (#208), no worker. `small` é o modelo do Whisper
+    # que cabe numa CPU; `int8` reduz a memória à custa de pouca precisão.
+    whisper_modelo: str = "small"
+    whisper_computacao: str = "int8"
+    # Vídeo mais longo que isto não é transcrito: ocuparia o worker por horas.
+    transcricao_duracao_maxima: int = 3 * 60 * 60
     # Tentativas contra o Ollama fora, só antes do primeiro pedaço: depois dele,
     # tentar de novo repetiria o texto que o aluno já viu.
     ia_tentativas: int = 2

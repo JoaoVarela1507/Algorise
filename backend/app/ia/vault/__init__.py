@@ -24,6 +24,7 @@ from app.ia.vault.ingestao import (
     Ingestao,
     ModuloNaoEncontrado,
     ingerir_transcricao,
+    ingerir_video,
     registrar_modulos,
     registrar_prompts,
 )
@@ -35,6 +36,7 @@ __all__ = [
     "buscar",
     "buscar_por_vetor",
     "ingerir_transcricao",
+    "ingerir_video",
     "registrar_modulos",
     "registrar_prompts",
 ]

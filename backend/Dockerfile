@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.13-slim AS base
 
 # Preenchidos pelo CI; em build local ficam como "unknown" (ver issue #42).
 ARG GIT_COMMIT=unknown
@@ -23,6 +23,23 @@ COPY alembic.ini .
 # aqui para o volume do compose herdar o dono e o usuário sem root poder gravar.
 RUN mkdir -p /app/media/avatares     && useradd --create-home --uid 1000 algorise && chown -R algorise:algorise /app
 USER algorise
+
+# Worker da fila (#206): o mesmo código, mais o que a transcrição dos vídeos
+# (#208) usa. Fica antes da API para ela continuar sendo o estágio padrão de um
+# `docker build` sem `--target`, que é o que a CI constrói.
+FROM base AS worker
+USER root
+COPY requirements-transcricao.txt .
+RUN pip install --no-cache-dir -r requirements-transcricao.txt \
+    && mkdir -p /app/modelos && chown algorise:algorise /app/modelos
+USER algorise
+# O modelo do Whisper é baixado uma vez, para o volume montado aqui.
+ENV HF_HOME=/app/modelos
+# O worker não serve HTTP: não há `/health` para conferir.
+HEALTHCHECK NONE
+CMD ["rq", "worker", "algorise", "--with-scheduler"]
+
+FROM base AS api
 
 EXPOSE 8000
 

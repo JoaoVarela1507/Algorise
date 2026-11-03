@@ -1,0 +1,9 @@
+# Só na imagem do worker (estágio `worker` do Dockerfile): a transcrição dos
+# vídeos do YouTube (#208). A API, a CI e os testes não instalam isto; o código
+# importa estes pacotes dentro das funções que os usam.
+#
+# Baixa a legenda ou só o áudio do vídeo.
+yt-dlp==2026.10.21
+# O Whisper em CTranslate2: roda na CPU, com o modelo quantizado em int8. Lê o
+# áudio pelo PyAV, que já traz as bibliotecas do ffmpeg.
+faster-whisper==1.2.1
