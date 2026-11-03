@@ -10,7 +10,8 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.models import OrigemXP, Usuario, XPEvento
-from app.services import gamificacao, ranking
+from app.services import gamificacao, niveis, notificacoes, ranking, ranking_ao_vivo
+from app.services.tempo_real import publicar
 
 
 def registrar_xp(
@@ -58,4 +59,44 @@ def registrar_xp(
     # Depois do commit, nunca antes: se a transação falhar, o ranking não pode
     # ficar com um XP que o banco não tem.
     ranking.atualizar(usuario_id, saldo, agora)
+    _avisar(db, usuario_id, valor, saldo, origem, referencia_id)
     return saldo
+
+
+def _avisar(
+    db: Session,
+    usuario_id: int,
+    valor: int,
+    saldo: int,
+    origem: OrigemXP,
+    referencia_id: int | None,
+) -> None:
+    """O que o XP novo dispara em tempo real (#37).
+
+    `xp.ganho` vai na hora para as abas do aluno (o contador e a barra de nível
+    se mexem). O ranking só é anotado: sai agregado (ver `ranking_ao_vivo`).
+    Subir de nível é uma conquista, gravada no centro de notificações.
+    """
+    nivel, no_nivel, para_o_proximo = niveis.faixa_do_nivel(saldo)
+    publicar(
+        notificacoes.canal_de(usuario_id),
+        "xp.ganho",
+        {
+            "valor": valor,
+            "origem": origem.value,
+            "xp_total": saldo,
+            "nivel": nivel,
+            "xp_no_nivel": no_nivel,
+            "xp_para_o_proximo": para_o_proximo,
+        },
+    )
+    ranking_ao_vivo.marcar(db, usuario_id, origem, referencia_id)
+    if nivel > niveis.nivel_de(saldo - valor):
+        notificacoes.notificar(
+            db,
+            usuario_id,
+            tipo=notificacoes.CONQUISTA,
+            titulo=f"Nível {nivel}!",
+            mensagem=f"Você chegou ao nível {nivel}. Continue assim!",
+            dados={"conquista": "nivel", "nivel": nivel},
+        )

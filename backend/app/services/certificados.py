@@ -17,6 +17,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import Certificado, Modulo, ProgressoUsuario, StatusProgresso, Trilha, Usuario
+from app.services import notificacoes
 
 logger = logging.getLogger(__name__)
 # A auditoria das ações sensíveis (#39) lê este logger.
@@ -65,6 +66,14 @@ def emitir_se_concluiu(db: Session, usuario: Usuario, trilha: Trilha) -> Certifi
     )
     db.add(certificado)
     db.commit()
+    notificacoes.notificar(
+        db,
+        usuario.id,
+        tipo=notificacoes.CERTIFICADO,
+        titulo="Certificado liberado",
+        mensagem=f"Você concluiu {trilha.nome} e já pode baixar o certificado.",
+        dados={"certificado_id": certificado.id, "trilha_id": trilha.id},
+    )
     auditoria.info(
         "certificado_emitido",
         extra={

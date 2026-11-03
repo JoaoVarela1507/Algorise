@@ -600,6 +600,30 @@ O `POST /chat/mensagens` em SSE continua sendo o fallback. O frontend
 numa rede que bloqueia WebSocket ou numa reconexão em curso. O `parar`, ali, corta
 a requisição, e o servidor grava o parcial do mesmo jeito.
 
+#### Ranking, XP e notificações ao vivo
+
+- **`xp.ganho`** sai no canal `notificacoes:{id}` a cada XP ganho, com o saldo e a
+  faixa do nível. A tela atualiza o painel em cache, e o contador anima do valor
+  anterior; com "Reduzir animações" ligado ou `prefers-reduced-motion`, pula direto
+  para o valor.
+- **Notificações gravadas** (tabela `notificacoes`), publicadas no mesmo canal
+  com o tipo como nome do evento:
+  - `conquista.desbloqueada`, ao subir de nível;
+  - `certificado.liberado`, na emissão do certificado;
+  - `streak.risco`, pela tarefa `python -m app.tarefas.streak_risco`. Agende no fim
+    da tarde, no fuso de `FUSO_HORARIO`.
+
+  O centro de notificações (`/api/v1/notificacoes`) lista o que chegou, inclusive
+  offline, conta as não lidas e marca uma ou todas como lidas.
+- **`ranking.atualizado`** nos canais `ranking:geral` e `ranking:{trilha_id}`:
+  - **Agregado:** ganhar XP só anota quem ganhou. A cada
+    `RANKING_INTERVALO_AO_VIVO` segundos, sai um evento por ranking que mudou.
+  - **Só o delta:** o evento leva as linhas que mudaram de posição ou de XP desde
+    a última foto do topo (200 primeiros), mais as de quem ganhou XP.
+  - **Detalhes em `services/ranking_ao_vivo.py`.** As anotações ficam no Redis,
+    porque o worker também concede XP, e qualquer instância com conexões abertas
+    descarrega cada ranking uma vez só.
+
 A IA mora em `app/ia/`, separada de quem a usa:
 
 | Arquivo       | O que tem                                                                                                   |

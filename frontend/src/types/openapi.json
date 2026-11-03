@@ -855,6 +855,19 @@
         "title": "Certificado",
         "type": "object"
       },
+      "ContagemDeNotificacoes": {
+        "properties": {
+          "nao_lidas": {
+            "title": "Nao Lidas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "nao_lidas"
+        ],
+        "title": "ContagemDeNotificacoes",
+        "type": "object"
+      },
       "ConversaResumo": {
         "properties": {
           "arquivada": {
@@ -1864,6 +1877,19 @@
         "title": "Login",
         "type": "object"
       },
+      "Marcadas": {
+        "properties": {
+          "marcadas": {
+            "title": "Marcadas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "marcadas"
+        ],
+        "title": "Marcadas",
+        "type": "object"
+      },
       "Mensagem": {
         "properties": {
           "conteudo": {
@@ -2272,6 +2298,58 @@
         "title": "NivelExperiencia",
         "type": "string"
       },
+      "NotificacaoSaida": {
+        "properties": {
+          "criado_em": {
+            "format": "date-time",
+            "title": "Criado Em",
+            "type": "string"
+          },
+          "dados": {
+            "additionalProperties": true,
+            "title": "Dados",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "lida_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lida Em"
+          },
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tipo",
+          "titulo",
+          "mensagem",
+          "dados",
+          "criado_em"
+        ],
+        "title": "NotificacaoSaida",
+        "type": "object"
+      },
       "NovaConversa": {
         "properties": {
           "primeira_mensagem": {
@@ -2533,6 +2611,50 @@
           "total_paginas"
         ],
         "title": "Pagina[Mensagem]",
+        "type": "object"
+      },
+      "Pagina_NotificacaoSaida_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/NotificacaoSaida"
+            },
+            "title": "Itens",
+            "type": "array"
+          },
+          "pagina": {
+            "description": "Página atual, começando em 1",
+            "minimum": 1.0,
+            "title": "Pagina",
+            "type": "integer"
+          },
+          "tamanho_pagina": {
+            "description": "Quantos itens cabem na página",
+            "minimum": 1.0,
+            "title": "Tamanho Pagina",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de itens em todas as páginas",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "total_paginas": {
+            "description": "Quantas páginas existem no total",
+            "minimum": 0.0,
+            "title": "Total Paginas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "itens",
+          "pagina",
+          "tamanho_pagina",
+          "total",
+          "total_paginas"
+        ],
+        "title": "Pagina[NotificacaoSaida]",
         "type": "object"
       },
       "Pagina_Trilha_": {
@@ -8016,6 +8138,272 @@
         ]
       }
     },
+    "/api/v1/notificacoes": {
+      "get": {
+        "operationId": "listarNotificacoes",
+        "parameters": [
+          {
+            "description": "Só as que ainda não foram lidas",
+            "in": "query",
+            "name": "nao_lidas",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Só as que ainda não foram lidas",
+              "title": "Nao Lidas",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Página, começando em 1",
+            "in": "query",
+            "name": "pagina",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Página, começando em 1",
+              "minimum": 1,
+              "title": "Pagina",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Itens por página (máximo 100)",
+            "in": "query",
+            "name": "tamanho_pagina",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Itens por página (máximo 100)",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Tamanho Pagina",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Campo de ordenação; cada rota documenta os seus",
+            "in": "query",
+            "name": "ordenar_por",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Campo de ordenação; cada rota documenta os seus",
+              "title": "Ordenar Por"
+            }
+          },
+          {
+            "description": "Inverte a ordem",
+            "in": "query",
+            "name": "decrescente",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Inverte a ordem",
+              "title": "Decrescente",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_NotificacaoSaida_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Notificações do aluno, da mais recente",
+        "tags": [
+          "notificacoes"
+        ]
+      }
+    },
+    "/api/v1/notificacoes/contagem": {
+      "get": {
+        "operationId": "contarNotificacoes",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContagemDeNotificacoes"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Quantas notificações faltam ler (o número no sino)",
+        "tags": [
+          "notificacoes"
+        ]
+      }
+    },
+    "/api/v1/notificacoes/lidas": {
+      "post": {
+        "operationId": "marcarTodasLidas",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Marcadas"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Marca todas como lidas",
+        "tags": [
+          "notificacoes"
+        ]
+      }
+    },
+    "/api/v1/notificacoes/{notificacao_id}/lida": {
+      "post": {
+        "operationId": "marcarNotificacaoLida",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notificacao_id",
+            "required": true,
+            "schema": {
+              "title": "Notificacao Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificacaoSaida"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Marca uma notificação como lida",
+        "tags": [
+          "notificacoes"
+        ]
+      }
+    },
     "/api/v1/onboarding": {
       "post": {
         "description": "Instituição e curso pelo `id` do catálogo ou pelo nome digitado. Pode ser refeito; `onboarding_concluido_em` guarda a primeira conclusão.",
@@ -9697,6 +10085,10 @@
     {
       "description": "Pódio e classificação por XP.",
       "name": "ranking"
+    },
+    {
+      "description": "Centro de notificações do aluno.",
+      "name": "notificacoes"
     },
     {
       "description": "Instituições, cursos e períodos do onboarding.",

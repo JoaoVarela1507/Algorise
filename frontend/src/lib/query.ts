@@ -85,6 +85,11 @@ export const chaves = {
     todas: ['ranking'] as const,
     pagina: (filtros: Record<string, unknown>) => ['ranking', filtros] as const,
   },
+  notificacoes: {
+    todas: ['notificacoes'] as const,
+    lista: () => ['notificacoes', 'lista'] as const,
+    contagem: () => ['notificacoes', 'contagem'] as const,
+  },
   academico: {
     instituicoes: (busca: string) => ['academico', 'instituicoes', busca] as const,
     cursos: (instituicaoId: number) => ['academico', 'cursos', instituicaoId] as const,

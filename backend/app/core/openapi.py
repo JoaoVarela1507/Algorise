@@ -32,6 +32,7 @@ TAGS = [
         "description": "Gestão de trilhas, passos e atividades e métricas. Autor e admin.",
     },
     {"name": "ranking", "description": "Pódio e classificação por XP."},
+    {"name": "notificacoes", "description": "Centro de notificações do aluno."},
     {"name": "academico", "description": "Instituições, cursos e períodos do onboarding."},
     {"name": "ementas", "description": "Upload da ementa em PDF e o status da leitura."},
     {"name": "chat", "description": "Chat com o tutor de IA, com a resposta em streaming."},

@@ -33,6 +33,7 @@ from app.models.enums import (
     TipoTrilha,
 )
 from app.models.gamificacao import Certificado, Parceiro, Streak, XPEvento
+from app.models.notificacao import Notificacao
 from app.models.progresso import ProgressoUsuario, RespostaUsuario
 from app.models.trilha import Atividade, ExerciciosGerados, Modulo, ReporteModulo, Trilha
 from app.models.usuario import Consentimento, ContaOAuth, Usuario
@@ -66,6 +67,7 @@ __all__ = [
     "ModoResposta",
     "Modulo",
     "NivelExperiencia",
+    "Notificacao",
     "OrigemModulo",
     "OrigemVault",
     "OrigemXP",
