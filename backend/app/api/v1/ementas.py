@@ -79,7 +79,9 @@ def enviar_ementa(
 
 # Antes de `/{ementa_id}`: senão "atual" cairia ali e voltaria 422 por não ser número.
 @router.get("/atual", response_model=EmentaStatus, summary="A última ementa enviada pelo aluno")
-def obter_atual(usuario: UsuarioAtual, db: Session = Depends(get_db)) -> EmentaStatus:
+def obter_atual(
+    usuario: UsuarioAtual, db: Session = Depends(get_db), fila: Fila = Depends(get_fila)
+) -> EmentaStatus:
     ementa = ementas.atual_do_aluno(db, usuario)
     if ementa is None:
         raise ErroDeNegocio(
@@ -87,14 +89,20 @@ def obter_atual(usuario: UsuarioAtual, db: Session = Depends(get_db)) -> EmentaS
             code="ementa_nao_encontrada",
             message="Você ainda não enviou uma ementa",
         )
+    _conferir_tarefa(db, ementa, fila)
     return EmentaStatus.model_validate(ementa)
 
 
 @router.get("/{ementa_id}", response_model=EmentaStatus, summary="Status da leitura da ementa")
 def obter_ementa(
-    ementa_id: int, usuario: UsuarioAtual, db: Session = Depends(get_db)
+    ementa_id: int,
+    usuario: UsuarioAtual,
+    db: Session = Depends(get_db),
+    fila: Fila = Depends(get_fila),
 ) -> EmentaStatus:
-    return EmentaStatus.model_validate(_do_aluno(db, usuario, ementa_id))
+    ementa = _do_aluno(db, usuario, ementa_id)
+    _conferir_tarefa(db, ementa, fila)
+    return EmentaStatus.model_validate(ementa)
 
 
 @router.get(
@@ -214,6 +222,8 @@ def reler_assuntos(
     fila: Fila = Depends(get_fila),
 ) -> EmentaStatus:
     ementa = _do_aluno(db, usuario, ementa_id)
+    # Uma leitura morta com o worker deixa de bloquear o pedido de ler de novo.
+    _conferir_tarefa(db, ementa, fila)
     if not ementas.reler_assuntos(db, ementa):
         raise _assuntos_indisponiveis(ementa)
     fila.ementa(ementa.id)
@@ -233,6 +243,12 @@ def _assuntos_indisponiveis(ementa: Ementa) -> ErroDeNegocio:
         message="Os assuntos desta ementa ainda não estão prontos. Aguarde a leitura.",
         details={"status": ementa.status, "status_assuntos": ementa.status_assuntos},
     )
+
+
+def _conferir_tarefa(db: Session, ementa: Ementa, fila: Fila) -> None:
+    """Se a leitura parece em andamento, confere se a tarefa dela ainda vive."""
+    if ementas.em_andamento(ementa):
+        ementas.marcar_se_interrompida(db, ementa, tarefa_viva=fila.ementa_em_andamento(ementa.id))
 
 
 def _do_aluno(db: Session, usuario: Usuario, ementa_id: int) -> Ementa:
