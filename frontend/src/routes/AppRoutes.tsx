@@ -18,6 +18,7 @@ import { QuestaoPage } from '@/pages/Questao/QuestaoPage'
 import { ChatPage } from '@/pages/Chat/ChatPage'
 import { PerfilPage } from '@/pages/Perfil/PerfilPage'
 import { CertificadosPage } from '@/pages/Certificados/CertificadosPage'
+import { ValidarCertificadoPage } from '@/pages/Certificados/ValidarCertificadoPage'
 import { ConfiguracoesPage } from '@/pages/Configuracoes/ConfiguracoesPage'
 import { DesignSystemPage } from '@/pages/DesignSystem/DesignSystemPage'
 import { RequireAuth } from '@/routes/RequireAuth'
@@ -27,6 +28,9 @@ export function AppRoutes() {
     <Routes>
       <Route path="/boas-vindas" element={<BoasVindasPage />} />
       <Route path="/privacidade" element={<PrivacidadePage />} />
+      {/* Pública: quem recebeu o certificado confere sem ter conta. */}
+      <Route path="/validar" element={<ValidarCertificadoPage />} />
+      <Route path="/validar/:codigo" element={<ValidarCertificadoPage />} />
 
       <Route element={<AuthLayout />}>
         <Route path="/onboarding" element={<OnboardingPage />} />

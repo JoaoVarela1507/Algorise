@@ -32,7 +32,7 @@ from app.models.enums import (
     TipoAtividade,
     TipoTrilha,
 )
-from app.models.gamificacao import Certificado, Streak, XPEvento
+from app.models.gamificacao import Certificado, Parceiro, Streak, XPEvento
 from app.models.progresso import ProgressoUsuario, RespostaUsuario
 from app.models.trilha import Atividade, ExerciciosGerados, Modulo, ReporteModulo, Trilha
 from app.models.usuario import Consentimento, ContaOAuth, Usuario
@@ -70,6 +70,7 @@ __all__ = [
     "OrigemXP",
     "PapelMensagem",
     "PapelUsuario",
+    "Parceiro",
     "ParteLacuna",
     "ParteVideo",
     "ProgressoUsuario",

@@ -48,8 +48,10 @@ export function useConcluirPasso(slug: string | undefined) {
   return useMutation({
     mutationFn: (ordem: number) => concluirPasso(slug as string, ordem),
     onSuccess: () => {
-      // O passo fechado muda progresso, catálogo, detalhe e ranking.
+      // O passo fechado muda progresso, catálogo, detalhe, ranking e, no último
+      // passo de uma trilha de parceiro, os certificados.
       void queryClient.invalidateQueries({ queryKey: chaves.trilhas.todas })
+      void queryClient.invalidateQueries({ queryKey: chaves.certificados.todas })
       void queryClient.invalidateQueries({ queryKey: chaves.perfil.todas })
       void queryClient.invalidateQueries({ queryKey: chaves.ranking.todas })
       void queryClient.invalidateQueries({ queryKey: chaves.gamificacao.todas })

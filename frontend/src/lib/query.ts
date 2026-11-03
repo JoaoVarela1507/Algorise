@@ -63,6 +63,11 @@ export const chaves = {
     guiada: () => ['trilhas', 'guiada'] as const,
     exercicios: (slug: string, ordem: number) => ['trilhas', 'exercicios', slug, ordem] as const,
   },
+  certificados: {
+    todas: ['certificados'] as const,
+    lista: () => ['certificados', 'lista'] as const,
+    validacao: (codigo: string) => ['certificados', 'validacao', codigo] as const,
+  },
   ementa: {
     todas: ['ementa'] as const,
     atual: () => ['ementa', 'atual'] as const,

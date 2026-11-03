@@ -47,6 +47,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
+    # O nome do arquivo do PDF do certificado (#32): sem expor, o navegador
+    # esconde o header de uma resposta de outra origem.
+    expose_headers=["Content-Disposition"],
     # O navegador guarda o preflight por 10 minutos em vez de repetir o
     # OPTIONS a cada chamada autenticada.
     max_age=600,

@@ -25,7 +25,7 @@ from app.models import (
     Trilha,
     Usuario,
 )
-from app.services import progresso, xp
+from app.services import certificados, progresso, xp
 
 
 class TipoNaoSuportado(Exception):
@@ -179,6 +179,8 @@ def concluir_passo(
 
     ja_concluido = progresso.esta_concluido(db, usuario_id=usuario.id, modulo_id=modulo.id)
     progresso.concluir_passo(db, usuario_id=usuario.id, trilha=trilha, modulo=modulo)
+    # Fechou o último passo de uma trilha de parceiro: sai o certificado (#32).
+    certificados.emitir_se_concluiu(db, usuario, trilha)
 
     ganho = 0
     if not ja_concluido:

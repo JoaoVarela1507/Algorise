@@ -685,6 +685,96 @@
         "title": "Body_enviarEmenta",
         "type": "object"
       },
+      "Certificado": {
+        "properties": {
+          "carga_horaria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carga Horaria"
+          },
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "disciplina": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disciplina"
+          },
+          "emitido_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emitido Em"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "nome_aluno": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Aluno"
+          },
+          "nome_trilha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Trilha"
+          },
+          "parceiro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parceiro"
+          },
+          "trilha_id": {
+            "title": "Trilha Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "trilha_id",
+          "codigo"
+        ],
+        "title": "Certificado",
+        "type": "object"
+      },
       "Correcao": {
         "description": "A resposta da submissão.",
         "properties": {
@@ -1219,6 +1309,81 @@
           "nome"
         ],
         "title": "InstituicaoResumo",
+        "type": "object"
+      },
+      "ItemDeCertificado": {
+        "description": "Uma trilha de parceiro: o certificado liberado ou o que falta para ele.",
+        "properties": {
+          "carga_horaria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carga Horaria"
+          },
+          "certificado_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Certificado Id"
+          },
+          "concluidos": {
+            "title": "Concluidos",
+            "type": "integer"
+          },
+          "disciplina": {
+            "title": "Disciplina",
+            "type": "string"
+          },
+          "estado": {
+            "enum": [
+              "liberado",
+              "bloqueado"
+            ],
+            "title": "Estado",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "parceiro": {
+            "title": "Parceiro",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "total_modulos": {
+            "title": "Total Modulos",
+            "type": "integer"
+          },
+          "trilha_id": {
+            "title": "Trilha Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "trilha_id",
+          "slug",
+          "nome",
+          "disciplina",
+          "parceiro",
+          "total_modulos",
+          "concluidos",
+          "estado"
+        ],
+        "title": "ItemDeCertificado",
         "type": "object"
       },
       "ItemGuiado": {
@@ -1813,6 +1978,65 @@
           "maior_streak"
         ],
         "title": "Painel",
+        "type": "object"
+      },
+      "ParceiroAdmin": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "nome": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Nome",
+            "type": "string"
+          },
+          "site": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site"
+          }
+        },
+        "required": [
+          "nome",
+          "id"
+        ],
+        "title": "ParceiroAdmin",
+        "type": "object"
+      },
+      "ParceiroCriacao": {
+        "properties": {
+          "nome": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Nome",
+            "type": "string"
+          },
+          "site": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site"
+          }
+        },
+        "required": [
+          "nome"
+        ],
+        "title": "ParceiroCriacao",
         "type": "object"
       },
       "PassoAdmin": {
@@ -2482,6 +2706,33 @@
         "title": "PeriodoCurso",
         "type": "object"
       },
+      "PeriodoDeCertificados": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ItemDeCertificado"
+            },
+            "title": "Itens",
+            "type": "array"
+          },
+          "periodo": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo"
+          }
+        },
+        "required": [
+          "itens"
+        ],
+        "title": "PeriodoDeCertificados",
+        "type": "object"
+      },
       "Preferencias": {
         "description": "Acessibilidade escolhida pelo aluno, que vale em qualquer aparelho.",
         "properties": {
@@ -2950,6 +3201,17 @@
       },
       "TrilhaAdmin": {
         "properties": {
+          "carga_horaria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carga Horaria"
+          },
           "categoria": {
             "anyOf": [
               {
@@ -2983,6 +3245,17 @@
           "nome": {
             "title": "Nome",
             "type": "string"
+          },
+          "parceiro_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parceiro Id"
           },
           "passos": {
             "default": [],
@@ -3024,6 +3297,19 @@
       },
       "TrilhaCriacao": {
         "properties": {
+          "carga_horaria": {
+            "anyOf": [
+              {
+                "maximum": 2000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carga Horaria"
+          },
           "categoria": {
             "anyOf": [
               {
@@ -3058,6 +3344,17 @@
             "minLength": 1,
             "title": "Nome",
             "type": "string"
+          },
+          "parceiro_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parceiro Id"
           },
           "periodo": {
             "anyOf": [
@@ -3168,6 +3465,19 @@
       },
       "TrilhaEdicao": {
         "properties": {
+          "carga_horaria": {
+            "anyOf": [
+              {
+                "maximum": 2000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carga Horaria"
+          },
           "categoria": {
             "anyOf": [
               {
@@ -3216,6 +3526,17 @@
               }
             ],
             "title": "Nome"
+          },
+          "parceiro_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parceiro Id"
           },
           "periodo": {
             "anyOf": [
@@ -3278,6 +3599,19 @@
       "TrilhaImportada": {
         "description": "Uma trilha inteira. Importar de novo o mesmo slug atualiza, em vez de duplicar.",
         "properties": {
+          "carga_horaria": {
+            "anyOf": [
+              {
+                "maximum": 2000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carga Horaria"
+          },
           "categoria": {
             "anyOf": [
               {
@@ -3312,6 +3646,17 @@
             "minLength": 1,
             "title": "Nome",
             "type": "string"
+          },
+          "parceiro_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parceiro Id"
           },
           "passos": {
             "items": {
@@ -3482,6 +3827,87 @@
           "nome_exibicao"
         ],
         "title": "UsuarioAutenticado",
+        "type": "object"
+      },
+      "Validacao": {
+        "description": "O que o certificado diz, para quem confere o código. Nada mais do aluno.",
+        "properties": {
+          "carga_horaria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carga Horaria"
+          },
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "disciplina": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disciplina"
+          },
+          "emitido_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emitido Em"
+          },
+          "nome_aluno": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Aluno"
+          },
+          "nome_trilha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Trilha"
+          },
+          "parceiro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parceiro"
+          }
+        },
+        "required": [
+          "codigo"
+        ],
+        "title": "Validacao",
         "type": "object"
       },
       "Versao": {
@@ -3756,6 +4182,111 @@
           }
         ],
         "summary": "Desempenho por trilha e por atividade",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/parceiros": {
+      "get": {
+        "operationId": "adminListarParceiros",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ParceiroAdmin"
+                  },
+                  "title": "Response Adminlistarparceiros",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Parceiros que certificam",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "description": "A trilha com `parceiro_id` passa a emitir certificado. Só admin.",
+        "operationId": "adminCriarParceiro",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParceiroCriacao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParceiroAdmin"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cadastra um parceiro",
         "tags": [
           "admin"
         ]
@@ -4994,6 +5525,221 @@
         "summary": "Iniciar Login Social",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/certificados": {
+      "get": {
+        "description": "Só as trilhas de parceiros, que são as que emitem certificado. Cada uma vem `liberado`, com o id do certificado, ou `bloqueado`, com o progresso.",
+        "operationId": "listarCertificados",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PeriodoDeCertificados"
+                  },
+                  "title": "Response Listarcertificados",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Certificados do aluno, agrupados por período",
+        "tags": [
+          "certificados"
+        ]
+      }
+    },
+    "/api/v1/certificados/validar/{codigo}": {
+      "get": {
+        "description": "404 para código que não existe.",
+        "operationId": "validarCertificado",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "codigo",
+            "required": true,
+            "schema": {
+              "title": "Codigo",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Validacao"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "summary": "Valida um certificado pelo código, sem login",
+        "tags": [
+          "certificados"
+        ]
+      }
+    },
+    "/api/v1/certificados/{certificado_id}": {
+      "get": {
+        "operationId": "obterCertificado",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "certificado_id",
+            "required": true,
+            "schema": {
+              "title": "Certificado Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Certificado"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dados de um certificado",
+        "tags": [
+          "certificados"
+        ]
+      }
+    },
+    "/api/v1/certificados/{certificado_id}/download": {
+      "get": {
+        "description": "Só o dono baixa; o de outro aluno, ou o não conquistado, responde 404.",
+        "operationId": "baixarCertificado",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "certificado_id",
+            "required": true,
+            "schema": {
+              "title": "Certificado Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {}
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "PDF do certificado",
+        "tags": [
+          "certificados"
         ]
       }
     },
@@ -7166,6 +7912,10 @@
     {
       "description": "Catálogo de trilhas, módulos e atividades.",
       "name": "trilhas"
+    },
+    {
+      "description": "Certificados das trilhas de parceiros.",
+      "name": "certificados"
     },
     {
       "description": "Gestão de trilhas, passos e atividades e métricas. Autor e admin.",
