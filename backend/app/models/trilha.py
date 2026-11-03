@@ -9,6 +9,7 @@ from app.models.base import Base, TimestampMixin
 from app.models.enums import NivelExperiencia, OrigemModulo, StatusGeracao, TipoAtividade
 
 if TYPE_CHECKING:
+    from app.models.gamificacao import Parceiro
     from app.models.youtube import ParteVideo
 
 
@@ -25,7 +26,14 @@ class Trilha(Base, TimestampMixin):
     periodo: Mapped[int | None] = mapped_column(index=True)
     descricao: Mapped[str | None] = mapped_column(Text)
     publicada: Mapped[bool] = mapped_column(default=False, index=True)
+    # Certificado (#32): só a trilha de parceiro emite, e a carga horária, em
+    # horas, vai no certificado.
+    parceiro_id: Mapped[int | None] = mapped_column(
+        ForeignKey("parceiros.id", ondelete="SET NULL"), index=True
+    )
+    carga_horaria: Mapped[int | None]
 
+    parceiro: Mapped["Parceiro | None"] = relationship()
     modulos: Mapped[list["Modulo"]] = relationship(
         back_populates="trilha", cascade="all, delete-orphan", order_by="Modulo.ordem"
     )

@@ -10,12 +10,14 @@ from sqlalchemy.orm import Session
 from app.api.deps import exigir_papel
 from app.core.database import get_db
 from app.core.erros import ErroDeNegocio
-from app.models import Atividade, Modulo, PapelUsuario, StatusProgresso, Trilha, Usuario
+from app.models import Atividade, Modulo, PapelUsuario, Parceiro, StatusProgresso, Trilha, Usuario
 from app.schemas.admin import (
     AtividadeAdmin,
     AtividadeCriacao,
     AtividadeEdicao,
     MetricasTrilha,
+    ParceiroAdmin,
+    ParceiroCriacao,
     PassoAdmin,
     PassoCriacao,
     PassoEdicao,
@@ -55,6 +57,8 @@ def admin_criar_trilha(
 ) -> Trilha:
     try:
         return servico.criar_trilha(db, dados)
+    except servico.ParceiroNaoEncontrado as erro:
+        raise _nao_encontrado("parceiro", dados.parceiro_id or 0) from erro
     except servico.SlugEmUso as erro:
         raise ErroDeNegocio(
             status_code=status.HTTP_409_CONFLICT,
@@ -68,7 +72,10 @@ def admin_criar_trilha(
 def admin_editar_trilha(
     trilha_id: int, dados: TrilhaEdicao, _: Usuario = Depends(AUTOR), db: Session = Depends(get_db)
 ) -> Trilha:
-    return servico.editar_trilha(db, _trilha(db, trilha_id), dados)
+    try:
+        return servico.editar_trilha(db, _trilha(db, trilha_id), dados)
+    except servico.ParceiroNaoEncontrado as erro:
+        raise _nao_encontrado("parceiro", dados.parceiro_id or 0) from erro
 
 
 @router.delete(
@@ -246,6 +253,29 @@ def admin_apagar_atividade(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+# --- parceiros ----------------------------------------------------------------------------
+
+
+@router.get("/parceiros", response_model=list[ParceiroAdmin], summary="Parceiros que certificam")
+def admin_listar_parceiros(
+    _: Usuario = Depends(AUTOR), db: Session = Depends(get_db)
+) -> list[Parceiro]:
+    return servico.listar_parceiros(db)
+
+
+@router.post(
+    "/parceiros",
+    response_model=ParceiroAdmin,
+    status_code=status.HTTP_201_CREATED,
+    summary="Cadastra um parceiro",
+    description="A trilha com `parceiro_id` passa a emitir certificado. Só admin.",
+)
+def admin_criar_parceiro(
+    dados: ParceiroCriacao, _: Usuario = Depends(ADMIN), db: Session = Depends(get_db)
+) -> Parceiro:
+    return servico.criar_parceiro(db, dados)
+
+
 # --- métricas -----------------------------------------------------------------------------
 
 
@@ -289,6 +319,7 @@ def _atividade(db: Session, atividade_id: int) -> Atividade:
 
 
 _NAO_ENCONTRADO = {
+    "parceiro": ("parceiro_nao_encontrado", "Parceiro não encontrado"),
     "trilha": ("trilha_nao_encontrada", "Trilha não encontrada"),
     "passo": ("passo_nao_encontrado", "Passo não encontrado"),
     "atividade": ("atividade_nao_encontrada", "Atividade não encontrada"),
