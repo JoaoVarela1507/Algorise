@@ -702,6 +702,26 @@ Cadastro e manutenção de trilhas, passos e atividades sem migração nem deplo
   publicada passa pela mesma conferência.
 - **Ordem sem buraco:** inserir, mover e apagar renumeram os vizinhos.
 
+### Certificados
+
+| Rota                                       | O que faz                                              |
+| ------------------------------------------ | ------------------------------------------------------ |
+| `GET /api/v1/certificados`                 | trilhas de parceiros por período, liberado ou bloqueado |
+| `GET /api/v1/certificados/{id}`            | dados do certificado do aluno                          |
+| `GET /api/v1/certificados/{id}/download`   | o PDF (só o dono; o resto, 404)                        |
+| `GET /api/v1/certificados/validar/{codigo}` | validação pública, sem login                          |
+
+Só a trilha de parceiro (`trilhas.parceiro_id`) emite certificado, que sai
+sozinho quando o aluno fecha o último passo dela. O certificado copia, na
+emissão, o nome do aluno, a trilha, a disciplina, a carga horária e o parceiro: a
+validação mostra o que ele disse no dia, e nada mais do aluno. O código
+(`ALG-7K3Q-9XWM`) não tem letra que confunda (0/O, 1/I/L). O PDF sai com o
+`fpdf2`, com as fontes embutidas do PDF (latin-1: acento passa, emoji não). Os
+parceiros se cadastram em `POST /api/v1/admin/parceiros` (só admin), e a trilha
+ganha o parceiro e a carga horária no `PATCH` do admin. A emissão vai para a
+auditoria (`certificado_emitido`). No frontend, a página pública fica em
+`/validar/{codigo}`.
+
 ### Gamificação
 
 | Rota                               | O que faz                                   |

@@ -97,6 +97,9 @@ class TrilhaEdicao(BaseModel):
     categoria: Annotated[str, StringConstraints(max_length=80)] | None = None
     periodo: int | None = Field(default=None, ge=1, le=12)
     descricao: str | None = None
+    # Certificado (#32): só trilha de parceiro emite; a carga vai no PDF, em horas.
+    parceiro_id: int | None = None
+    carga_horaria: int | None = Field(default=None, ge=1, le=2000)
 
 
 class TrilhaCriacao(TrilhaEdicao):
@@ -116,6 +119,8 @@ class TrilhaAdmin(BaseModel):
     periodo: int | None = None
     descricao: str | None = None
     publicada: bool
+    parceiro_id: int | None = None
+    carga_horaria: int | None = None
     passos: list[PassoAdmin] = Field(default=[], validation_alias="modulos")
 
 
@@ -183,3 +188,14 @@ class MetricasTrilha(BaseModel):
     alunos_concluiram: int
     taxa_de_conclusao: float
     atividades: list[MetricasAtividade]
+
+
+class ParceiroCriacao(BaseModel):
+    nome: Nome
+    site: Annotated[str, StringConstraints(max_length=300)] | None = None
+
+
+class ParceiroAdmin(ParceiroCriacao):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int

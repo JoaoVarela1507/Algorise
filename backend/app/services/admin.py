@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models import (
     Atividade,
     Modulo,
+    Parceiro,
     ProgressoUsuario,
     RespostaUsuario,
     StatusProgresso,
@@ -33,6 +34,7 @@ from app.schemas.admin import (
     ErroComum,
     MetricasAtividade,
     MetricasTrilha,
+    ParceiroCriacao,
     PassoCriacao,
     PassoEdicao,
     ProblemaDeConteudo,
@@ -44,6 +46,10 @@ from app.services import trilhas as servico_trilhas
 
 
 class SlugEmUso(Exception):
+    pass
+
+
+class ParceiroNaoEncontrado(Exception):
     pass
 
 
@@ -77,6 +83,7 @@ def listar(db: Session) -> list[Trilha]:
 def criar_trilha(db: Session, dados: TrilhaCriacao) -> Trilha:
     if db.scalar(select(Trilha.id).where(Trilha.slug == dados.slug)) is not None:
         raise SlugEmUso(dados.slug)
+    _conferir_parceiro(db, dados.parceiro_id)
     # Nasce rascunho: publicar é um passo à parte, que confere o conteúdo.
     trilha = Trilha(**dados.model_dump(), publicada=False)
     db.add(trilha)
@@ -85,7 +92,9 @@ def criar_trilha(db: Session, dados: TrilhaCriacao) -> Trilha:
 
 
 def editar_trilha(db: Session, trilha: Trilha, dados: TrilhaEdicao) -> Trilha:
-    for campo, valor in dados.model_dump(exclude_unset=True).items():
+    campos = dados.model_dump(exclude_unset=True)
+    _conferir_parceiro(db, campos.get("parceiro_id"))
+    for campo, valor in campos.items():
         setattr(trilha, campo, valor)
     db.commit()
     servico_trilhas.invalidar_catalogo()
@@ -339,6 +348,25 @@ def _metricas_da_atividade(db: Session, passo: Modulo, atividade: Atividade) -> 
         abandono=round(len(alunos - acertaram) / len(alunos), 3) if alunos else 0.0,
         erros_comuns=erros_comuns,
     )
+
+
+# --- parceiros ----------------------------------------------------------------------------
+
+
+def listar_parceiros(db: Session) -> list[Parceiro]:
+    return list(db.scalars(select(Parceiro).order_by(Parceiro.nome)))
+
+
+def criar_parceiro(db: Session, dados: ParceiroCriacao) -> Parceiro:
+    parceiro = Parceiro(**dados.model_dump())
+    db.add(parceiro)
+    db.commit()
+    return parceiro
+
+
+def _conferir_parceiro(db: Session, parceiro_id: int | None) -> None:
+    if parceiro_id is not None and db.get(Parceiro, parceiro_id) is None:
+        raise ParceiroNaoEncontrado(parceiro_id)
 
 
 # --- apoio --------------------------------------------------------------------------------

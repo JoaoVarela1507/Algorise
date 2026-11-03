@@ -59,6 +59,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/parceiros": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Parceiros que certificam */
+        get: operations["adminListarParceiros"];
+        put?: never;
+        /**
+         * Cadastra um parceiro
+         * @description A trilha com `parceiro_id` passa a emitir certificado. Só admin.
+         */
+        post: operations["adminCriarParceiro"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/passos/{passo_id}/previa": {
         parameters: {
             query?: never;
@@ -397,6 +418,83 @@ export interface paths {
          * @description Manda o aluno para o provedor.
          */
         get: operations["iniciarLoginSocial"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/certificados": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Certificados do aluno, agrupados por período
+         * @description Só as trilhas de parceiros, que são as que emitem certificado. Cada uma vem `liberado`, com o id do certificado, ou `bloqueado`, com o progresso.
+         */
+        get: operations["listarCertificados"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/certificados/validar/{codigo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Valida um certificado pelo código, sem login
+         * @description 404 para código que não existe.
+         */
+        get: operations["validarCertificado"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/certificados/{certificado_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dados de um certificado */
+        get: operations["obterCertificado"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/certificados/{certificado_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * PDF do certificado
+         * @description Só o dono baixa; o de outro aluno, ou o não conquistado, responde 404.
+         */
+        get: operations["baixarCertificado"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1251,6 +1349,27 @@ export interface components {
              */
             arquivo: string;
         };
+        /** Certificado */
+        Certificado: {
+            /** Carga Horaria */
+            carga_horaria?: number | null;
+            /** Codigo */
+            codigo: string;
+            /** Disciplina */
+            disciplina?: string | null;
+            /** Emitido Em */
+            emitido_em?: string | null;
+            /** Id */
+            id: number;
+            /** Nome Aluno */
+            nome_aluno?: string | null;
+            /** Nome Trilha */
+            nome_trilha?: string | null;
+            /** Parceiro */
+            parceiro?: string | null;
+            /** Trilha Id */
+            trilha_id: number;
+        };
         /**
          * Correcao
          * @description A resposta da submissão.
@@ -1453,6 +1572,35 @@ export interface components {
             sigla?: string | null;
             /** Uf */
             uf?: string | null;
+        };
+        /**
+         * ItemDeCertificado
+         * @description Uma trilha de parceiro: o certificado liberado ou o que falta para ele.
+         */
+        ItemDeCertificado: {
+            /** Carga Horaria */
+            carga_horaria?: number | null;
+            /** Certificado Id */
+            certificado_id?: number | null;
+            /** Concluidos */
+            concluidos: number;
+            /** Disciplina */
+            disciplina: string;
+            /**
+             * Estado
+             * @enum {string}
+             */
+            estado: "liberado" | "bloqueado";
+            /** Nome */
+            nome: string;
+            /** Parceiro */
+            parceiro: string;
+            /** Slug */
+            slug: string;
+            /** Total Modulos */
+            total_modulos: number;
+            /** Trilha Id */
+            trilha_id: number;
         };
         /** ItemGuiado */
         ItemGuiado: {
@@ -1699,6 +1847,22 @@ export interface components {
             /** Xp Total */
             xp_total: number;
         };
+        /** ParceiroAdmin */
+        ParceiroAdmin: {
+            /** Id */
+            id: number;
+            /** Nome */
+            nome: string;
+            /** Site */
+            site?: string | null;
+        };
+        /** ParceiroCriacao */
+        ParceiroCriacao: {
+            /** Nome */
+            nome: string;
+            /** Site */
+            site?: string | null;
+        };
         /** PassoAdmin */
         PassoAdmin: {
             /**
@@ -1924,6 +2088,13 @@ export interface components {
             /** Numero */
             numero: number;
         };
+        /** PeriodoDeCertificados */
+        PeriodoDeCertificados: {
+            /** Itens */
+            itens: components["schemas"]["ItemDeCertificado"][];
+            /** Periodo */
+            periodo?: number | null;
+        };
         /**
          * Preferencias
          * @description Acessibilidade escolhida pelo aluno, que vale em qualquer aparelho.
@@ -2143,6 +2314,8 @@ export interface components {
         };
         /** TrilhaAdmin */
         TrilhaAdmin: {
+            /** Carga Horaria */
+            carga_horaria?: number | null;
             /** Categoria */
             categoria?: string | null;
             /** Descricao */
@@ -2153,6 +2326,8 @@ export interface components {
             id: number;
             /** Nome */
             nome: string;
+            /** Parceiro Id */
+            parceiro_id?: number | null;
             /**
              * Passos
              * @default []
@@ -2167,6 +2342,8 @@ export interface components {
         };
         /** TrilhaCriacao */
         TrilhaCriacao: {
+            /** Carga Horaria */
+            carga_horaria?: number | null;
             /** Categoria */
             categoria?: string | null;
             /** Descricao */
@@ -2175,6 +2352,8 @@ export interface components {
             disciplina: string;
             /** Nome */
             nome: string;
+            /** Parceiro Id */
+            parceiro_id?: number | null;
             /** Periodo */
             periodo?: number | null;
             /** Slug */
@@ -2214,6 +2393,8 @@ export interface components {
         };
         /** TrilhaEdicao */
         TrilhaEdicao: {
+            /** Carga Horaria */
+            carga_horaria?: number | null;
             /** Categoria */
             categoria?: string | null;
             /** Descricao */
@@ -2222,6 +2403,8 @@ export interface components {
             disciplina?: string | null;
             /** Nome */
             nome?: string | null;
+            /** Parceiro Id */
+            parceiro_id?: number | null;
             /** Periodo */
             periodo?: number | null;
         };
@@ -2247,6 +2430,8 @@ export interface components {
          * @description Uma trilha inteira. Importar de novo o mesmo slug atualiza, em vez de duplicar.
          */
         TrilhaImportada: {
+            /** Carga Horaria */
+            carga_horaria?: number | null;
             /** Categoria */
             categoria?: string | null;
             /** Descricao */
@@ -2255,6 +2440,8 @@ export interface components {
             disciplina: string;
             /** Nome */
             nome: string;
+            /** Parceiro Id */
+            parceiro_id?: number | null;
             /** Passos */
             passos: components["schemas"]["PassoImportado"][];
             /** Periodo */
@@ -2329,6 +2516,26 @@ export interface components {
              * @default 0
              */
             xp_total: number;
+        };
+        /**
+         * Validacao
+         * @description O que o certificado diz, para quem confere o código. Nada mais do aluno.
+         */
+        Validacao: {
+            /** Carga Horaria */
+            carga_horaria?: number | null;
+            /** Codigo */
+            codigo: string;
+            /** Disciplina */
+            disciplina?: string | null;
+            /** Emitido Em */
+            emitido_em?: string | null;
+            /** Nome Aluno */
+            nome_aluno?: string | null;
+            /** Nome Trilha */
+            nome_trilha?: string | null;
+            /** Parceiro */
+            parceiro?: string | null;
         };
         /** Versao */
         Versao: {
@@ -2492,6 +2699,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MetricasTrilha"][];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    adminListarParceiros: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParceiroAdmin"][];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    adminCriarParceiro: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParceiroCriacao"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParceiroAdmin"];
                 };
             };
             /** @description Dados inválidos */
@@ -3400,6 +3687,164 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    listarCertificados: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeriodoDeCertificados"][];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    validarCertificado: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                codigo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Validacao"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterCertificado: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                certificado_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Certificado"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    baixarCertificado: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                certificado_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": unknown;
                 };
             };
             /** @description Dados inválidos */
