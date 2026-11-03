@@ -12,6 +12,7 @@ from app.models.enums import (
     OrigemVault,
     OrigemXP,
     PapelMensagem,
+    PapelUsuario,
     StatusAssuntos,
     StatusEmenta,
     StatusGeracao,
@@ -54,6 +55,7 @@ class Base(DeclarativeBase):
         OrigemXP: _enum(OrigemXP),
         TamanhoFonte: _enum(TamanhoFonte),
         PapelMensagem: _enum(PapelMensagem),
+        PapelUsuario: _enum(PapelUsuario),
         OrigemVault: _enum(OrigemVault),
         OrigemModulo: _enum(OrigemModulo),
     }

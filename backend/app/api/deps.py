@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.seguranca import TokenInvalido, decodificar
-from app.models import Usuario
+from app.models import PapelUsuario, Usuario
 
 # `auto_error=False` para a resposta sem header sair com o mesmo 401 e o mesmo
 # corpo de um token inválido, em vez do 403 que o FastAPI devolveria.
@@ -76,3 +76,17 @@ def get_usuario_opcional(
 
 
 UsuarioOpcional = Annotated[Usuario | None, Depends(get_usuario_opcional)]
+
+
+def exigir_papel(*papeis: PapelUsuario):
+    """Dependência que só deixa passar quem tem um dos papéis (#41). Sem, 403."""
+
+    def conferir(usuario: UsuarioAtual) -> Usuario:
+        if usuario.papel not in papeis:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Seu perfil não pode fazer isso",
+            )
+        return usuario
+
+    return conferir

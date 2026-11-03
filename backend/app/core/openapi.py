@@ -23,6 +23,10 @@ TAGS = [
     {"name": "auth", "description": "Cadastro, login, sessão e recuperação de senha."},
     {"name": "usuarios", "description": "O aluno logado sobre a própria conta."},
     {"name": "trilhas", "description": "Catálogo de trilhas, módulos e atividades."},
+    {
+        "name": "admin",
+        "description": "Gestão de trilhas, passos e atividades e métricas. Autor e admin.",
+    },
     {"name": "ranking", "description": "Pódio e classificação por XP."},
     {"name": "academico", "description": "Instituições, cursos e períodos do onboarding."},
     {"name": "ementas", "description": "Upload da ementa em PDF e o status da leitura."},

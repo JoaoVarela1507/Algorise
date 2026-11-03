@@ -645,6 +645,34 @@ da imagem antiga e o PostgreSQL avisar de versão de collation, rode
 `REINDEX DATABASE algorise;` ou recrie o volume (`docker compose down -v`, que
 apaga os dados locais).
 
+### API administrativa
+
+Cadastro e manutenção de trilhas, passos e atividades sem migração nem deploy
+(#41, `app/api/v1/admin.py`). A interface é o próprio `/docs` por enquanto.
+
+| Rota                                                | O que faz                                          |
+| --------------------------------------------------- | -------------------------------------------------- |
+| `GET/POST /api/v1/admin/trilhas`                    | lista todas (com gabarito) / cria em rascunho      |
+| `PATCH/DELETE /api/v1/admin/trilhas/{id}`           | edita / apaga sem progresso de aluno               |
+| `POST /api/v1/admin/trilhas/{id}/publicar`          | publica conferindo o gabarito, ou despublica       |
+| `POST /api/v1/admin/trilhas/importar`               | trilha inteira em JSON, idempotente pelo slug      |
+| `POST/PATCH/DELETE /api/v1/admin/trilhas/{id}/passos` | acrescenta, edita ou move, apaga um passo        |
+| `GET /api/v1/admin/passos/{id}/previa`              | o passo como o aluno vê, sem gabarito              |
+| `POST/PATCH/DELETE /api/v1/admin/atividades`        | atividades de um passo                             |
+| `GET /api/v1/admin/metricas`                        | conclusão por trilha; acerto, abandono e erros comuns por atividade |
+
+- **Papéis:** `aluno` (o padrão), `autor` (o conteúdo) e `admin` (o conteúdo e as
+  métricas). A promoção é só pela linha de comando, de propósito:
+  `python -m app.tarefas.papeis ana@ufrpe.br admin`.
+- **Progresso não se apaga:** passo ou trilha com progresso de aluno, ou atividade
+  com resposta, responde 409; para tirar do ar, despublique. Editar e mover pode:
+  o progresso é do passo, não da posição dele.
+- **Publicada fica válida:** publicar confere o gabarito de cada atividade (a de
+  terminal precisa do comando e da saída esperados; as outras, da resposta
+  esperada) e devolve 422 com a lista do que falta. Editar uma atividade de trilha
+  publicada passa pela mesma conferência.
+- **Ordem sem buraco:** inserir, mover e apagar renumeram os vizinhos.
+
 ### Gamificação
 
 | Rota                               | O que faz                                   |
