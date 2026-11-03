@@ -19,6 +19,7 @@ from typing import Any
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
+from app.core import auditoria
 from app.core.config import settings
 from app.core.seguranca import conferir_senha
 from app.models import Base, Usuario
@@ -80,6 +81,11 @@ def agendar_exclusao(
 
     sessoes.revogar_sessoes_do_usuario(usuario.id)
     ranking.remover(usuario.id)
+    auditoria.registrar(
+        "exclusao_agendada",
+        usuario_id=usuario.id,
+        expurgo_em=usuario.exclusao_agendada_para.isoformat(),
+    )
     return usuario.exclusao_agendada_para
 
 
@@ -92,6 +98,7 @@ def cancelar_exclusao_se_agendada(db: Session, usuario: Usuario) -> bool:
     db.commit()
     # O aluno volta ao ranking na próxima reconstrução do sorted set.
     ranking.invalidar()
+    auditoria.registrar("exclusao_cancelada", usuario_id=usuario.id)
     return True
 
 
@@ -120,6 +127,7 @@ def expurgar_vencidas(db: Session, *, agora: datetime | None = None) -> int:
         avatar.apagar_arquivo(foto)
     for usuario_id in ids:
         ementas.apagar_do_aluno(usuario_id)
+        auditoria.registrar("conta_expurgada", usuario_id=usuario_id)
     return len(vencidas)
 
 

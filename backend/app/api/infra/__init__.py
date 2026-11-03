@@ -6,9 +6,10 @@ carimbo de build não devem mudar de endereço quando a API subir de versão.
 
 from fastapi import APIRouter
 
-from app.api.infra import health, versao
+from app.api.infra import health, metricas, versao
 
 router = APIRouter()
 
 router.include_router(health.router)
 router.include_router(versao.router)
+router.include_router(metricas.router)

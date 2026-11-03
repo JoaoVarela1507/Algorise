@@ -4,12 +4,30 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api import infra, v1
+from app.core import logs
 from app.core.config import settings
 from app.core.erros import registrar_handlers
 from app.core.openapi import RESPOSTAS_PADRAO, TAGS, gerar_operation_id
 from app.core.protecao_http import ProtecaoHTTP
 from app.core.rastreio import Rastreio
 from app.services import avatar
+
+# Antes de tudo: o que a aplicação logar daqui em diante já sai no formato certo.
+logs.configurar(settings.formato_de_log, settings.log_nivel)
+
+if settings.sentry_dsn:
+    import sentry_sdk
+
+    # Só exceções, sem rastreio de desempenho (as métricas cobrem). Sem dados
+    # pessoais: nem IP, nem cookie, nem corpo da requisição.
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.environment,
+        release=settings.app_version,
+        send_default_pii=False,
+        traces_sample_rate=0,
+        max_request_body_size="never",
+    )
 
 app = FastAPI(
     title=settings.app_name,
