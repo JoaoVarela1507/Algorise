@@ -4,14 +4,15 @@ import asyncio
 import logging
 from typing import Literal
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Response, UploadFile, status
-from sqlalchemy.orm import Session, sessionmaker
+from fastapi import APIRouter, Depends, File, Response, UploadFile, status
+from sqlalchemy.orm import Session
 
 from app.api.deps import UsuarioAtual
 from app.core.config import settings
-from app.core.database import get_db, get_fabrica_de_sessoes
+from app.core.database import get_db
 from app.core.erros import ErroDeNegocio
-from app.ia import IAIndisponivel, ProvedorIA, get_provedor_ia, get_provedor_ia_tarefas
+from app.core.fila import Fila, get_fila
+from app.ia import IAIndisponivel, ProvedorIA, get_provedor_ia
 from app.ia.skills import ler_ementa
 from app.models import AssuntoEmenta, Ementa, StatusAssuntos, Usuario
 from app.schemas.academico import (
@@ -42,14 +43,12 @@ router = APIRouter(prefix="/ementas", tags=["ementas"])
 )
 def enviar_ementa(
     usuario: UsuarioAtual,
-    tarefas: BackgroundTasks,
     resposta: Response,
     arquivo: UploadFile = File(
         description=f"PDF de até {settings.tamanho_maximo_ementa // (1024 * 1024)} MB"
     ),
     db: Session = Depends(get_db),
-    fabrica: sessionmaker[Session] = Depends(get_fabrica_de_sessoes),
-    provedor: ProvedorIA = Depends(get_provedor_ia_tarefas),
+    fila: Fila = Depends(get_fila),
 ) -> EmentaStatus:
     # Um byte além do limite basta para saber que passou, sem ler o resto.
     conteudo = arquivo.file.read(settings.tamanho_maximo_ementa + 1)
@@ -72,7 +71,7 @@ def enviar_ementa(
 
     # O mesmo PDF enviado antes já tem o texto: falta só ler os assuntos.
     if ementas.precisa_processar(ementa):
-        tarefas.add_task(ementas.processar, fabrica, provedor, ementa.id)
+        fila.ementa(ementa.id)
 
     resposta.headers["Location"] = f"/api/v1/ementas/{ementa.id}"
     return EmentaStatus.model_validate(ementa)
@@ -211,15 +210,13 @@ def _assuntos(ementa: Ementa) -> AssuntosDaEmenta:
 def reler_assuntos(
     ementa_id: int,
     usuario: UsuarioAtual,
-    tarefas: BackgroundTasks,
     db: Session = Depends(get_db),
-    fabrica: sessionmaker[Session] = Depends(get_fabrica_de_sessoes),
-    provedor: ProvedorIA = Depends(get_provedor_ia_tarefas),
+    fila: Fila = Depends(get_fila),
 ) -> EmentaStatus:
     ementa = _do_aluno(db, usuario, ementa_id)
     if not ementas.reler_assuntos(db, ementa):
         raise _assuntos_indisponiveis(ementa)
-    tarefas.add_task(ementas.processar, fabrica, provedor, ementa.id)
+    fila.ementa(ementa.id)
     return EmentaStatus.model_validate(ementa)
 
 

@@ -23,6 +23,15 @@ services:
     volumes:
       - ./backend/app:/app/app
 
+  # O RQ não recarrega sozinho: depois de mudar uma tarefa, rode
+  # `docker compose restart worker`. O código montado vale a partir dali.
+  worker:
+    environment:
+      ENVIRONMENT: development
+      FRONTEND_ORIGIN: http://localhost:5173
+    volumes:
+      - ./backend/app:/app/app
+
   frontend:
     build:
       target: dev
