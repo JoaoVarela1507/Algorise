@@ -6,10 +6,13 @@ export interface PosicaoRanking {
 }
 
 export interface TrilhaAtual {
+  /** O slug: é o que a rota `/trilhas/:trilhaId` recebe. */
   id: string
   nome: string
   disciplina: string
+  periodo: number | null
   modulosConcluidos: number
   totalModulos: number
-  proximoModulo: string
+  /** `null` quando a trilha ainda não tem módulo cadastrado. */
+  proximoModulo: string | null
 }

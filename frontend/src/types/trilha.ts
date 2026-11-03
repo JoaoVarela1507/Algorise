@@ -15,7 +15,11 @@ export interface Trilha {
   modulos: Modulo[]
 }
 
-export type StatusModulo = 'concluido' | 'atual' | 'bloqueado'
+/**
+ * `atual` é o primeiro passo aberto que falta, onde o polvo fica; `disponivel`,
+ * os outros abertos (no modo livre, por exemplo, tudo abre de uma vez).
+ */
+export type StatusModulo = 'concluido' | 'atual' | 'disponivel' | 'bloqueado'
 
 /** Um módulo como o mapa da trilha o mostra. */
 export interface ModuloTrilha {
@@ -23,9 +27,17 @@ export interface ModuloTrilha {
   ordem: number
   titulo: string
   descricao: string
-  atividades: number
+  atividades: AtividadeModulo[]
   xp: number
   status: StatusModulo
+}
+
+/** A trilha da tela 26: o cabeçalho, o mapa e o resumo. */
+export interface TrilhaComModulos extends TrilhaResumo {
+  disciplina: string
+  /** Só trilha de parceiro emite certificado. */
+  parceiro: string | null
+  modulos: ModuloTrilha[]
 }
 
 /** Mesmos valores do `TipoAtividade` do backend (telas 28 a 34). */

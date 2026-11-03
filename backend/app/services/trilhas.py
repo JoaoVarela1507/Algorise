@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core import cache
-from app.models import Modulo, NivelExperiencia, Trilha, Usuario
+from app.models import Modulo, NivelExperiencia, ProgressoUsuario, StatusProgresso, Trilha, Usuario
 from app.schemas.pagina import Paginacao
 from app.services import progresso
 
@@ -176,3 +176,56 @@ def _motivo(trilha: Trilha, usuario: "Usuario") -> str:
     if usuario.nivel_experiencia is NivelExperiencia.baixo and (trilha.periodo or 9) <= 2:
         return MOTIVO_NIVEL
     return MOTIVO_GERAL
+
+
+def trilha_atual(db: Session, usuario: "Usuario") -> tuple[Trilha, int, Modulo | None] | None:
+    """A trilha do card "trilha atual" da home (tela 16), com o progresso e o próximo passo.
+
+    É a última que o aluno mexeu e ainda não terminou. Quem não começou nenhuma
+    (ou terminou todas) recebe a primeira sugestão, para o card ter para onde
+    mandar. Sem nada publicado, `None`.
+    """
+    mexidas = db.scalars(
+        select(ProgressoUsuario.trilha_id)
+        .where(ProgressoUsuario.usuario_id == usuario.id)
+        .group_by(ProgressoUsuario.trilha_id)
+        .order_by(func.max(ProgressoUsuario.atualizado_em).desc())
+    ).all()
+
+    for trilha_id in mexidas:
+        trilha = db.execute(
+            select(Trilha)
+            .where(Trilha.id == trilha_id, Trilha.publicada.is_(True))
+            .options(selectinload(Trilha.modulos))
+        ).scalar_one_or_none()
+        if trilha is None:
+            continue
+        proximo = _proximo_passo(db, usuario, trilha)
+        if proximo is not None:
+            feitos = progresso.concluidos_por_trilha(
+                db, usuario_id=usuario.id, trilha_ids=[trilha.id]
+            ).get(trilha.id, 0)
+            return trilha, feitos, proximo
+
+    sugestoes = recomendar_trilhas(db, usuario, limite=1)
+    if not sugestoes:
+        return None
+    sugerida, _, _ = sugestoes[0]
+    trilha = obter_trilha(db, sugerida.slug)
+    if trilha is None:
+        return None
+    feitos = progresso.concluidos_por_trilha(db, usuario_id=usuario.id, trilha_ids=[trilha.id])
+    return trilha, feitos.get(trilha.id, 0), _proximo_passo(db, usuario, trilha)
+
+
+def _proximo_passo(db: Session, usuario: "Usuario", trilha: Trilha) -> Modulo | None:
+    """O primeiro passo, na ordem da trilha, que o aluno ainda não fechou."""
+    estados = progresso.estados_dos_passos(db, usuario=usuario, trilha=trilha)
+    return next(
+        (
+            modulo
+            for modulo in sorted(trilha.modulos, key=lambda m: m.ordem)
+            if estados[modulo.id] is not StatusProgresso.concluido
+        ),
+        None,
+    )

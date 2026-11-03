@@ -881,6 +881,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gamificacao/conquistas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Conquistas do aluno, desbloqueadas ou não */
+        get: operations["listarConquistas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gamificacao/me": {
         parameters: {
             query?: never;
@@ -893,6 +910,26 @@ export interface paths {
          * @description Só leitura: não registra acesso nem mexe no streak.
          */
         get: operations["obterPainel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gamificacao/meta-diaria": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * XP, desafios e minutos de hoje
+         * @description O dia vira à meia-noite no fuso do aluno, como o streak.
+         */
+        get: operations["obterMetaDiaria"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1129,6 +1166,26 @@ export interface paths {
          * @description Trilhas publicadas, paginadas. Com token, cada card vem com o progresso do aluno. Aceita `ordenar_por` em `periodo`, `nome` ou `disciplina`.
          */
         get: operations["listarTrilhas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trilhas/atual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Trilha que o aluno está fazendo
+         * @description A última trilha que o aluno mexeu e não terminou; sem nenhuma, a primeira sugestão. `null` quando não há trilha publicada.
+         */
+        get: operations["obterTrilhaAtual"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1630,12 +1687,21 @@ export interface components {
          * @description Atividade sem gabarito — é o que pode ir para o cliente.
          */
         AtividadeResumo: {
+            /** Codigo */
+            codigo?: string | null;
+            /**
+             * Concluida
+             * @default false
+             */
+            concluida: boolean;
             /** Dica */
             dica?: string | null;
             /** Enunciado */
             enunciado: string;
             /** Id */
             id: number;
+            /** Opcoes */
+            opcoes?: string[] | null;
             /** Ordem */
             ordem: number;
             /** Tempo Sugerido Segundos */
@@ -1767,6 +1833,22 @@ export interface components {
             parceiro?: string | null;
             /** Trilha Id */
             trilha_id: number;
+        };
+        /**
+         * Conquista
+         * @description Uma medalha do card de conquistas (tela 16).
+         *
+         *     O `id` é estável: o frontend escolhe o ícone por ele.
+         */
+        Conquista: {
+            /** Desbloqueada */
+            desbloqueada: boolean;
+            /** Descricao */
+            descricao: string;
+            /** Id */
+            id: string;
+            /** Titulo */
+            titulo: string;
         };
         /** ContagemDeNotificacoes */
         ContagemDeNotificacoes: {
@@ -2266,6 +2348,20 @@ export interface components {
         MensagemDoCliente: components["schemas"]["Autenticar"] | components["schemas"]["Inscrever"] | components["schemas"]["Cancelar"] | components["schemas"]["Ping"] | components["schemas"]["Pong"] | components["schemas"]["EnviarMensagemDoChat"] | components["schemas"]["PararChat"] | components["schemas"]["DigitandoNoChat"];
         /** MensagemDoServidor */
         MensagemDoServidor: components["schemas"]["Autenticado"] | components["schemas"]["Inscrito"] | components["schemas"]["Cancelado"] | components["schemas"]["Evento"] | components["schemas"]["PingDoServidor"] | components["schemas"]["PongDoServidor"] | components["schemas"]["ErroDoWebSocket"];
+        /**
+         * MetaDiaria
+         * @description O anel de meta do dia da home (tela 16), no fuso do aluno.
+         */
+        MetaDiaria: {
+            /** Desafios Resolvidos */
+            desafios_resolvidos: number;
+            /** Minutos Estudados */
+            minutos_estudados: number;
+            /** Xp Hoje */
+            xp_hoje: number;
+            /** Xp Meta */
+            xp_meta: number;
+        };
         /** MetricasAtividade */
         MetricasAtividade: {
             /** Abandono */
@@ -2353,6 +2449,11 @@ export interface components {
             titulo: string;
             /** Video Url */
             video_url?: string | null;
+            /**
+             * Xp
+             * @default 0
+             */
+            xp: number;
         };
         /** ModuloDoAssunto */
         ModuloDoAssunto: {
@@ -2730,6 +2831,11 @@ export interface components {
             trilha_slug: string;
             /** Video Url */
             video_url?: string | null;
+            /**
+             * Xp
+             * @default 0
+             */
+            xp: number;
         };
         /** PassoEdicao */
         PassoEdicao: {
@@ -3173,6 +3279,36 @@ export interface components {
             /** Slug */
             slug: string;
         };
+        /**
+         * TrilhaAtual
+         * @description Card "trilha atual" da home (tela 16).
+         */
+        TrilhaAtual: {
+            /** Categoria */
+            categoria?: string | null;
+            /** Disciplina */
+            disciplina: string;
+            /** Id */
+            id: number;
+            /** Nome */
+            nome: string;
+            /** Periodo */
+            periodo?: number | null;
+            /**
+             * Progresso
+             * @default 0
+             */
+            progresso: number;
+            /** Proximo Modulo */
+            proximo_modulo?: string | null;
+            /** Slug */
+            slug: string;
+            /**
+             * Total Modulos
+             * @default 0
+             */
+            total_modulos: number;
+        };
         /** TrilhaCriacao */
         TrilhaCriacao: {
             /** Carga Horaria */
@@ -3209,6 +3345,8 @@ export interface components {
             modulos: components["schemas"]["ModuloDetalhe"][];
             /** Nome */
             nome: string;
+            /** Parceiro Nome */
+            parceiro_nome?: string | null;
             /** Periodo */
             periodo?: number | null;
             /**
@@ -5876,6 +6014,44 @@ export interface operations {
             };
         };
     };
+    listarConquistas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Conquista"][];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
     obterPainel: {
         parameters: {
             query?: never;
@@ -5892,6 +6068,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Painel"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterMetaDiaria: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetaDiaria"];
                 };
             };
             /** @description Dados inválidos */
@@ -6442,6 +6656,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Pagina_Trilha_"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterTrilhaAtual: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrilhaAtual"] | null;
                 };
             };
             /** @description Dados inválidos */

@@ -56,6 +56,7 @@ export const chaves = {
     todas: ['trilhas'] as const,
     catalogo: (filtros: Record<string, unknown>) => ['trilhas', 'catalogo', filtros] as const,
     recomendadas: () => ['trilhas', 'recomendadas'] as const,
+    atual: () => ['trilhas', 'atual'] as const,
     detalhe: (slug: string) => ['trilhas', 'detalhe', slug] as const,
     passo: (slug: string, ordem: number) => ['trilhas', 'passo', slug, ordem] as const,
     // Debaixo de `trilhas`: concluir um passo invalida `trilhas.todas`, e o
@@ -80,6 +81,8 @@ export const chaves = {
   gamificacao: {
     todas: ['gamificacao'] as const,
     painel: () => ['gamificacao', 'painel'] as const,
+    metaDiaria: () => ['gamificacao', 'meta-diaria'] as const,
+    conquistas: () => ['gamificacao', 'conquistas'] as const,
   },
   ranking: {
     todas: ['ranking'] as const,
