@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 
-from app.models.enums import StatusProgresso, TipoAtividade
+from app.models.enums import OrigemModulo, StatusProgresso, TipoAtividade
 
 
 class AtividadeResumo(BaseModel):
@@ -27,6 +27,13 @@ class Modulo(BaseModel):
     titulo: str
     descricao: str | None = None
     video_url: str | None = None
+    # O trecho do vídeo que o player toca; sem eles, o vídeo inteiro (#210).
+    inicio_segundos: float | None = None
+    fim_segundos: float | None = None
+    # `youtube`: feito de um vídeo pela busca de conteúdo, com o canal de
+    # origem, e pode ser reportado.
+    origem: OrigemModulo = OrigemModulo.manual
+    canal: str | None = None
     # Quem decide é o servidor (ver `app/services/progresso.py`). `concluido` e
     # `bloqueado` continuam porque a tela já os usa; `status` é a forma completa,
     # que distingue o passo atual dos que ainda nem abriram.
@@ -74,3 +81,12 @@ class PassoDetalhe(ModuloDetalhe):
     total_passos: int
     # Ordem do próximo passo, ou None quando este é o último.
     proximo: int | None = None
+
+
+class ReporteDoModulo(BaseModel):
+    """O resultado de reportar o vídeo de um módulo automático."""
+
+    reportes: int
+    # Com reportes suficientes, o módulo saiu da trilha e a lacuna voltou para
+    # a busca de conteúdo.
+    removido: bool

@@ -18,12 +18,13 @@ from app.schemas.submissao import PassoConcluido
 from app.schemas.trilha import (
     ModuloDetalhe,
     PassoDetalhe,
+    ReporteDoModulo,
     Trilha,
     TrilhaDetalhe,
     TrilhaRecomendada,
 )
+from app.services import modulos_de_videos, submissoes
 from app.services import progresso as servico_progresso
-from app.services import submissoes
 from app.services import trilhas as servico
 
 router = APIRouter(prefix="/trilhas", tags=["trilhas"])
@@ -285,3 +286,35 @@ def _com_estado[T: ModuloDetalhe](modulo: T, estado: StatusProgresso) -> T:
             "bloqueado": estado is StatusProgresso.bloqueado,
         }
     )
+
+
+@router.post(
+    "/{slug}/passos/{ordem}/reportar",
+    response_model=ReporteDoModulo,
+    summary="Reporta o vídeo de um módulo gerado automaticamente",
+    description=(
+        "Um reporte por aluno. Com `REPORTES_PARA_REMOVER` alunos, o módulo sai da trilha "
+        "e o assunto volta para a busca de conteúdo. 409 para módulo que não veio de vídeo."
+    ),
+)
+def reportar_passo(
+    slug: str, ordem: int, usuario: UsuarioAtual, db: Session = Depends(get_db)
+) -> ReporteDoModulo:
+    trilha = _buscar(db, slug)
+    modulo = next((m for m in trilha.modulos if m.ordem == ordem), None)
+    if modulo is None:
+        raise ErroDeNegocio(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="passo_nao_encontrado",
+            message="Esse passo não existe nesta trilha",
+            details={"trilha": slug, "ordem": ordem},
+        )
+    try:
+        reportes, removido = modulos_de_videos.reportar(db, usuario, modulo)
+    except modulos_de_videos.SoModuloAutomatico as erro:
+        raise ErroDeNegocio(
+            status_code=status.HTTP_409_CONFLICT,
+            code="modulo_nao_reportavel",
+            message="Só o vídeo de um módulo gerado automaticamente pode ser reportado",
+        ) from erro
+    return ReporteDoModulo(reportes=reportes, removido=removido)

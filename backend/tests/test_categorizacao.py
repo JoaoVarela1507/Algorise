@@ -195,7 +195,7 @@ def test_skill_numera_os_assuntos_a_partir_de_um() -> None:
 
 
 def test_tarefa_categoriza_e_devolve_as_lacunas_para_a_busca(
-    db: Session, cenario, sessao_factory, monkeypatch: pytest.MonkeyPatch
+    db: Session, cenario, sessao_factory, redis_falso, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     video, _, _ = cenario
     buscas: list[str] = []
