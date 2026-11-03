@@ -4,6 +4,8 @@ Dois pontos concentram o risco aqui: o gabarito não pode sair da API antes da
 submissão, e o XP não pode ser pago duas vezes pela mesma atividade.
 """
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -432,3 +434,85 @@ def test_o_progresso_do_aluno_reflete_o_passo_fechado(
         db, usuario_id=usuario.id, trilha_ids=[trilha_com_atividades.id]
     )
     assert concluidos[trilha_com_atividades.id] == 1
+
+
+# --------------------------------------------------------------------------
+# Múltipla escolha, ordenação e lacuna
+# --------------------------------------------------------------------------
+
+
+def _atividade(tipo: TipoAtividade, resposta: str) -> Atividade:
+    return Atividade(ordem=1, tipo=tipo, enunciado="?", resposta_esperada=resposta, xp=10)
+
+
+def test_multipla_escolha_compara_a_alternativa() -> None:
+    atividade = _atividade(TipoAtividade.multipla_escolha, "float")
+
+    assert submissoes.corrigir(atividade, "float").correta
+    assert submissoes.corrigir(atividade, "  float ").correta
+    assert not submissoes.corrigir(atividade, "int").correta
+
+
+def test_ordenacao_exige_a_ordem_toda() -> None:
+    atividade = _atividade(TipoAtividade.ordenacao, json.dumps(["a = 1", "print(a)"]))
+
+    assert submissoes.corrigir(atividade, json.dumps(["a = 1", "print(a)"])).correta
+    assert not submissoes.corrigir(atividade, json.dumps(["print(a)", "a = 1"])).correta
+
+
+def test_ordenacao_com_resposta_que_nao_e_lista_nao_quebra() -> None:
+    atividade = _atividade(TipoAtividade.ordenacao, json.dumps(["a"]))
+
+    assert not submissoes.corrigir(atividade, "isso não é json").correta
+    assert not submissoes.corrigir(atividade, json.dumps({"a": 1})).correta
+
+
+def test_lacuna_confere_cada_buraco_e_conta_os_certos() -> None:
+    atividade = _atividade(TipoAtividade.preencher_lacuna, json.dumps(["def", "return"]))
+
+    assert submissoes.corrigir(atividade, json.dumps(["def", " return "])).correta
+
+    meio = submissoes.corrigir(atividade, json.dumps(["def", "print"]))
+    assert not meio.correta
+    assert "1 de 2" in meio.feedback
+
+
+def test_lacuna_respeita_maiusculas_como_o_python() -> None:
+    atividade = _atividade(TipoAtividade.preencher_lacuna, json.dumps(["True"]))
+
+    assert not submissoes.corrigir(atividade, json.dumps(["true"])).correta
+
+
+def test_lacuna_com_buraco_faltando_erra() -> None:
+    atividade = _atividade(TipoAtividade.preencher_lacuna, json.dumps(["=", "20"]))
+
+    assert not submissoes.corrigir(atividade, json.dumps(["="])).correta
+
+
+def test_desafio_de_codigo_ainda_nao_tem_correcao() -> None:
+    with pytest.raises(submissoes.TipoNaoSuportado):
+        submissoes.corrigir(_atividade(TipoAtividade.desafio_codigo, ""), "codigo")
+
+
+def test_passo_espera_a_multipla_escolha_ser_acertada(
+    db: Session, usuario: Usuario, trilha: Trilha
+) -> None:
+    modulo = Modulo(ordem=1, titulo="Quiz")
+    modulo.atividades.append(
+        Atividade(
+            ordem=1,
+            tipo=TipoAtividade.multipla_escolha,
+            enunciado="?",
+            opcoes=["a", "b"],
+            resposta_esperada="b",
+            xp=10,
+        )
+    )
+    trilha.modulos.append(modulo)
+    db.commit()
+
+    with pytest.raises(submissoes.AtividadesPendentes):
+        submissoes.concluir_passo(db, usuario=usuario, trilha=trilha, modulo=modulo)
+
+    submissoes.submeter(db, usuario=usuario, atividade=modulo.atividades[0], conteudo="b")
+    submissoes.concluir_passo(db, usuario=usuario, trilha=trilha, modulo=modulo)

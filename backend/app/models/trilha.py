@@ -124,10 +124,21 @@ class Atividade(Base, TimestampMixin):
     enunciado: Mapped[str] = mapped_column(Text)
     dica: Mapped[str | None] = mapped_column(Text)
 
+    # O que a tela mostra além do enunciado, conforme o tipo. É público: vai
+    # para o cliente junto com o enunciado.
+    # - múltipla escolha: as alternativas;
+    # - ordenação: os itens, já embaralhados (a ordem gravada é a da tela);
+    # - lacuna: o banco de palavras, opcional.
+    opcoes: Mapped[list[str] | None] = mapped_column(JSON)
+    # Trecho de código mostrado na atividade. Na lacuna, cada `___` é um buraco.
+    codigo: Mapped[str | None] = mapped_column(Text)
+
     # Gabarito. Nunca deve ser serializado para o cliente antes da submissão
     # (ver #30).
     comando_esperado: Mapped[str | None] = mapped_column(String(500))
     saida_esperada: Mapped[str | None] = mapped_column(Text)
+    # Múltipla escolha: o texto da alternativa certa. Ordenação e lacuna: uma
+    # lista JSON (os itens na ordem certa; a resposta de cada buraco).
     resposta_esperada: Mapped[str | None] = mapped_column(Text)
 
     tempo_sugerido_segundos: Mapped[int | None]

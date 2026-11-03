@@ -9,8 +9,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models import Atividade, Modulo, TipoAtividade, Trilha, Usuario
-from app.services import progresso
+from app.models import Atividade, Modulo, Parceiro, RespostaUsuario, TipoAtividade, Trilha, Usuario
+from app.services import progresso, submissoes
 from app.services import trilhas as servico
 from tests.conftest import SENHA_VALIDA
 
@@ -412,3 +412,67 @@ def test_recomendada_traz_o_motivo(
 
     assert corpo, "o catálogo do teste tem trilhas"
     assert all(item["motivo"] for item in corpo)
+
+
+# --------------------------------------------------------------------------
+# Detalhe com o que o aluno já fez (tela 26)
+# --------------------------------------------------------------------------
+
+
+def _trilha_de_dois_passos(db: Session, *, parceiro: Parceiro | None = None) -> Trilha:
+    trilha = Trilha(
+        slug="detalhe", nome="Detalhe", disciplina="Algoritmos", publicada=True, parceiro=parceiro
+    )
+    for ordem in (1, 2):
+        modulo = Modulo(ordem=ordem, titulo=f"Passo {ordem}")
+        for atividade in (1, 2):
+            modulo.atividades.append(
+                Atividade(ordem=atividade, tipo=TipoAtividade.terminal, enunciado="Rode", xp=10)
+            )
+        trilha.modulos.append(modulo)
+    db.add(trilha)
+    db.commit()
+    return trilha
+
+
+def test_detalhe_marca_as_atividades_acertadas(
+    cliente: TestClient, db: Session, usuario: Usuario, autenticado: dict[str, str]
+) -> None:
+    trilha = _trilha_de_dois_passos(db)
+    certa, errada = trilha.modulos[0].atividades
+    for atividade, correta in ((certa, True), (errada, False)):
+        db.add(
+            RespostaUsuario(
+                usuario_id=usuario.id, atividade_id=atividade.id, conteudo="x", correta=correta
+            )
+        )
+    db.commit()
+
+    corpo = cliente.get("/api/v1/trilhas/detalhe", headers=autenticado).json()
+
+    assert [a["concluida"] for a in corpo["modulos"][0]["atividades"]] == [True, False]
+    assert not any(a["concluida"] for a in corpo["modulos"][1]["atividades"])
+
+
+def test_detalhe_do_visitante_nao_tem_atividade_feita(cliente: TestClient, db: Session) -> None:
+    _trilha_de_dois_passos(db)
+
+    corpo = cliente.get("/api/v1/trilhas/detalhe").json()
+
+    assert not any(a["concluida"] for m in corpo["modulos"] for a in m["atividades"])
+
+
+def test_detalhe_traz_o_xp_do_passo_e_o_parceiro(cliente: TestClient, db: Session) -> None:
+    _trilha_de_dois_passos(db, parceiro=Parceiro(nome="UFRPE"))
+
+    corpo = cliente.get("/api/v1/trilhas/detalhe").json()
+
+    assert corpo["parceiro_nome"] == "UFRPE"
+    # Duas atividades de 10 mais o bônus de fechar o passo.
+    assert corpo["modulos"][0]["xp"] == 2 * 10 + submissoes.XP_POR_PASSO
+
+
+def test_detalhe_sem_parceiro(cliente: TestClient, db: Session) -> None:
+    _trilha_de_dois_passos(db)
+
+    assert cliente.get("/api/v1/trilhas/detalhe").json()["parceiro_nome"] is None

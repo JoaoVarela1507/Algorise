@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # dedicado passa longe disso, e um script varrendo o catálogo esbarra.
     xp_maximo_por_janela: int = 500
     xp_janela_segundos: int = 60 * 60
+    # Meta de XP do dia que a home mostra (tela 16). Alcançável com uns dois ou
+    # três exercícios: a ideia é criar o hábito, não cobrar uma maratona.
+    xp_meta_diaria: int = 50
 
     # Janela e teto do rate limit do chat, que custa chamada de IA por request.
     rate_limit_chat_requisicoes: int = 20

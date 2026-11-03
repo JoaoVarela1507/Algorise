@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { motion, type Variants } from 'framer-motion'
-import { ArrowLeft, ArrowRight, Award, Lock, PartyPopper, Star, Swords } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Award, Compass, PartyPopper, Star } from 'lucide-react'
 import { CenarioOceano } from '@/components/trilha/CenarioOceano'
 import { DetalheModulo } from '@/components/trilha/DetalheModulo'
 import { MapaTrilha } from '@/components/trilha/MapaTrilha'
 import { coresPeriodo } from '@/components/trilhas/periodos'
 import { Button } from '@/components/ui/button'
+import { Carregando, ErroAoCarregar } from '@/components/ui/estados'
+import { useTrilha } from '@/hooks/useTrilhas'
 import { cn } from '@/lib/utils'
-import { modulosDaTrilha } from '@/mocks/modulos'
-import { trilhasMock } from '@/mocks/trilhas'
-import type { ModuloTrilha, TrilhaResumo } from '@/types/trilha'
+import { ApiError } from '@/services/api'
+import { paraMapa } from '@/services/trilhas'
+import type { TrilhaComModulos } from '@/types/trilha'
 import mascotePolvo from '@/assets/images/mascote-polvo.png'
 
 const container: Variants = {
@@ -25,8 +27,9 @@ const secao: Variants = {
 
 const doisDigitos = (n: number) => String(n).padStart(2, '0')
 
-function Cabecalho({ trilha, numero }: { trilha: TrilhaResumo; numero: number }) {
+function Cabecalho({ trilha }: { trilha: TrilhaComModulos }) {
   const navigate = useNavigate()
+  // Sem módulo cadastrado, `totalModulos` já vem como 1 (ver `paraCard`).
   const progresso = Math.round((trilha.modulosConcluidos / trilha.totalModulos) * 100)
 
   return (
@@ -40,8 +43,11 @@ function Cabecalho({ trilha, numero }: { trilha: TrilhaResumo; numero: number })
         <ArrowLeft />
       </Button>
 
-      <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-secondary font-display text-xl font-extrabold text-foreground">
-        {doisDigitos(numero)}
+      <span
+        className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-secondary font-display text-xl font-extrabold text-foreground"
+        aria-hidden
+      >
+        {doisDigitos(trilha.periodo)}
       </span>
 
       <div className="min-w-0 flex-1">
@@ -58,7 +64,7 @@ function Cabecalho({ trilha, numero }: { trilha: TrilhaResumo; numero: number })
           >
             {trilha.periodo}º Período
           </span>
-          <span className="text-muted-foreground">{trilha.motivo}</span>
+          <span className="text-muted-foreground">{trilha.disciplina}</span>
         </div>
       </div>
 
@@ -86,7 +92,7 @@ function Cabecalho({ trilha, numero }: { trilha: TrilhaResumo; numero: number })
   )
 }
 
-function Parabens({ trilha }: { trilha: TrilhaResumo }) {
+function Parabens({ trilha }: { trilha: TrilhaComModulos }) {
   return (
     <div className="relative flex h-full flex-col gap-4 overflow-hidden">
       {/* Confete: pontinhos caindo, como os "✦" do protótipo. */}
@@ -120,31 +126,36 @@ function Parabens({ trilha }: { trilha: TrilhaResumo }) {
       </div>
 
       <Button asChild size="lg" full className="group relative">
-        <Link to={`/trilhas/${trilha.id}/questao/desafio`}>
-          <Swords />
-          Fazer desafio proposto
+        <Link to="/trilhas">
+          <Compass />
+          Escolher a próxima trilha
         </Link>
       </Button>
 
-      <p className="relative text-center text-sm font-bold text-muted-foreground">
-        ou, para se especializar mais, acesse os certificados parceiros:
-      </p>
+      {trilha.parceiro && (
+        <>
+          <p className="relative text-center text-sm font-bold text-muted-foreground">
+            e o seu certificado de {trilha.parceiro} já está liberado:
+          </p>
 
-      <Link
-        to="/certificados"
-        className="group relative flex items-center gap-3 rounded-lg border border-border bg-background p-3 transition-colors hover:border-primary/50"
-      >
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-          <Award className="size-5" aria-hidden />
-        </span>
-        <span className="flex-1 font-semibold text-foreground">{trilha.nome}</span>
-        <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
-      </Link>
+          <Link
+            to="/certificados"
+            className="group relative flex items-center gap-3 rounded-lg border border-border bg-background p-3 transition-colors hover:border-primary/50"
+          >
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+              <Award className="size-5" aria-hidden />
+            </span>
+            <span className="flex-1 font-semibold text-foreground">{trilha.nome}</span>
+            <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+          </Link>
+        </>
+      )}
     </div>
   )
 }
 
-function ResumoTrilha({ trilha, modulos }: { trilha: TrilhaResumo; modulos: ModuloTrilha[] }) {
+function ResumoTrilha({ trilha }: { trilha: TrilhaComModulos }) {
+  const { modulos } = trilha
   const xpTotal = modulos.reduce((soma, m) => soma + m.xp, 0)
   const xpGanho = modulos.filter((m) => m.status === 'concluido').reduce((s, m) => s + m.xp, 0)
   const restantes = modulos.length - trilha.modulosConcluidos
@@ -166,44 +177,59 @@ function ResumoTrilha({ trilha, modulos }: { trilha: TrilhaResumo; modulos: Modu
             : `Faltam ${restantes} ${restantes === 1 ? 'módulo' : 'módulos'}, continue assim!`}
         </p>
         <p className="text-sm text-muted-foreground">
-          Conclua todos os módulos para liberar o desafio final e o certificado do parceiro.
+          {trilha.parceiro
+            ? `Conclua todos os módulos para liberar o certificado de ${trilha.parceiro}.`
+            : 'Conclua todos os módulos para fechar a trilha e ganhar o bônus de XP.'}
         </p>
         <div className="mt-3 flex flex-wrap gap-3 text-sm font-semibold">
           <span className="flex items-center gap-1.5 rounded-lg bg-secondary/60 px-3 py-1.5">
             <Star className="size-4 fill-xp text-xp" aria-hidden />
             {xpGanho} / {xpTotal} XP
           </span>
-          <span className="flex items-center gap-1.5 rounded-lg bg-secondary/60 px-3 py-1.5">
-            <Award className="size-4 text-primary" aria-hidden />
-            Certificado ao concluir
-          </span>
+          {trilha.parceiro && (
+            <span className="flex items-center gap-1.5 rounded-lg bg-secondary/60 px-3 py-1.5">
+              <Award className="size-4 text-primary" aria-hidden />
+              Certificado ao concluir
+            </span>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
+function TrilhaNaoEncontrada() {
+  return (
+    <div className="flex min-h-full flex-col items-center justify-center gap-3 text-center">
+      <img src={mascotePolvo} alt="" className="h-28" />
+      <h1 className="font-display text-2xl font-bold text-foreground">Trilha não encontrada</h1>
+      <Button asChild variant="outline">
+        <Link to="/trilhas">Ver todas as trilhas</Link>
+      </Button>
+    </div>
+  )
+}
+
 export function TrilhaPage() {
   const { trilhaId } = useParams()
-  const indice = trilhasMock.findIndex((t) => t.id === trilhaId)
-  const trilha = indice >= 0 ? trilhasMock[indice] : undefined
-  const modulos = trilha ? modulosDaTrilha(trilha) : []
-  const atual = modulos.find((m) => m.status === 'atual')
-  const [selecionado, setSelecionado] = useState(atual?.ordem ?? modulos.length ?? 1)
+  const navigate = useNavigate()
+  const consulta = useTrilha(trilhaId)
+  // `null` até o aluno clicar num módulo: aí vale o atual (ou o último, se acabou).
+  const [escolhido, setEscolhido] = useState<number | null>(null)
 
-  if (!trilha) {
-    return (
-      <div className="flex min-h-full flex-col items-center justify-center gap-3 text-center">
-        <img src={mascotePolvo} alt="" className="h-28" />
-        <h1 className="font-display text-2xl font-bold text-foreground">Trilha não encontrada</h1>
-        <Button asChild variant="outline">
-          <Link to="/trilhas">Ver todas as trilhas</Link>
-        </Button>
-      </div>
-    )
+  if (consulta.isPending) return <Carregando rotulo="Carregando trilha…" />
+  if (consulta.isError) {
+    if (consulta.error instanceof ApiError && consulta.error.status === 404) {
+      return <TrilhaNaoEncontrada />
+    }
+    return <ErroAoCarregar erro={consulta.error} aoTentarDeNovo={() => void consulta.refetch()} />
   }
 
-  const terminou = trilha.modulosConcluidos >= trilha.totalModulos
+  const trilha = paraMapa(consulta.data)
+  const { modulos } = trilha
+  const atual = modulos.find((m) => m.status === 'atual')
+  const selecionado = escolhido ?? atual?.ordem ?? modulos[modulos.length - 1]?.ordem ?? 1
+  const terminou = modulos.length > 0 && modulos.every((m) => m.status === 'concluido')
   const moduloSelecionado = modulos.find((m) => m.ordem === selecionado) ?? modulos[0]
 
   return (
@@ -214,19 +240,8 @@ export function TrilhaPage() {
       className="flex h-full flex-col gap-6"
     >
       <motion.section variants={secao}>
-        <Cabecalho trilha={trilha} numero={indice + 1} />
+        <Cabecalho trilha={trilha} />
       </motion.section>
-
-      {trilha.bloqueada && (
-        <motion.p
-          variants={secao}
-          className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-card p-4 text-muted-foreground"
-        >
-          <Lock className="size-5 shrink-0 text-locked" aria-hidden />
-          Esta trilha ainda está bloqueada. Conclua <strong>{trilha.requisito}</strong> para liberar
-          os módulos.
-        </motion.p>
-      )}
 
       {/*
         Mapa à esquerda, com scroll só por dentro (a trilha pode ter muitos
@@ -239,7 +254,12 @@ export function TrilhaPage() {
           aria-label="Mapa de módulos"
         >
           <CenarioOceano />
-          <MapaTrilha modulos={modulos} selecionado={selecionado} onSelecionar={setSelecionado} />
+          <MapaTrilha
+            modulos={modulos}
+            selecionado={selecionado}
+            onSelecionar={setEscolhido}
+            onAbrir={(ordem) => navigate(`/trilhas/${trilha.id}/questao/${ordem}`)}
+          />
         </motion.section>
 
         <div className="flex min-h-0 flex-col gap-6">
@@ -247,7 +267,11 @@ export function TrilhaPage() {
             variants={secao}
             className="flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-card p-6 shadow-sm"
           >
-            {moduloSelecionado && <DetalheModulo trilhaId={trilha.id} modulo={moduloSelecionado} />}
+            {moduloSelecionado ? (
+              <DetalheModulo trilhaId={trilha.id} modulo={moduloSelecionado} />
+            ) : (
+              <p className="text-muted-foreground">Esta trilha ainda não tem módulos.</p>
+            )}
           </motion.section>
           <motion.section
             variants={secao}
@@ -256,11 +280,7 @@ export function TrilhaPage() {
               terminou ? 'border-xp/50 bg-xp/10' : 'border-border bg-card',
             )}
           >
-            {terminou ? (
-              <Parabens trilha={trilha} />
-            ) : (
-              <ResumoTrilha trilha={trilha} modulos={modulos} />
-            )}
+            {terminou ? <Parabens trilha={trilha} /> : <ResumoTrilha trilha={trilha} />}
           </motion.section>
         </div>
       </div>

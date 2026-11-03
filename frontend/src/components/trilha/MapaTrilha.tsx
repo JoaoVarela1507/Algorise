@@ -14,7 +14,11 @@ interface Ponto {
 // (pathLength) fica contínuo. Com `preserveAspectRatio="none"` +
 // `non-scaling-stroke` o tracejado da animação saía cortado.
 const ESPACO_VERTICAL = 130
-const MARGEM_TOPO = 70
+// O topo é mais alto que a base porque o polvo (h-36) fica centrado um pouco
+// acima do nó e ainda sobe ao flutuar: com 70px, no primeiro módulo ele saía
+// cortado pela borda do mapa.
+const MARGEM_TOPO = 110
+const MARGEM_BASE = 70
 const LARGURA_MAXIMA = 720
 
 /** Zigue-zague de cima para baixo, como o caminho do mobile. */
@@ -46,6 +50,7 @@ function caminho(pontos: Ponto[]) {
 const corNumero = {
   concluido: 'text-success',
   atual: 'text-primary',
+  disponivel: 'text-primary',
   bloqueado: 'text-periodo-8',
 } as const
 
@@ -55,18 +60,27 @@ function NoModulo({
   numeroAEsquerda,
   selecionado,
   onSelecionar,
+  onAbrir,
 }: {
   modulo: ModuloTrilha
   ponto: Ponto
   numeroAEsquerda: boolean
   selecionado: boolean
   onSelecionar: () => void
+  onAbrir: () => void
 }) {
   const [escopo, animar] = useAnimate()
   const atual = modulo.status === 'atual'
+  const disponivel = modulo.status === 'disponivel'
   const bloqueado = modulo.status === 'bloqueado'
 
   function clicar() {
+    // O play abre o módulo direto; concluído e bloqueado só mostram o detalhe
+    // ao lado (o "Revisar" e o "conclua o anterior" moram lá).
+    if (atual || disponivel) {
+      onAbrir()
+      return
+    }
     onSelecionar()
     if (bloqueado) animar(escopo.current, { x: [0, -6, 6, -4, 4, 0] }, { duration: 0.4 })
   }
@@ -140,16 +154,18 @@ function NoModulo({
           atual ? 'size-20' : 'size-16',
           modulo.status === 'concluido' && 'border-success/40 bg-success text-success-foreground',
           atual && 'border-card bg-primary text-primary-foreground',
+          disponivel && 'border-card bg-primary/75 text-primary-foreground',
           bloqueado && 'border-border bg-muted text-locked',
           // Seleção na cor do próprio nó, sem o offset branco que virava halo
           // sobre o fundo do mar.
           selecionado && modulo.status === 'concluido' && 'ring-4 ring-success/35',
-          selecionado && atual && 'ring-4 ring-primary/35',
+          selecionado && (atual || disponivel) && 'ring-4 ring-primary/35',
           selecionado && bloqueado && 'ring-4 ring-locked/40',
         )}
       >
         {modulo.status === 'concluido' && <Check className="size-7" strokeWidth={3} />}
         {atual && <Play className="ml-1 size-9 fill-current" />}
+        {disponivel && <Play className="ml-1 size-6 fill-current" />}
         {bloqueado && <Lock className="size-6" />}
       </button>
     </motion.div>
@@ -160,10 +176,13 @@ export function MapaTrilha({
   modulos,
   selecionado,
   onSelecionar,
+  onAbrir,
 }: {
   modulos: ModuloTrilha[]
   selecionado: number
   onSelecionar: (ordem: number) => void
+  /** Entrar no módulo liberado (o play do nó). */
+  onAbrir: (ordem: number) => void
 }) {
   const rolagemRef = useRef<HTMLDivElement>(null)
   const [largura, setLargura] = useState(LARGURA_MAXIMA)
@@ -181,7 +200,7 @@ export function MapaTrilha({
 
   const pontos = posicoes(modulos.length, largura)
   const centro = largura / 2
-  const altura = MARGEM_TOPO * 2 + (modulos.length - 1) * ESPACO_VERTICAL
+  const altura = MARGEM_TOPO + MARGEM_BASE + (modulos.length - 1) * ESPACO_VERTICAL
   const indiceAtual = modulos.findIndex((m) => m.status === 'atual')
   const terminou = modulos.length > 0 && modulos.every((m) => m.status === 'concluido')
   // Onde o polvo fica: no módulo atual, ou no último quando a trilha acabou.
@@ -255,6 +274,7 @@ export function MapaTrilha({
             numeroAEsquerda={pontos[i].x <= centro}
             selecionado={modulo.ordem === selecionado}
             onSelecionar={() => onSelecionar(modulo.ordem)}
+            onAbrir={() => onAbrir(modulo.ordem)}
           />
         ))}
 

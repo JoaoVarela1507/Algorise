@@ -20,12 +20,12 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { atividadesDoModulo } from '@/mocks/modulos'
 import type { AtividadeModulo, ModuloTrilha, TipoAtividade } from '@/types/trilha'
 
 const estados = {
   concluido: { rotulo: 'Concluído', classe: 'bg-success/15 text-success', icone: CheckCircle2 },
   atual: { rotulo: 'Próximo módulo', classe: 'bg-primary/15 text-primary', icone: Sparkles },
+  disponivel: { rotulo: 'Liberado', classe: 'bg-primary/10 text-primary', icone: Play },
   bloqueado: { rotulo: 'Bloqueado', classe: 'bg-muted text-locked', icone: Lock },
 } as const
 
@@ -146,7 +146,7 @@ function ItemAtividade({
 
 export function DetalheModulo({ trilhaId, modulo }: { trilhaId: string; modulo: ModuloTrilha }) {
   const estado = estados[modulo.status]
-  const atividades = atividadesDoModulo(modulo)
+  const { atividades } = modulo
   const feitas = atividades.filter((a) => a.status === 'feita').length
   const minutos = atividades.reduce((soma, a) => soma + a.minutos, 0)
   const destino = `/trilhas/${trilhaId}/questao/${modulo.ordem}`
@@ -192,11 +192,22 @@ export function DetalheModulo({ trilhaId, modulo }: { trilhaId: string; modulo: 
           Atividades
         </p>
         {/* Rola por dentro se o módulo tiver muitas atividades. */}
-        <ol className="-mr-2 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-2">
-          {atividades.map((atividade, i) => (
-            <ItemAtividade key={atividade.id} atividade={atividade} indice={i} destino={destino} />
-          ))}
-        </ol>
+        {atividades.length > 0 ? (
+          <ol className="-mr-2 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-2">
+            {atividades.map((atividade, i) => (
+              <ItemAtividade
+                key={atividade.id}
+                atividade={atividade}
+                indice={i}
+                destino={destino}
+              />
+            ))}
+          </ol>
+        ) : (
+          <p className="flex-1 text-sm text-muted-foreground">
+            Este módulo ainda não tem atividades: assistir ao conteúdo já conta.
+          </p>
+        )}
 
         <div className="pt-4">
           {modulo.status === 'bloqueado' ? (
@@ -220,7 +231,7 @@ export function DetalheModulo({ trilhaId, modulo }: { trilhaId: string; modulo: 
                   </>
                 ) : (
                   <>
-                    {modulo.ordem === 1 ? 'Começar módulo' : 'Continuar módulo'}
+                    {feitas === 0 ? 'Começar módulo' : 'Continuar módulo'}
                     <ArrowRight className="transition-transform group-hover:translate-x-1" />
                   </>
                 )}
