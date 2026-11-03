@@ -69,6 +69,7 @@ services:
   backend:
     build:
       context: ./backend
+      target: api
       args:
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
         BUILD_TIME: ${BUILD_TIME:-}
@@ -121,17 +122,18 @@ services:
   worker:
     build:
       context: ./backend
+      # Com o yt-dlp e o Whisper, que a API não precisa.
+      target: worker
       args:
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
         BUILD_TIME: ${BUILD_TIME:-}
     command: rq worker algorise --url redis://redis:6379/0 --with-scheduler
     environment: *ambiente-backend
-    # Lê o PDF que o backend gravou no volume.
+    # Lê o PDF que o backend gravou no volume. O modelo do Whisper fica no
+    # outro: sem ele, recriar o container baixaria de novo uns 500 MB.
     volumes:
       - midia:/app/media
-    # O healthcheck da imagem bate no `/health` da API, que o worker não serve.
-    healthcheck:
-      disable: true
+      - modelos_whisper:/app/modelos
     depends_on:
       db:
         condition: service_healthy
@@ -160,3 +162,4 @@ volumes:
   redis_data:
   midia:
   ollama_data:
+  modelos_whisper:

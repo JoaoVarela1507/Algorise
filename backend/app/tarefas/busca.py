@@ -5,6 +5,7 @@ import logging
 
 from app.core.config import settings
 from app.core.database import SessionLocal
+from app.core.fila import fila_das_tarefas
 from app.ia import get_provedor_ia_tarefas
 from app.services import busca_conteudo
 from app.services.youtube import ClienteYoutube
@@ -22,6 +23,10 @@ def buscar(disciplina: str) -> None:
         resultado = asyncio.run(
             busca_conteudo.buscar(db, cliente, get_provedor_ia_tarefas(), disciplina)
         )
+        # Na ordem da playlist: as primeiras aulas ficam prontas primeiro.
+        novos = sorted(resultado.videos, key=lambda v: (v.playlist_id is None, v.posicao or 0))
+        for video in novos:
+            fila_das_tarefas().transcricao(video.id)
     logger.info(
         "Busca de %s: %d lacunas cobertas, %d sem conteúdo, playlist %s%s",
         disciplina,
