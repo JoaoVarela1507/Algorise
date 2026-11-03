@@ -537,6 +537,24 @@ A busca usa o full-text do PostgreSQL em português (índice GIN em
 `mensagens_chat.conteudo`), que acha "laços" buscando "laço". No SQLite dos testes,
 cai num `LIKE`.
 
+**Anexos** (`POST /chat/anexos`, multipart):
+- São aceitos texto ou código em UTF-8, PDF e imagem PNG, JPEG ou WebP, até
+  `CHAT_ANEXO_TAMANHO_MAXIMO`. O tipo sai do conteúdo, não da extensão.
+- O id vai em `anexo_ids` da mensagem, até `CHAT_ANEXOS_POR_MENSAGEM`. O texto do
+  anexo (do código, do texto ou do PDF) vai para o tutor junto com a pergunta; da
+  imagem, só o nome.
+- O arquivo fica em `diretorio_midia/chat`, fora da pasta pública, e sai sempre
+  como download (`GET /chat/anexos/{id}`).
+- `DELETE /chat/anexos/{id}` desiste de um anexo ainda não enviado. Apagar a
+  conversa, ou o expurgo da conta, apaga os anexos e os arquivos.
+
+**Resumo do histórico:**
+- O tutor recebe as últimas `CHAT_JANELA_HISTORICO` mensagens e, antes delas, um
+  resumo do que ficou de fora.
+- O resumo é refeito depois de cada resposta, sem o aluno esperar: o resumo
+  anterior e as mensagens que acabaram de sair da janela viram um novo.
+- Se a IA falhar, fica o resumo antigo, e a próxima resposta tenta de novo.
+
 ### Desafio de código (sandbox)
 
 O desafio da tela 40 roda o código do aluno contra casos de teste (#34):

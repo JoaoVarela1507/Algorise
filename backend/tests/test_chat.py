@@ -23,7 +23,7 @@ from app.core.config import Settings, settings
 from app.ia import IAIndisponivel, MensagemIA, get_provedor_ia
 from app.ia.eco import Eco
 from app.ia.ollama import Ollama
-from app.ia.skills import tutor
+from app.ia.skills import resumir_conversa, tutor
 from app.main import app
 from app.models import (
     Conversa,
@@ -71,7 +71,12 @@ class ProvedorFalso:
 
     @property
     def contexto(self) -> list[MensagemIA]:
-        return self.chamadas[-1][0]
+        """O último pedido do chat, sem contar os de resumo (que rodam depois)."""
+        return [
+            mensagens
+            for mensagens, _ in self.chamadas
+            if mensagens[0].conteudo != resumir_conversa.PROMPT
+        ][-1]
 
 
 @pytest.fixture
@@ -163,8 +168,10 @@ def test_historico_enviado_ao_modelo_tem_janela(
 
     enviar(cliente, autenticado, "terceira", conversa_id=conversa_id)
 
-    # Sistema, as duas mais recentes (pergunta e resposta da "segunda") e a nova.
+    # Sistema, o resumo do que saiu da janela (a "primeira" e a resposta dela),
+    # as duas mais recentes (pergunta e resposta da "segunda") e a nova.
     assert [m.conteudo for m in provedor.contexto[1:]] == [
+        "Resumo do começo desta conversa:\nRecursão é uma função que chama a si mesma.",
         "segunda",
         "Recursão é uma função que chama a si mesma.",
         "terceira",

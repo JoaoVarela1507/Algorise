@@ -165,6 +165,11 @@ class Settings(BaseSettings):
     # da conversa vão como contexto para o modelo.
     chat_maximo_caracteres: int = 4000
     chat_janela_historico: int = 20
+    # Anexos do chat (#33): texto, código, PDF ou imagem. Só o texto vai para o
+    # modelo (até `chat_anexo_texto_maximo` caracteres por anexo).
+    chat_anexo_tamanho_maximo: int = 2 * 1024 * 1024
+    chat_anexos_por_mensagem: int = 3
+    chat_anexo_texto_maximo: int = 8000
 
     # O refresh token vive no Redis e expira sozinho. O prazo longo é o do
     # "manter-se conectado" da tela 5; sem marcar, vale uma semana.

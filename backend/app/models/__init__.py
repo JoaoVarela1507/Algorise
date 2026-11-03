@@ -13,7 +13,7 @@ from app.models.academico import (
     Lacuna,
 )
 from app.models.base import Base, TimestampMixin
-from app.models.chat import Conversa, GrupoChat, MensagemChat
+from app.models.chat import AnexoChat, Conversa, GrupoChat, MensagemChat
 from app.models.desafio import CasoDeTeste, Execucao
 from app.models.enums import (
     ModoResposta,
@@ -49,6 +49,7 @@ from app.models.youtube import (
 )
 
 __all__ = [
+    "AnexoChat",
     "AssuntoEmenta",
     "Atividade",
     "Base",

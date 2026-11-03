@@ -22,8 +22,8 @@ from sqlalchemy.orm import Session
 from app.core import auditoria
 from app.core.config import settings
 from app.core.seguranca import conferir_senha
-from app.models import Base, Usuario
-from app.services import avatar, ementas, ranking, sessoes
+from app.models import AnexoChat, Base, Usuario
+from app.services import anexos, avatar, ementas, ranking, sessoes
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +112,10 @@ def expurgar_vencidas(db: Session, *, agora: datetime | None = None) -> int:
     # Lidas antes do commit: depois dele as contas apagadas saem da sessão.
     fotos = [usuario.avatar_url for usuario in vencidas]
     ids = [usuario.id for usuario in vencidas]
+    # Os anexos do chat saem do banco em cascata; os arquivos, só daqui.
+    arquivos_do_chat = list(
+        db.scalars(select(AnexoChat.arquivo).where(AnexoChat.usuario_id.in_(ids))) if ids else []
+    )
 
     for usuario in vencidas:
         # Redis primeiro: se o banco falhar depois, sobra uma conta desativada
@@ -125,6 +129,7 @@ def expurgar_vencidas(db: Session, *, agora: datetime | None = None) -> int:
     # Depois do commit: se o banco falhar, a conta continua lá e precisa da foto.
     for foto in fotos:
         avatar.apagar_arquivo(foto)
+    anexos.apagar_arquivos(arquivos_do_chat)
     for usuario_id in ids:
         ementas.apagar_do_aluno(usuario_id)
         auditoria.registrar("conta_expurgada", usuario_id=usuario_id)

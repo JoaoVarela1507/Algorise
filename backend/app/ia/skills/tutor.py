@@ -64,10 +64,17 @@ class Aluno:
 
 
 def mensagens(
-    aluno: Aluno, modo: ModoResposta, historico: Sequence[MensagemIA], pergunta: str
+    aluno: Aluno,
+    modo: ModoResposta,
+    historico: Sequence[MensagemIA],
+    pergunta: str,
+    resumo: str | None = None,
 ) -> list[MensagemIA]:
-    """Instrução, histórico da conversa e a pergunta nova, na ordem do modelo."""
-    return [MensagemIA("system", instrucao(aluno, modo)), *historico, MensagemIA("user", pergunta)]
+    """Instrução, resumo do começo, histórico recente e a pergunta nova, nessa ordem."""
+    inicio = [MensagemIA("system", instrucao(aluno, modo))]
+    if resumo:
+        inicio.append(MensagemIA("system", f"Resumo do começo desta conversa:\n{resumo}"))
+    return [*inicio, *historico, MensagemIA("user", pergunta)]
 
 
 def max_tokens(modo: ModoResposta) -> int:

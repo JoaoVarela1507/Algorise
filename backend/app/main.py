@@ -89,7 +89,7 @@ app.include_router(infra.router)
 app.include_router(v1.router)
 
 # O contrato do WebSocket (#35) entra no OpenAPI para virar tipo TypeScript.
-incluir_esquemas(app, [MensagemDoCliente, MensagemDoServidor])
+incluir_esquemas(app, entrada=[MensagemDoCliente], saida=[MensagemDoServidor])
 
 # Fotos do perfil. Só a pasta dos avatares, e não `diretorio_midia` inteiro: o
 # que mais for parar lá (a ementa em PDF, #28) não é público.

@@ -503,6 +503,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chat/anexos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Envia um anexo para a próxima mensagem
+         * @description Texto ou código (UTF-8), PDF ou imagem PNG, JPEG ou WebP. O tipo sai do conteúdo. Mande o id em `anexo_ids` da mensagem; só o texto vai para o tutor.
+         */
+        post: operations["enviarAnexo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/anexos/{anexo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Baixa um anexo */
+        get: operations["baixarAnexo"];
+        put?: never;
+        post?: never;
+        /** Desiste de um anexo ainda não enviado */
+        delete: operations["apagarAnexo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chat/conversas": {
         parameters: {
             query?: never;
@@ -1460,6 +1498,17 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Anexo */
+        Anexo: {
+            /** Id */
+            id: number;
+            /** Nome */
+            nome: string;
+            /** Tamanho */
+            tamanho: number;
+            /** Tipo */
+            tipo: string;
+        };
         /** AssuntoLido */
         AssuntoLido: {
             modulo?: components["schemas"]["ModuloDoAssunto"] | null;
@@ -1644,6 +1693,14 @@ export interface components {
             tipo: "autenticar";
             /** Token */
             token: string;
+        };
+        /** Body_enviarAnexo */
+        Body_enviarAnexo: {
+            /**
+             * Arquivo
+             * @description Até 2 MB
+             */
+            arquivo: string;
         };
         /** Body_enviarAvatar */
         Body_enviarAvatar: {
@@ -1893,6 +1950,12 @@ export interface components {
          * @description A pergunta ao tutor, com os mesmos campos do `POST /chat/mensagens`.
          */
         EnviarMensagemDoChat: {
+            /**
+             * Anexo Ids
+             * @description Anexos já enviados em `POST /chat/anexos`, ainda sem mensagem
+             * @default []
+             */
+            anexo_ids: number[];
             /**
              * Conteudo
              * @description A pergunta do aluno
@@ -2181,6 +2244,11 @@ export interface components {
         };
         /** Mensagem */
         Mensagem: {
+            /**
+             * Anexos
+             * @default []
+             */
+            anexos: components["schemas"]["Anexo"][];
             /** Conteudo */
             conteudo: string;
             /**
@@ -2351,6 +2419,12 @@ export interface components {
         };
         /** NovaMensagem */
         NovaMensagem: {
+            /**
+             * Anexo Ids
+             * @description Anexos já enviados em `POST /chat/anexos`, ainda sem mensagem
+             * @default []
+             */
+            anexo_ids: number[];
             /**
              * Conteudo
              * @description A pergunta do aluno
@@ -4605,6 +4679,126 @@ export interface operations {
                 content: {
                     "application/pdf": unknown;
                 };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    enviarAnexo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_enviarAnexo"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Anexo"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    baixarAnexo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                anexo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": unknown;
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    apagarAnexo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                anexo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Dados inválidos */
             422: {
