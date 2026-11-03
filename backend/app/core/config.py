@@ -86,6 +86,19 @@ class Settings(BaseSettings):
     # Nome da fila no RQ: o worker escuta esta.
     fila_nome: str = "algorise"
 
+    # Busca de vídeos para as lacunas das ementas (#207), pela YouTube Data API
+    # v3. Sem a chave, a busca fica desligada e as lacunas esperam em `pendente`.
+    youtube_api_key: str = ""
+    # Unidades por dia que a busca pode gastar. A cota do Google é de 10 mil, e
+    # uma busca custa 100; a folga fica para quem testar pelo console.
+    youtube_cota_diaria: int = 9000
+    # Duração aceita de um vídeo avulso, em segundos: abaixo, é um corte sem
+    # explicação; acima, uma live que ninguém vai assistir inteira.
+    youtube_duracao_minima: int = 3 * 60
+    youtube_duracao_maxima: int = 3 * 60 * 60
+    # Distância de cosseno máxima entre o assunto e o título do vídeo. Mais
+    # folgada que a da ementa: o título é curto e diz pouco.
+    youtube_distancia_maxima: float = 0.45
     # Observabilidade (#39). `json` para o agregador, `texto` para o terminal;
     # vazio, `json` em produção e `texto` no resto (ver `formato_de_log`).
     log_formato: str = ""

@@ -30,11 +30,20 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.fila import fila_das_tarefas
 from app.ia import IAIndisponivel, ProvedorIA
 from app.ia.skills import ler_ementa
 from app.ia.vault import buscar_por_vetor, registrar_modulos
 from app.ia.vault.ingestao import LOTE_DE_EMBEDDING
-from app.models import AssuntoEmenta, DisciplinaEmenta, Ementa, Lacuna, Modulo, StatusAssuntos
+from app.models import (
+    AssuntoEmenta,
+    DisciplinaEmenta,
+    Ementa,
+    Lacuna,
+    Modulo,
+    StatusAssuntos,
+    StatusLacuna,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +90,7 @@ async def processar(db: Session, provedor: ProvedorIA, ementa: Ementa) -> None:
 
     ementa.status_assuntos = StatusAssuntos.prontos
     db.commit()
+    disparar_busca(ementa)
 
 
 async def revisar(
@@ -124,6 +134,26 @@ async def revisar(
         db.rollback()
         raise
     db.commit()
+    disparar_busca(ementa)
+
+
+def disparar_busca(ementa: Ementa) -> None:
+    """Põe na fila a busca de vídeos (#207) das disciplinas com lacuna pendente.
+
+    A busca é uma por disciplina, e a fila não deixa duas da mesma ao mesmo
+    tempo. Uma falha aqui (o Redis fora) não desfaz a leitura: as lacunas
+    continuam `pendente`, e a próxima ementa da disciplina tenta de novo.
+    """
+    disciplinas = {
+        a.lacuna.disciplina
+        for a in _da_trilha(ementa)
+        if a.lacuna is not None and a.lacuna.status is StatusLacuna.pendente
+    }
+    for disciplina in sorted(disciplinas):
+        try:
+            fila_das_tarefas().busca_de_conteudo(disciplina)
+        except Exception:
+            logger.exception("Não deu para enfileirar a busca de %s", disciplina)
 
 
 def confirmar(db: Session, ementa: Ementa) -> bool:

@@ -544,6 +544,31 @@ baixa o modelo de `OLLAMA_MODELO` uma vez, no volume `ollama_data`. Sem o Ollama
 Toolkit, acrescente ao serviço `ollama` um
 `deploy.resources.reservations.devices` com `capabilities: [gpu]`.
 
+### Busca de vídeos para as lacunas
+
+Os assuntos de ementa que o catálogo não cobre viram lacunas (ver acima), e cada
+leitura de ementa põe na fila uma busca por disciplina com lacuna pendente
+(`app/services/busca_conteudo.py`, tarefa `busca`). A busca usa a YouTube Data
+API v3 com a chave em `YOUTUBE_API_KEY`; sem ela, não faz nada, e as lacunas
+esperam em `pendente`.
+
+1. **Playlists primeiro:** cinco candidatas para "<disciplina> aulas". De cada
+   uma, a lista de aulas, e o título de cada aula é comparado com cada assunto
+   pelo embedding, antes de qualquer outra chamada. Fica a playlist que cobre
+   mais lacunas, e cada aula guarda a playlist e a posição.
+2. **Vídeos avulsos** para o que sobrou, um por lacuna, entre
+   `YOUTUBE_DURACAO_MINIMA` e `YOUTUBE_DURACAO_MAXIMA`.
+3. A lacuna coberta vira `em_preparacao`, com o vídeo ligado em `video_lacunas`;
+   a que não achou nada vira `sem_conteudo`, sem nova tentativa automática. O
+   vídeo fica em `aguardando`, à espera da transcrição.
+
+O título casa com o assunto abaixo de `YOUTUBE_DISTANCIA_MAXIMA` (0,45). A **cota**
+do Google é de 10 mil unidades por dia, e uma busca custa 100: cada chamada soma
+o custo num contador no Redis, e acima de `YOUTUBE_COTA_DIARIA` (9000) a busca
+para e o resto fica `pendente` até o dia seguinte. A resposta de cada consulta
+fica 30 dias em `buscas_youtube`, então duas ementas com a mesma lacuna não pagam
+a mesma busca duas vezes.
+
 ### Vault das skills
 
 O vault (#200) guarda o que as skills consultam: as transcrições dos vídeos dos
