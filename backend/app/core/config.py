@@ -53,6 +53,16 @@ class Settings(BaseSettings):
     rate_limit_chat_requisicoes: int = 20
     rate_limit_chat_janela: int = 60
 
+    # WebSocket (#35). O token vem no primeiro frame, dentro do prazo; o servidor
+    # manda `ping` a cada intervalo e derruba a conexão calada por mais tempo
+    # que `ws_tempo_morto`. Os limites são por instância da API.
+    ws_tempo_para_autenticar: float = 10
+    ws_intervalo_ping: float = 25
+    ws_tempo_morto: float = 60
+    ws_conexoes_por_usuario: int = 5
+    ws_mensagens_por_janela: int = 30
+    ws_janela_segundos: float = 10
+
     # IA do chat (#11): um modelo só, servido pelo Ollama. `eco` é o provedor de
     # teste, que responde sem rede — para o E2E e para rodar sem o Ollama; em
     # produção a aplicação não sobe com ele.
@@ -107,6 +117,26 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
     # Com valor, `GET /metrics` pede `Authorization: Bearer <token>`.
     metricas_token: str = ""
+
+    # Transcrição dos vídeos (#208), no worker. `small` é o modelo do Whisper
+    # que cabe numa CPU; `int8` reduz a memória à custa de pouca precisão.
+    whisper_modelo: str = "small"
+    whisper_computacao: str = "int8"
+    # Vídeo mais longo que isto não é transcrito: ocuparia o worker por horas.
+    transcricao_duracao_maxima: int = 3 * 60 * 60
+    # Duração máxima de uma parte do vídeo, em segundos (#209). O vídeo mais
+    # curto que isto vira uma parte só, sem chamar a IA.
+    segmentacao_duracao_maxima: int = 25 * 60
+    # Confiança mínima da IA para uma parte de vídeo entrar na trilha (#202).
+    # Abaixo, a parte é descartada, como a que não é de matéria nenhuma.
+    categorizacao_confianca_minima: float = 0.6
+    # Quantos alunos precisam reportar o vídeo de um módulo automático para ele
+    # sair da trilha e a lacuna voltar para a busca (#210).
+    reportes_para_remover: int = 3
+
+    # Fuso em que vira o dia do streak (#31): o aluno brasileiro que estuda às
+    # 23h não pode perder a sequência porque o servidor está em UTC.
+    fuso_horario: str = "America/Recife"
     # Tentativas contra o Ollama fora, só antes do primeiro pedaço: depois dele,
     # tentar de novo repetiria o texto que o aluno já viu.
     ia_tentativas: int = 2

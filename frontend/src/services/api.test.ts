@@ -12,6 +12,8 @@ import {
   apiPost,
   configurarAutenticacao,
   definirAccessToken,
+  obterAccessToken,
+  renovarAutenticacao,
 } from '@/services/api'
 
 function respostaJson(corpo: unknown, status = 200) {
@@ -174,5 +176,27 @@ describe('renovação no 401', () => {
     await apiGet('/trilhas').catch(() => undefined)
 
     expect(renovar).not.toHaveBeenCalled()
+  })
+})
+
+describe('sessão para o WebSocket', () => {
+  it('entrega o token atual', () => {
+    expect(obterAccessToken()).toBeNull()
+    definirAccessToken('token-ws')
+    expect(obterAccessToken()).toBe('token-ws')
+  })
+
+  it('renova pelo autenticador registrado', async () => {
+    const renovar = vi.fn(async () => true)
+    configurarAutenticacao({ renovar })
+
+    await expect(renovarAutenticacao()).resolves.toBe(true)
+    expect(renovar).toHaveBeenCalledOnce()
+  })
+
+  it('sem autenticador, não renova', async () => {
+    configurarAutenticacao(null)
+
+    await expect(renovarAutenticacao()).resolves.toBe(false)
   })
 })

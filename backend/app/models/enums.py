@@ -127,3 +127,36 @@ class StatusVideo(str, Enum):
     transcrevendo = "transcrevendo"
     transcrito = "transcrito"
     falhou = "falhou"
+
+
+class OrigemModulo(str, Enum):
+    """Quem fez o módulo: o seed e o professor (`manual`) ou a busca de vídeos (#210)."""
+
+    manual = "manual"
+    youtube = "youtube"
+
+
+class StatusGeracao(str, Enum):
+    """Geração dos exercícios de prática de um módulo (#201).
+
+    `sem_conteudo`: o módulo não tem trecho no vault, e não há do que gerar
+    sem inventar.
+    """
+
+    gerando = "gerando"
+    pronto = "pronto"
+    sem_conteudo = "sem_conteudo"
+    falhou = "falhou"
+
+
+class PapelUsuario(str, Enum):
+    """O que o usuário pode fazer além de estudar (#41).
+
+    `autor` cadastra e mantém trilhas, passos e atividades; `admin` faz o mesmo
+    e ainda vê as métricas. Todo cadastro nasce `aluno`; a promoção é pela linha
+    de comando (`python -m app.tarefas.papeis`).
+    """
+
+    aluno = "aluno"
+    autor = "autor"
+    admin = "admin"

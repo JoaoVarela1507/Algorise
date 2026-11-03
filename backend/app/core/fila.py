@@ -38,6 +38,14 @@ logger = logging.getLogger(__name__)
 TEMPO_MAXIMO_DA_EMENTA = 2 * 60 * 60
 # A busca de uma disciplina: algumas chamadas à API e embeddings de títulos.
 TEMPO_MAXIMO_DA_BUSCA = 30 * 60
+# Baixar o áudio e transcrever na CPU: perto do tempo do próprio vídeo.
+TEMPO_MAXIMO_DA_TRANSCRICAO = 4 * 60 * 60
+# Uma chamada ao modelo com o índice da transcrição.
+TEMPO_MAXIMO_DA_SEGMENTACAO = 30 * 60
+# Uma chamada ao modelo por parte do vídeo.
+TEMPO_MAXIMO_DA_CATEGORIZACAO = 60 * 60
+# Uma chamada ao modelo com o conteúdo do módulo.
+TEMPO_MAXIMO_DOS_EXERCICIOS = 30 * 60
 # A tarefa que cai no meio (o worker reiniciou, o banco piscou) é tentada de
 # novo, esperando cada vez mais. A falha esperada (PDF ilegível, IA fora) não
 # chega aqui: a própria tarefa a grava na ementa e termina sem erro.
@@ -59,6 +67,22 @@ class Fila(Protocol):
 
     def busca_de_conteudo(self, disciplina: str) -> bool:
         """Põe na fila a busca de vídeos para as lacunas da disciplina (#207)."""
+        ...
+
+    def transcricao(self, video_id: int) -> bool:
+        """Põe na fila a transcrição do vídeo do YouTube (#208)."""
+        ...
+
+    def segmentacao(self, video_id: int) -> bool:
+        """Põe na fila o corte do vídeo transcrito em partes (#209)."""
+        ...
+
+    def categorizacao(self, video_id: int) -> bool:
+        """Põe na fila a categorização das partes do vídeo (#202)."""
+        ...
+
+    def exercicios(self, geracao_id: int) -> bool:
+        """Põe na fila a geração dos exercícios de um módulo (#201)."""
         ...
 
 
@@ -86,6 +110,47 @@ class FilaRedis:
             disciplina,
             chave=f"busca-{_slug(disciplina)}",
             tempo_maximo=TEMPO_MAXIMO_DA_BUSCA,
+        )
+
+    def transcricao(self, video_id: int) -> bool:
+        from app.tarefas import transcricao
+
+        return self.enfileirar(
+            transcricao.transcrever,
+            video_id,
+            chave=f"video-{video_id}",
+            tempo_maximo=TEMPO_MAXIMO_DA_TRANSCRICAO,
+            ao_falhar=transcricao.falhou,
+        )
+
+    def segmentacao(self, video_id: int) -> bool:
+        from app.tarefas import segmentacao
+
+        return self.enfileirar(
+            segmentacao.segmentar,
+            video_id,
+            chave=f"segmentacao-{video_id}",
+            tempo_maximo=TEMPO_MAXIMO_DA_SEGMENTACAO,
+        )
+
+    def categorizacao(self, video_id: int) -> bool:
+        from app.tarefas import categorizacao
+
+        return self.enfileirar(
+            categorizacao.categorizar,
+            video_id,
+            chave=f"categorizacao-{video_id}",
+            tempo_maximo=TEMPO_MAXIMO_DA_CATEGORIZACAO,
+        )
+
+    def exercicios(self, geracao_id: int) -> bool:
+        from app.tarefas import exercicios
+
+        return self.enfileirar(
+            exercicios.gerar,
+            geracao_id,
+            chave=f"exercicios-{geracao_id}",
+            tempo_maximo=TEMPO_MAXIMO_DOS_EXERCICIOS,
         )
 
     def enfileirar(
@@ -144,6 +209,30 @@ class FilaLocal:
         self.tarefas.add_task(busca.buscar, disciplina)
         return True
 
+    def transcricao(self, video_id: int) -> bool:
+        from app.tarefas import transcricao
+
+        self.tarefas.add_task(transcricao.transcrever, video_id)
+        return True
+
+    def segmentacao(self, video_id: int) -> bool:
+        from app.tarefas import segmentacao
+
+        self.tarefas.add_task(segmentacao.segmentar, video_id)
+        return True
+
+    def categorizacao(self, video_id: int) -> bool:
+        from app.tarefas import categorizacao
+
+        self.tarefas.add_task(categorizacao.categorizar, video_id)
+        return True
+
+    def exercicios(self, geracao_id: int) -> bool:
+        from app.tarefas import exercicios
+
+        self.tarefas.add_task(exercicios.gerar_com, self.fabrica, self.provedor, geracao_id)
+        return True
+
 
 class FilaImediata:
     """Roda a tarefa agora, na thread de quem chamou.
@@ -162,6 +251,30 @@ class FilaImediata:
         from app.tarefas import busca
 
         busca.buscar(disciplina)
+        return True
+
+    def transcricao(self, video_id: int) -> bool:
+        from app.tarefas import transcricao
+
+        transcricao.transcrever(video_id)
+        return True
+
+    def segmentacao(self, video_id: int) -> bool:
+        from app.tarefas import segmentacao
+
+        segmentacao.segmentar(video_id)
+        return True
+
+    def categorizacao(self, video_id: int) -> bool:
+        from app.tarefas import categorizacao
+
+        categorizacao.categorizar(video_id)
+        return True
+
+    def exercicios(self, geracao_id: int) -> bool:
+        from app.tarefas import exercicios
+
+        exercicios.gerar(geracao_id)
         return True
 
 

@@ -10,21 +10,28 @@ um `id IN (...)` dos poucos alunos que a tela mostra.
 
 Com o Redis fora, tudo cai em `_do_banco`: mesma resposta, paga em SQL.
 
-O recorte por trilha que as telas 16 e 17 pedem depende do XP por trilha, que vem
-com o progresso (#30). Por ora o ranking é geral.
+**Empate:** fica na frente quem chegou antes ao XP (`xp_alcancado_em`). No sorted
+set, isso vai na parte fracionária do score (`score_de`): o inteiro é o XP, e a
+fração é maior para quem chegou antes, com resolução de um minuto.
+
+O ranking por trilha (`por_trilha`) soma os eventos de XP das atividades, dos
+passos e da conclusão daquela trilha. Ele sai do banco, sem sorted set: é um
+recorte que a tela abre bem menos que o geral.
 
 Conta com exclusão agendada (#40) não aparece: sai do sorted set no pedido e é
 filtrada nas consultas ao banco.
 """
 
+from datetime import datetime
+
 from redis import Redis
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.cache import chave
 from app.core.config import settings
 from app.core.redis import executar
-from app.models import Usuario
+from app.models import Atividade, Modulo, OrigemXP, Trilha, Usuario, XPEvento
 from app.schemas.ranking import EntradaRanking, Ranking
 
 CHAVE_RANKING = chave("ranking", "xp")
@@ -44,8 +51,10 @@ def aquecer(db: Session) -> int:
     alunos entraram (0 quando não deu).
     """
     scores = {
-        str(usuario_id): float(xp)
-        for usuario_id, xp in db.execute(select(Usuario.id, Usuario.xp_total).where(_ATIVAS)).all()
+        str(usuario_id): score_de(xp, quando)
+        for usuario_id, xp, quando in db.execute(
+            select(Usuario.id, Usuario.xp_total, Usuario.xp_alcancado_em).where(_ATIVAS)
+        ).all()
     }
     if not scores:
         return 0
@@ -63,18 +72,31 @@ def aquecer(db: Session) -> int:
     return executar(gravar, padrao=0) or 0
 
 
-def registrar_xp(usuario_id: int, delta: int) -> None:
-    """Soma `delta` ao score do aluno — a invalidação ao ganhar XP.
+def score_de(xp: int, alcancado_em: datetime | None) -> float:
+    """O score do sorted set: o XP, mais uma fração maior para quem chegou antes.
 
-    Se a chave não existe, o incremento é descartado de propósito: criá-la aqui
-    daria um ranking de uma linha só. O próximo `obter_ranking` reconstrói.
+    A fração usa minutos desde 1970 sobre 10^8: cabe abaixo de 1 até o ano 2160 e
+    deixa dígitos de sobra para o XP na precisão do float. Sem data, fração zero:
+    vai para o fim do empate.
+    """
+    if alcancado_em is None:
+        return float(xp)
+    minutos = alcancado_em.timestamp() / 60
+    return float(xp) + (1 - minutos / 1e8)
+
+
+def atualizar(usuario_id: int, xp: int, alcancado_em: datetime) -> None:
+    """Põe o saldo novo do aluno no sorted set — a invalidação ao ganhar XP.
+
+    Se a chave não existe, nada é gravado de propósito: criá-la aqui daria um
+    ranking de uma linha só. O próximo `obter_ranking` reconstrói.
     """
 
-    def incrementar(r: Redis) -> None:
+    def gravar(r: Redis) -> None:
         if r.exists(CHAVE_RANKING):
-            r.zincrby(CHAVE_RANKING, float(delta), str(usuario_id))
+            r.zadd(CHAVE_RANKING, {str(usuario_id): score_de(xp, alcancado_em)})
 
-    executar(incrementar)
+    executar(gravar)
 
 
 def remover(usuario_id: int) -> None:
@@ -186,9 +208,74 @@ def _entrada(
     return None if usuario is None else _do_modelo(usuario, posicao, xp=xp)
 
 
+# Maior XP primeiro; no empate, quem chegou antes; sem data, depois; e o id fecha.
+_ORDEM = (Usuario.xp_total.desc(), Usuario.xp_alcancado_em.asc().nulls_last(), Usuario.id)
+
+
+def posicao_geral(db: Session, usuario_id: int) -> EntradaRanking | None:
+    """A posição do aluno no ranking geral (`GET /ranking/me`)."""
+    posicao = _posicao_de(usuario_id)
+    if posicao is None:
+        return _posicao_no_banco(db, usuario_id)
+    perfis = _perfis(db, {usuario_id})
+    return _entrada(usuario_id, posicao[1], posicao[0], perfis)
+
+
+def por_trilha(
+    db: Session, trilha: Trilha, *, limite: int, deslocamento: int, usuario_id: int | None
+) -> Ranking:
+    """Pódio, página e posição do aluno pelo XP ganho naquela trilha."""
+    modulos = select(Modulo.id).where(Modulo.trilha_id == trilha.id)
+    atividades = select(Atividade.id).join(Atividade.modulo).where(Modulo.trilha_id == trilha.id)
+    linhas = db.execute(
+        select(
+            XPEvento.usuario_id,
+            func.sum(XPEvento.valor).label("xp"),
+            func.max(XPEvento.criado_em).label("quando"),
+        )
+        .join(Usuario, Usuario.id == XPEvento.usuario_id)
+        .where(
+            _ATIVAS,
+            or_(
+                and_(XPEvento.origem == OrigemXP.atividade, XPEvento.referencia_id.in_(atividades)),
+                and_(XPEvento.origem == OrigemXP.modulo, XPEvento.referencia_id.in_(modulos)),
+                and_(XPEvento.origem == OrigemXP.trilha, XPEvento.referencia_id == trilha.id),
+            ),
+        )
+        .group_by(XPEvento.usuario_id)
+    ).all()
+    ordenadas = sorted(linhas, key=lambda linha: (-linha.xp, linha.quando, linha.usuario_id))
+    posicoes = {
+        linha.usuario_id: (indice + 1, int(linha.xp)) for indice, linha in enumerate(ordenadas)
+    }
+
+    pagina = ordenadas[deslocamento : deslocamento + limite]
+    podio = ordenadas[:TAMANHO_PODIO]
+    ids = {linha.usuario_id for linha in [*pagina, *podio]}
+    if usuario_id in posicoes:
+        ids.add(usuario_id)
+    perfis = _perfis(db, ids)
+
+    def entradas(fatia: list, inicio: int) -> list[EntradaRanking]:
+        return _entradas(
+            [(linha.usuario_id, int(linha.xp)) for linha in fatia], perfis, inicio=inicio
+        )
+
+    return Ranking(
+        podio=entradas(podio, 0),
+        lista=entradas(pagina, deslocamento),
+        total=len(ordenadas),
+        usuario=(
+            _entrada(usuario_id, posicoes[usuario_id][1], posicoes[usuario_id][0], perfis)
+            if usuario_id in posicoes
+            else None
+        ),
+    )
+
+
 def _do_banco(db: Session, *, limite: int, deslocamento: int, usuario_id: int | None) -> Ranking:
     """Caminho sem Redis. `xp_total` é indexado, então é uma ordenação por índice."""
-    ordenada = select(Usuario).where(_ATIVAS).order_by(Usuario.xp_total.desc(), Usuario.id)
+    ordenada = select(Usuario).where(_ATIVAS).order_by(*_ORDEM)
     pagina = list(db.execute(ordenada.offset(deslocamento).limit(limite)).scalars())
     podio = list(db.execute(ordenada.limit(TAMANHO_PODIO)).scalars())
 
@@ -206,7 +293,7 @@ def _posicao_no_banco(db: Session, usuario_id: int) -> EntradaRanking | None:
     posicoes = (
         select(
             Usuario.id.label("usuario_id"),
-            func.row_number().over(order_by=(Usuario.xp_total.desc(), Usuario.id)).label("posicao"),
+            func.row_number().over(order_by=_ORDEM).label("posicao"),
         )
         .where(_ATIVAS)
         .subquery()

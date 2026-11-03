@@ -520,6 +520,57 @@ tabela de eventos está no `/docs`.
   tokens. A mensagem tem até `CHAT_MAXIMO_CARACTERES`, e o aluno tem o
   `RATE_LIMIT_CHAT_*` por janela.
 
+O histórico tem as suas próprias rotas, todas em `/api/v1/chat`. Conversa ou grupo
+de outro aluno responde 404.
+
+| Rota                                             | O que faz                                                                    |
+| ------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `POST /conversas`                                | cria a conversa; o título sai da `primeira_mensagem`                          |
+| `GET /conversas?busca=&arquivadas=&grupo_id=`    | o histórico paginado, da mais recente; `busca` olha o título e as mensagens   |
+| `GET /conversas/{id}/mensagens`                  | as mensagens, na ordem, paginadas                                            |
+| `PATCH /conversas/{id}`                          | renomeia, arquiva ou põe num grupo (`grupo_id: null` tira)                    |
+| `DELETE /conversas/{id}`                         | apaga a conversa e as mensagens                                              |
+| `POST`, `GET /grupos` e `GET`, `PATCH`, `DELETE /grupos/{id}` | grupos temáticos; apagar o grupo deixa as conversas, sem grupo  |
+| `GET /sugestoes`                                 | tópicos da tela 21: o passo em andamento e as conversas recentes             |
+
+A busca usa o full-text do PostgreSQL em português (índice GIN em
+`mensagens_chat.conteudo`), que acha "laços" buscando "laço". No SQLite dos testes,
+cai num `LIKE`.
+
+### Tempo real (WebSocket)
+
+`WS /api/v1/ws` é uma conexão por aba, multiplexada em canais. O contrato está em
+`app/schemas/tempo_real.py`, e vai para o OpenAPI como `MensagemDoCliente` e
+`MensagemDoServidor`. Por isso o frontend tem os tipos gerados.
+
+- **Autenticação:** o primeiro frame é `{"tipo": "autenticar", "token": ...}`, com o
+  access token, dentro de `WS_TEMPO_PARA_AUTENTICAR`. O token não vai na query
+  string, que acaba no log do proxy. Um novo `autenticar` no meio da conexão estende
+  o prazo.
+- **Canais:**
+  - `notificacoes:{usuario_id}`: só o próprio aluno;
+  - `chat:{conversa_id}`: só as conversas dele;
+  - `ranking:geral` e `ranking:{trilha_id}`: qualquer aluno logado.
+- **Publicar:** de qualquer lugar (rota, serviço, worker), chame
+  `tempo_real.publicar(canal, evento, payload)`. A mensagem passa pelo pub/sub do
+  Redis (`ws:{canal}`), e cada instância da API entrega às suas conexões. Sem Redis,
+  a entrega é só para as conexões da própria instância.
+- **Vida da conexão:** o servidor manda `ping` a cada `WS_INTERVALO_PING`. Uma
+  conexão calada por mais que `WS_TEMPO_MORTO` é derrubada.
+- **Limites:** `WS_CONEXOES_POR_USUARIO` abas por instância e
+  `WS_MENSAGENS_POR_JANELA` mensagens por `WS_JANELA_SEGUNDOS`.
+
+| Fechamento | Quando                                                 |
+| ---------- | ------------------------------------------------------ |
+| 4401       | sem autenticação válida no prazo, ou o token venceu    |
+| 4408       | a conexão ficou calada demais                          |
+| 4429       | abas demais abertas pelo mesmo aluno                   |
+
+O cliente do frontend (`src/services/tempoReal.ts`) reconecta com espera exponencial
+e jitter. Num 4401, renova a sessão antes de reconectar. Ao voltar, refaz as
+inscrições e manda o que ficou na fila offline. O estado da conexão fica no
+`useTempoRealStore`, e `useCanal(canal, aoReceber)` ouve um canal.
+
 A IA mora em `app/ia/`, separada de quem a usa:
 
 | Arquivo       | O que tem                                                                                                   |
@@ -569,6 +620,82 @@ para e o resto fica `pendente` até o dia seguinte. A resposta de cada consulta
 fica 30 dias em `buscas_youtube`, então duas ementas com a mesma lacuna não pagam
 a mesma busca duas vezes.
 
+### Transcrição dos vídeos
+
+Cada vídeo escolhido pela busca vai para a fila da transcrição, na ordem da
+playlist (tarefa `transcricao`, `app/services/transcricao.py`). O worker tenta
+primeiro a **legenda manual** em português, que sai em segundos; sem ela, baixa
+**só o áudio** com o `yt-dlp` e transcreve com o **Whisper** (`faster-whisper`,
+modelo `WHISPER_MODELO`, `small` em int8 na CPU). As falas, com início e fim,
+entram no vault como o documento `youtube:<id>`, ligado ao vídeo e ainda sem
+módulo; cada trecho guarda `inicio_segundos` e `fim_segundos`.
+
+- **O vídeo não é hospedado:** só a legenda ou o áudio é baixado, numa pasta
+  temporária apagada no fim, com sucesso ou com falha.
+- **Falhas:** vídeo privado ou removido e vídeo acima de
+  `TRANSCRICAO_DURACAO_MAXIMA` (3 h) ficam `falhou`, com o motivo em
+  `videos_youtube.erro`. O erro inesperado é tentado de novo pela fila.
+- **Só no worker:** o `yt-dlp` e o `faster-whisper` estão em
+  `requirements-transcricao.txt`, instalado só no estágio `worker` do Dockerfile.
+  A API, a CI e os testes não os instalam. O modelo do Whisper (uns 500 MB) é
+  baixado na primeira transcrição para o volume `modelos_whisper`.
+
+**Partes do vídeo.** Transcrito o vídeo, a tarefa `segmentacao` o corta em partes
+de um assunto só, cada uma um futuro módulo (`partes_video`, com início, fim,
+título e resumo). O vídeo de até `SEGMENTACAO_DURACAO_MAXIMA` (25 min), o caso
+comum nas playlists, é uma parte só, sem IA. O longo vai para a skill
+`segmentar_video` com um índice da transcrição (uma linha por trecho, com o
+intervalo e o começo do texto), e a resposta é ajustada: as partes ficam em
+ordem, encostadas, e cada corte vai para a fronteira de trecho mais próxima. A
+introdução e o encerramento podem ficar de fora. Uma resposta que não valida
+vira um corte por duração ("Aula (parte 2)"); a IA fora do ar é tentada de novo
+pela fila.
+
+**Categorização.** Cortado o vídeo, a tarefa `categorizacao` pergunta à skill
+`categorizar_videos`, parte por parte, de que matéria ela é e quais das lacunas
+ligadas ao vídeo ela ensina de fato. As matérias possíveis vêm do banco (as
+disciplinas das trilhas e das lacunas), e a skill só aceita uma delas ou
+"nenhuma": uma matéria inventada vira "nenhuma". A parte com matéria e confiança
+de pelo menos `CATEGORIZACAO_CONFIANCA_MINIMA` (0,6) é aprovada, com as lacunas
+que cobre (`parte_lacunas`); a outra é descartada. A lacuna que nenhuma parte
+aprovada cobre tem a ligação com o vídeo recusada (`video_lacunas.recusada`):
+volta para `pendente`, se nenhum outro vídeo estiver a caminho, e a busca roda de
+novo sem escolher aquele vídeo para ela.
+
+**Módulos.** Categorizado o vídeo, cada parte aprovada vira um módulo
+(`app/services/modulos_de_videos.py`), publicado direto, sem aprovação: entra no
+fim da trilha da disciplina da parte (criada, publicada, se não existir), com
+`origem = youtube`, o intervalo em `inicio_segundos` e `fim_segundos` e a parte
+de origem (`parte_video_id`, única: a mesma parte não vira dois módulos). As
+lacunas que a parte cobre ficam `coberta`, apontando para o módulo, e a trilha
+guiada passa a mostrar o módulo no lugar do "em preparação". O player toca só o
+intervalo (`?start=&end=`), e o módulo mostra "Gerado automaticamente" e o canal.
+
+| Rota                                          | O que faz                                        |
+| --------------------------------------------- | ------------------------------------------------ |
+| `POST /api/v1/trilhas/{slug}/passos/{ordem}/reportar` | reporta o vídeo de um módulo automático (409 nos outros) |
+
+Um reporte por aluno. Com `REPORTES_PARA_REMOVER` (3) alunos, o módulo sai da
+trilha (os passos seguintes sobem uma posição), as lacunas voltam para
+`pendente`, a parte não é publicada de novo, e a busca procura outro vídeo sem
+escolher este.
+
+**Exercícios de prática.** `GET /api/v1/trilhas/{slug}/passos/{ordem}/exercicios`
+devolve exercícios gerados pela skill `exercicios` a partir do conteúdo do
+módulo no vault, no nível do aluno: a transcrição e o texto do módulo do
+catálogo, ou, no módulo de vídeo, só os trechos do intervalo dele. São gerados
+uma vez por módulo e nível (`exercicios_gerados`), na fila: o primeiro pedido
+volta `gerando`, e os seguintes, a lista. Sem conteúdo no vault, `sem_conteudo`,
+sem gerar nada. A geração que falhou é refeita no pedido seguinte. Os exercícios
+não contam para concluir o passo: são para o aluno treinar, com a dica e a
+resposta na tela.
+
+**Termos do YouTube:** baixar o áudio vai contra os termos de uso do YouTube,
+exceto quando o dono do vídeo permite, como nos vídeos com licença Creative
+Commons. Para o projeto acadêmico o risco foi aceito. Antes de qualquer uso
+comercial, esta parte precisa ser revista; a busca pode ficar restrita a
+`videoLicense=creativeCommon`.
+
 ### Vault das skills
 
 O vault (#200) guarda o que as skills consultam: as transcrições dos vídeos dos
@@ -598,6 +725,54 @@ da imagem antiga e o PostgreSQL avisar de versão de collation, rode
 `REINDEX DATABASE algorise;` ou recrie o volume (`docker compose down -v`, que
 apaga os dados locais).
 
+### API administrativa
+
+Cadastro e manutenção de trilhas, passos e atividades sem migração nem deploy
+(#41, `app/api/v1/admin.py`). A interface é o próprio `/docs` por enquanto.
+
+| Rota                                                | O que faz                                          |
+| --------------------------------------------------- | -------------------------------------------------- |
+| `GET/POST /api/v1/admin/trilhas`                    | lista todas (com gabarito) / cria em rascunho      |
+| `PATCH/DELETE /api/v1/admin/trilhas/{id}`           | edita / apaga sem progresso de aluno               |
+| `POST /api/v1/admin/trilhas/{id}/publicar`          | publica conferindo o gabarito, ou despublica       |
+| `POST /api/v1/admin/trilhas/importar`               | trilha inteira em JSON, idempotente pelo slug      |
+| `POST/PATCH/DELETE /api/v1/admin/trilhas/{id}/passos` | acrescenta, edita ou move, apaga um passo        |
+| `GET /api/v1/admin/passos/{id}/previa`              | o passo como o aluno vê, sem gabarito              |
+| `POST/PATCH/DELETE /api/v1/admin/atividades`        | atividades de um passo                             |
+| `GET /api/v1/admin/metricas`                        | conclusão por trilha; acerto, abandono e erros comuns por atividade |
+
+- **Papéis:** `aluno` (o padrão), `autor` (o conteúdo) e `admin` (o conteúdo e as
+  métricas). A promoção é só pela linha de comando, de propósito:
+  `python -m app.tarefas.papeis ana@ufrpe.br admin`.
+- **Progresso não se apaga:** passo ou trilha com progresso de aluno, ou atividade
+  com resposta, responde 409; para tirar do ar, despublique. Editar e mover pode:
+  o progresso é do passo, não da posição dele.
+- **Publicada fica válida:** publicar confere o gabarito de cada atividade (a de
+  terminal precisa do comando e da saída esperados; as outras, da resposta
+  esperada) e devolve 422 com a lista do que falta. Editar uma atividade de trilha
+  publicada passa pela mesma conferência.
+- **Ordem sem buraco:** inserir, mover e apagar renumeram os vizinhos.
+
+### Certificados
+
+| Rota                                       | O que faz                                              |
+| ------------------------------------------ | ------------------------------------------------------ |
+| `GET /api/v1/certificados`                 | trilhas de parceiros por período, liberado ou bloqueado |
+| `GET /api/v1/certificados/{id}`            | dados do certificado do aluno                          |
+| `GET /api/v1/certificados/{id}/download`   | o PDF (só o dono; o resto, 404)                        |
+| `GET /api/v1/certificados/validar/{codigo}` | validação pública, sem login                          |
+
+Só a trilha de parceiro (`trilhas.parceiro_id`) emite certificado, que sai
+sozinho quando o aluno fecha o último passo dela. O certificado copia, na
+emissão, o nome do aluno, a trilha, a disciplina, a carga horária e o parceiro: a
+validação mostra o que ele disse no dia, e nada mais do aluno. O código
+(`ALG-7K3Q-9XWM`) não tem letra que confunda (0/O, 1/I/L). O PDF sai com o
+`fpdf2`, com as fontes embutidas do PDF (latin-1: acento passa, emoji não). Os
+parceiros se cadastram em `POST /api/v1/admin/parceiros` (só admin), e a trilha
+ganha o parceiro e a carga horária no `PATCH` do admin. A emissão vai para a
+auditoria (`certificado_emitido`). No frontend, a página pública fica em
+`/validar/{codigo}`.
+
 ### Gamificação
 
 | Rota                               | O que faz                                   |
@@ -623,6 +798,20 @@ evita.
 
 O `GET /api/v1/gamificacao/me` **não** mexe no streak: só o check-in registra
 acesso. Uma tela que exibe não deveria alterar a sequência de ninguém.
+
+**Regras de pontuação** (`app/services/submissoes.py`):
+
+| Quando                                   | XP                         |
+| ---------------------------------------- | -------------------------- |
+| acertar uma atividade                    | o `xp` da atividade (10)   |
+| fechar um passo, na primeira vez         | 20                         |
+| fechar o último passo da trilha, uma vez | 40, além dos 20 do passo   |
+
+Tudo passa pelo teto por janela contra farm. **Ranking:** `GET /api/v1/ranking`
+(ou `/geral`), `GET /api/v1/ranking/me` e `GET /api/v1/ranking/trilhas/{id}`, que
+soma o XP das atividades, dos passos e da conclusão daquela trilha. No empate de
+XP, fica na frente quem chegou antes (`usuarios.xp_alcancado_em`). **Streak:** o
+dia vira no fuso `FUSO_HORARIO` (`America/Recife`), não no do servidor.
 
 ### Atividades e submissões
 

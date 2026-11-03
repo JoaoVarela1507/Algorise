@@ -4,6 +4,8 @@ O único caminho por onde o XP deve entrar. Quem chamar isso não precisa saber 
 existe um sorted set no Redis — é aqui que a invalidação do ranking acontece.
 """
 
+from datetime import UTC, datetime
+
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -44,13 +46,16 @@ def registrar_xp(
             valor=valor,
         )
     )
+    agora = datetime.now(UTC)
     db.execute(
-        update(Usuario).where(Usuario.id == usuario_id).values(xp_total=Usuario.xp_total + valor)
+        update(Usuario)
+        .where(Usuario.id == usuario_id)
+        .values(xp_total=Usuario.xp_total + valor, xp_alcancado_em=agora)
     )
     db.commit()
 
+    saldo = db.execute(select(Usuario.xp_total).where(Usuario.id == usuario_id)).scalar_one()
     # Depois do commit, nunca antes: se a transação falhar, o ranking não pode
     # ficar com um XP que o banco não tem.
-    ranking.registrar_xp(usuario_id, valor)
-
-    return db.execute(select(Usuario.xp_total).where(Usuario.id == usuario_id)).scalar_one()
+    ranking.atualizar(usuario_id, saldo, agora)
+    return saldo

@@ -9,6 +9,7 @@ import { PreferenciasDaConta } from '@/components/configuracoes/PreferenciasDaCo
 import { Toaster } from '@/components/ui/toaster'
 import { useAccessibilityStore } from '@/stores/useAccessibilityStore'
 import { ligarSessao } from '@/stores/useAuthStore'
+import { ligarTempoReal } from '@/stores/useTempoRealStore'
 // Aplica o tema no <html> já ao carregar, antes de qualquer tela pedir.
 import '@/stores/useThemeStore'
 
@@ -29,6 +30,8 @@ function App() {
   const [queryClient] = useState(criarQueryClient)
 
   useEffect(() => ligarSessao(queryClient), [queryClient])
+  // A conexão de tempo real acompanha a sessão (#35).
+  useEffect(() => ligarTempoReal(), [])
 
   return (
     <QueryClientProvider client={queryClient}>

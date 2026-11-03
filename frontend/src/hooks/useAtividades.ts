@@ -7,8 +7,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { chaves } from '@/lib/query'
 import {
+  buscarExercicios,
   buscarTentativas,
   concluirPasso,
+  reportarPasso,
   submeterResposta,
   type RespostaDoAluno,
 } from '@/services/atividades'
@@ -46,11 +48,39 @@ export function useConcluirPasso(slug: string | undefined) {
   return useMutation({
     mutationFn: (ordem: number) => concluirPasso(slug as string, ordem),
     onSuccess: () => {
-      // O passo fechado muda progresso, catálogo, detalhe e ranking.
+      // O passo fechado muda progresso, catálogo, detalhe, ranking e, no último
+      // passo de uma trilha de parceiro, os certificados.
       void queryClient.invalidateQueries({ queryKey: chaves.trilhas.todas })
+      void queryClient.invalidateQueries({ queryKey: chaves.certificados.todas })
       void queryClient.invalidateQueries({ queryKey: chaves.perfil.todas })
       void queryClient.invalidateQueries({ queryKey: chaves.ranking.todas })
       void queryClient.invalidateQueries({ queryKey: chaves.gamificacao.todas })
     },
+  })
+}
+
+export function useReportarPasso(slug: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (ordem: number) => reportarPasso(slug as string, ordem),
+    onSuccess: (resultado) => {
+      // O módulo removido some da trilha, do catálogo e da trilha guiada.
+      if (resultado.removido) void queryClient.invalidateQueries({ queryKey: chaves.trilhas.todas })
+    },
+  })
+}
+
+/** Gerar leva segundos: enquanto a geração roda, pergunta de novo. */
+const INTERVALO_DA_GERACAO = 4000
+
+export function useExercicios(slug: string | undefined, ordem: number, habilitado: boolean) {
+  return useQuery({
+    queryKey: chaves.trilhas.exercicios(slug ?? '', ordem),
+    queryFn: () => buscarExercicios(slug as string, ordem),
+    // Só quando o aluno pede: abrir o passo não dispara a geração.
+    enabled: habilitado && Boolean(slug),
+    refetchInterval: (query) =>
+      query.state.data?.status === 'gerando' ? INTERVALO_DA_GERACAO : false,
   })
 }

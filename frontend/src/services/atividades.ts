@@ -30,3 +30,17 @@ export function buscarTentativas(id: number): Promise<TentativaApi[]> {
 export function concluirPasso(slug: string, ordem: number): Promise<PassoConcluidoApi> {
   return apiPost<PassoConcluidoApi>(`/trilhas/${slug}/passos/${ordem}/concluir`, {})
 }
+
+export type ReporteDoModuloApi = components['schemas']['ReporteDoModulo']
+
+/** Reporta o vídeo de um módulo gerado automaticamente (#210). */
+export function reportarPasso(slug: string, ordem: number): Promise<ReporteDoModuloApi> {
+  return apiPost<ReporteDoModuloApi>(`/trilhas/${slug}/passos/${ordem}/reportar`, {})
+}
+
+export type ExerciciosDoPassoApi = components['schemas']['ExerciciosDoPasso']
+
+/** Os exercícios de prática do passo, gerados pela IA para o nível do aluno (#201). */
+export function buscarExercicios(slug: string, ordem: number): Promise<ExerciciosDoPassoApi> {
+  return apiGet<ExerciciosDoPassoApi>(`/trilhas/${slug}/passos/${ordem}/exercicios`)
+}

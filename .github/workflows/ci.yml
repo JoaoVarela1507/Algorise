@@ -103,7 +103,8 @@ jobs:
           ruff format --check .
 
       - name: Dependências vulneráveis (pip-audit)
-        run: pip-audit -r requirements.txt
+        # O do worker também: a transcrição (#208) vai para produção na imagem dele.
+        run: pip-audit -r requirements.txt -r requirements-transcricao.txt
 
       # Ida e volta completa: se o downgrade estiver quebrado, o CI reprova.
       - name: Migrações
