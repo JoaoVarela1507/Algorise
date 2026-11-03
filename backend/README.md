@@ -600,6 +600,17 @@ introdução e o encerramento podem ficar de fora. Uma resposta que não valida
 vira um corte por duração ("Aula (parte 2)"); a IA fora do ar é tentada de novo
 pela fila.
 
+**Categorização.** Cortado o vídeo, a tarefa `categorizacao` pergunta à skill
+`categorizar_videos`, parte por parte, de que matéria ela é e quais das lacunas
+ligadas ao vídeo ela ensina de fato. As matérias possíveis vêm do banco (as
+disciplinas das trilhas e das lacunas), e a skill só aceita uma delas ou
+"nenhuma": uma matéria inventada vira "nenhuma". A parte com matéria e confiança
+de pelo menos `CATEGORIZACAO_CONFIANCA_MINIMA` (0,6) é aprovada, com as lacunas
+que cobre (`parte_lacunas`); a outra é descartada. A lacuna que nenhuma parte
+aprovada cobre tem a ligação com o vídeo recusada (`video_lacunas.recusada`):
+volta para `pendente`, se nenhum outro vídeo estiver a caminho, e a busca roda de
+novo sem escolher aquele vídeo para ela.
+
 **Termos do YouTube:** baixar o áudio vai contra os termos de uso do YouTube,
 exceto quando o dono do vídeo permite, como nos vídeos com licença Creative
 Commons. Para o projeto acadêmico o risco foi aceito. Antes de qualquer uso

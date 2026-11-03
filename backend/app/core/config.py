@@ -117,6 +117,9 @@ class Settings(BaseSettings):
     # Duração máxima de uma parte do vídeo, em segundos (#209). O vídeo mais
     # curto que isto vira uma parte só, sem chamar a IA.
     segmentacao_duracao_maxima: int = 25 * 60
+    # Confiança mínima da IA para uma parte de vídeo entrar na trilha (#202).
+    # Abaixo, a parte é descartada, como a que não é de matéria nenhuma.
+    categorizacao_confianca_minima: float = 0.6
     # Tentativas contra o Ollama fora, só antes do primeiro pedaço: depois dele,
     # tentar de novo repetiria o texto que o aluno já viu.
     ia_tentativas: int = 2
