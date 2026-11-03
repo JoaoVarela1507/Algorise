@@ -114,6 +114,10 @@ class Settings(BaseSettings):
     # Quantos alunos precisam reportar o vídeo de um módulo automático para ele
     # sair da trilha e a lacuna voltar para a busca (#210).
     reportes_para_remover: int = 3
+
+    # Fuso em que vira o dia do streak (#31): o aluno brasileiro que estuda às
+    # 23h não pode perder a sequência porque o servidor está em UTC.
+    fuso_horario: str = "America/Recife"
     # Tentativas contra o Ollama fora, só antes do primeiro pedaço: depois dele,
     # tentar de novo repetiria o texto que o aluno já viu.
     ia_tentativas: int = 2

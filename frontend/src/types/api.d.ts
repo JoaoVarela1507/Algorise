@@ -757,8 +757,62 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Obter Ranking */
+        /** Ranking geral (mesmo que `/ranking/geral`) */
         get: operations["obterRanking"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ranking/geral": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ranking geral */
+        get: operations["obterRankingGeral"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ranking/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Posição do aluno no ranking geral */
+        get: operations["obterMinhaPosicao"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ranking/trilhas/{trilha_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ranking de uma trilha
+         * @description Pelo XP ganho nas atividades, nos passos e na conclusão daquela trilha.
+         */
+        get: operations["obterRankingDaTrilha"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4446,11 +4500,137 @@ export interface operations {
                 limite?: number;
                 /** @description Quantos pular na lista rolável */
                 deslocamento?: number;
-                /** @description Aluno cuja posição também entra */
+                /** @description Aluno cuja posição também entra; logado, é ele mesmo */
                 usuario_id?: number | null;
             };
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ranking"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterRankingGeral: {
+        parameters: {
+            query?: {
+                /** @description Tamanho da página */
+                limite?: number;
+                /** @description Quantos pular na lista rolável */
+                deslocamento?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ranking"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterMinhaPosicao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntradaRanking"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterRankingDaTrilha: {
+        parameters: {
+            query?: {
+                /** @description Tamanho da página */
+                limite?: number;
+                /** @description Quantos pular na lista rolável */
+                deslocamento?: number;
+            };
+            header?: never;
+            path: {
+                trilha_id: number;
+            };
             cookie?: never;
         };
         requestBody?: never;

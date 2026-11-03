@@ -6590,7 +6590,7 @@
             }
           },
           {
-            "description": "Aluno cuja posição também entra",
+            "description": "Aluno cuja posição também entra; logado, é ele mesmo",
             "in": "query",
             "name": "usuario_id",
             "required": false,
@@ -6603,7 +6603,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Aluno cuja posição também entra",
+              "description": "Aluno cuja posição também entra; logado, é ele mesmo",
               "title": "Usuario Id"
             }
           }
@@ -6640,7 +6640,218 @@
             "description": "Erro inesperado"
           }
         },
-        "summary": "Obter Ranking",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ranking geral (mesmo que `/ranking/geral`)",
+        "tags": [
+          "ranking"
+        ]
+      }
+    },
+    "/api/v1/ranking/geral": {
+      "get": {
+        "operationId": "obterRankingGeral",
+        "parameters": [
+          {
+            "description": "Tamanho da página",
+            "in": "query",
+            "name": "limite",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Tamanho da página",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limite",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Quantos pular na lista rolável",
+            "in": "query",
+            "name": "deslocamento",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Quantos pular na lista rolável",
+              "minimum": 0,
+              "title": "Deslocamento",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ranking"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ranking geral",
+        "tags": [
+          "ranking"
+        ]
+      }
+    },
+    "/api/v1/ranking/me": {
+      "get": {
+        "operationId": "obterMinhaPosicao",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntradaRanking"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Posição do aluno no ranking geral",
+        "tags": [
+          "ranking"
+        ]
+      }
+    },
+    "/api/v1/ranking/trilhas/{trilha_id}": {
+      "get": {
+        "description": "Pelo XP ganho nas atividades, nos passos e na conclusão daquela trilha.",
+        "operationId": "obterRankingDaTrilha",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trilha_id",
+            "required": true,
+            "schema": {
+              "title": "Trilha Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Tamanho da página",
+            "in": "query",
+            "name": "limite",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Tamanho da página",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limite",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Quantos pular na lista rolável",
+            "in": "query",
+            "name": "deslocamento",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Quantos pular na lista rolável",
+              "minimum": 0,
+              "title": "Deslocamento",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ranking"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ranking de uma trilha",
         "tags": [
           "ranking"
         ]
