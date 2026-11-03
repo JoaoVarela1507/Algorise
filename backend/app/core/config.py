@@ -8,6 +8,7 @@ from app import __version__
 SEGREDO_DE_DESENVOLVIMENTO = "inseguro-so-para-desenvolvimento"
 
 PROVEDORES_DE_IA = ("ollama", "eco")
+MODOS_DA_FILA = ("local", "redis")
 
 
 class Settings(BaseSettings):
@@ -75,6 +76,14 @@ class Settings(BaseSettings):
     # em que ninguém espera olhando a tela: na CPU, o modelo pode levar minutos
     # para processar uma parte longa antes do primeiro pedaço.
     ia_timeout_leitura_tarefas: float = 15 * 60
+
+    # Onde roda o trabalho longo (a leitura da ementa, depois a transcrição dos
+    # vídeos), ver `app/core/fila.py`. `redis` põe na fila do RQ, que o serviço
+    # `worker` consome; `local` roda no próprio processo da API, depois da
+    # resposta, e serve para os testes, a CI, o E2E e para rodar sem o worker.
+    fila: str = "local"
+    # Nome da fila no RQ: o worker escuta esta.
+    fila_nome: str = "algorise"
     # Tentativas contra o Ollama fora, só antes do primeiro pedaço: depois dele,
     # tentar de novo repetiria o texto que o aluno já viu.
     ia_tentativas: int = 2
@@ -181,6 +190,13 @@ class Settings(BaseSettings):
         # finge responder.
         if self.environment == "production" and self.ia_provedor != "ollama":
             raise ValueError("Em produção, IA_PROVEDOR precisa ser 'ollama'")
+
+        if self.fila not in MODOS_DA_FILA:
+            raise ValueError(f"FILA precisa ser um de: {', '.join(MODOS_DA_FILA)}")
+        # Na `local`, uma leitura de minutos roda dentro do processo da API, e
+        # um deploy no meio a perde sem deixar rastro.
+        if self.environment == "production" and self.fila != "redis":
+            raise ValueError("Em produção, FILA precisa ser 'redis'")
         return self
 
 
