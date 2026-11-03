@@ -705,9 +705,10 @@ baixa o modelo de `OLLAMA_MODELO` uma vez, no volume `ollama_data`. Sem o Ollama
 
 **Dois modelos:** o chat usa `OLLAMA_MODELO` (o `llama3.2`). O trabalho do worker
 usa `OLLAMA_MODELO_TAREFAS`: leitura da ementa, segmentação e categorização dos
-vídeos e exercícios. Ali ninguém está esperando a conversa, e
-na CPU um modelo menor termina de 2 a 3 vezes mais rápido. O compose usa o
-`llama3.2:1b` e baixa os dois. Em branco, fora do compose, vale o do chat.
+vídeos e exercícios. Em branco, vale o do chat, que é o padrão do compose
+também. Dá para testar um modelo menor ali sem mexer no chat, mas o `llama3.2:1b`
+não serve: na leitura do PPC, ele levou 8 minutos numa parte e devolveu JSON
+quebrado. O worker só sobe depois do `ollama-modelo` baixar os modelos.
 
 **GPU:** o Ollama no Docker roda na CPU. Com GPU NVIDIA e o NVIDIA Container
 Toolkit, acrescente ao serviço `ollama` um
