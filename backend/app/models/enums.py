@@ -114,3 +114,16 @@ class OrigemVault(str, Enum):
     # Título e descrição de um módulo do catálogo: é o que deixa a ementa (#38)
     # achar um módulo que ainda não tem transcrição.
     modulo = "modulo"
+
+
+class StatusVideo(str, Enum):
+    """Vídeo do YouTube escolhido para cobrir lacunas (#207).
+
+    `aguardando` espera a transcrição (#208); `transcrito` já está no vault;
+    `falhou` não pôde ser baixado ou transcrito, com o motivo.
+    """
+
+    aguardando = "aguardando"
+    transcrevendo = "transcrevendo"
+    transcrito = "transcrito"
+    falhou = "falhou"
