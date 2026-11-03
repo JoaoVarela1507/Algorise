@@ -23,7 +23,7 @@ from typing import Protocol
 
 from fastapi import BackgroundTasks, Depends
 from redis import Redis
-from rq import Callback, Queue, Retry
+from rq import Callback, Queue, Retry, Worker
 from rq.exceptions import NoSuchJobError
 from rq.job import Job, JobStatus
 from sqlalchemy.orm import Session, sessionmaker
@@ -54,13 +54,33 @@ TEMPO_MAXIMO_DA_EXECUCAO = 5 * 60
 # chega aqui: a própria tarefa a grava na ementa e termina sem erro.
 NOVAS_TENTATIVAS = Retry(max=2, interval=[30, 120])
 
-# Estados em que a tarefa ainda vai rodar ou está rodando.
-_PENDENTES = {
+# Estados em que a tarefa ainda vai rodar. `STARTED` fica de fora: rodando de
+# verdade só se o worker que a pegou ainda existe (ver `tarefa_viva`).
+_A_RODAR = {
     JobStatus.QUEUED,
-    JobStatus.STARTED,
     JobStatus.DEFERRED,
     JobStatus.SCHEDULED,
 }
+
+
+def tarefa_viva(conexao: Redis, chave: str) -> bool:
+    """A tarefa `chave` ainda vai rodar, ou está rodando num worker vivo?
+
+    Um worker recriado no meio de uma tarefa (o `docker compose up --build`)
+    deixa ela em `STARTED` no Redis. O RQ só a dá por abandonada quando vence o
+    prazo dela, que na ementa é de horas; até lá, contar `STARTED` como viva
+    deixaria a ementa presa em "processando" e recusaria o pedido de ler de novo.
+    """
+    try:
+        tarefa = Job.fetch(chave, connection=conexao)
+    except NoSuchJobError:
+        return False
+    estado = tarefa.get_status(refresh=False)
+    if estado in _A_RODAR:
+        return True
+    if estado is not JobStatus.STARTED or not tarefa.worker_name:
+        return False
+    return tarefa.worker_name in {worker.name for worker in Worker.all(connection=conexao)}
 
 
 class Fila(Protocol):
@@ -86,6 +106,10 @@ class Fila(Protocol):
 
     def exercicios(self, geracao_id: int) -> bool:
         """Põe na fila a geração dos exercícios de um módulo (#201)."""
+        ...
+
+    def ementa_em_andamento(self, ementa_id: int) -> bool:
+        """A leitura da ementa ainda vai rodar, ou está rodando de verdade?"""
         ...
 
     def execucao(self, execucao_id: str) -> bool:
@@ -200,12 +224,11 @@ class FilaRedis:
         )
         return True
 
+    def ementa_em_andamento(self, ementa_id: int) -> bool:
+        return tarefa_viva(self.fila.connection, f"ementa-{ementa_id}")
+
     def _pendente(self, chave: str) -> bool:
-        try:
-            tarefa = Job.fetch(chave, connection=self.fila.connection)
-        except NoSuchJobError:
-            return False
-        return tarefa.get_status(refresh=False) in _PENDENTES
+        return tarefa_viva(self.fila.connection, chave)
 
 
 class FilaLocal:
@@ -217,6 +240,10 @@ class FilaLocal:
         self.tarefas = tarefas
         self.fabrica = fabrica
         self.provedor = provedor
+
+    def ementa_em_andamento(self, ementa_id: int) -> bool:
+        # Roda neste processo, sem registro de fora para consultar: na dúvida, viva.
+        return True
 
     def ementa(self, ementa_id: int) -> bool:
         from app.services import ementas
@@ -267,6 +294,10 @@ class FilaImediata:
     É a fila de quem já está fora do request (uma tarefa que dispara outra) no
     modo `local`: não há `BackgroundTasks` ali, e já não há aluno esperando.
     """
+
+    def ementa_em_andamento(self, ementa_id: int) -> bool:
+        # Roda neste processo, sem registro de fora para consultar: na dúvida, viva.
+        return True
 
     def ementa(self, ementa_id: int) -> bool:
         from app.tarefas import ementa
