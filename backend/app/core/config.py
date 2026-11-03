@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # dedicado passa longe disso, e um script varrendo o catálogo esbarra.
     xp_maximo_por_janela: int = 500
     xp_janela_segundos: int = 60 * 60
+    # Meta de XP do dia que a home mostra (tela 16). Alcançável com uns dois ou
+    # três exercícios: a ideia é criar o hábito, não cobrar uma maratona.
+    xp_meta_diaria: int = 50
 
     # Janela e teto do rate limit do chat, que custa chamada de IA por request.
     rate_limit_chat_requisicoes: int = 20
@@ -89,6 +92,10 @@ class Settings(BaseSettings):
     ia_provedor: str = "ollama"
     ollama_url: str = "http://localhost:11434"
     ollama_modelo: str = "llama3.2"
+    # Modelo do trabalho em segundo plano (leitura da ementa, segmentação,
+    # categorização e exercícios). Na CPU, um modelo menor lê a ementa de 2 a 3
+    # vezes mais rápido, e ali ninguém conversa com ele. Em branco, usa o do chat.
+    ollama_modelo_tarefas: str = ""
     # Embedding do vault das skills (#200). Multilíngue, porque o conteúdo é em
     # português; a dimensão dele (1024) está fixa na tabela `vault_trechos`.
     ollama_modelo_embedding: str = "bge-m3"

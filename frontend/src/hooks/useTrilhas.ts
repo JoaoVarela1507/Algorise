@@ -11,8 +11,10 @@ import {
   buscarPasso,
   buscarRecomendadas,
   buscarTrilha,
+  buscarTrilhaAtual,
   iniciarTrilha,
   paraCard,
+  paraTrilhaAtual,
   type FiltrosCatalogo,
 } from '@/services/trilhas'
 import type { TrilhaResumo } from '@/types/trilha'
@@ -47,6 +49,15 @@ export function useTrilhasRecomendadas(habilitado = true) {
     // Só para quem está logado: a rota exige token.
     enabled: habilitado,
     select: (trilhas) => trilhas.map((trilha) => paraCard(trilha, { recomendada: true })),
+  })
+}
+
+/** A trilha do card "trilha atual" da home; `null` sem trilha publicada. */
+export function useTrilhaAtual() {
+  return useQuery({
+    queryKey: chaves.trilhas.atual(),
+    queryFn: buscarTrilhaAtual,
+    select: (trilha) => (trilha ? paraTrilhaAtual(trilha) : null),
   })
 }
 

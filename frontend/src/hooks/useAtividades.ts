@@ -5,6 +5,7 @@
  * encena a saída, mas o acerto que vale XP vem daqui.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useRef, useState } from 'react'
 import { chaves } from '@/lib/query'
 import {
   buscarExercicios,
@@ -23,6 +24,52 @@ export function useTentativas(atividadeId: number | undefined) {
   })
 }
 
+export type EstadoCorrecao = 'aguardando' | 'certa' | 'errada' | 'em-analise'
+
+export interface Correcao {
+  estado: EstadoCorrecao
+  /** Tentativas erradas nesta visita à atividade. */
+  tentativas: number
+  /** O que o servidor disse da última resposta ("2 de 3 lacunas certas"…). */
+  feedback: string | null
+  enviando: boolean
+  enviar: (conteudo: string) => Promise<void>
+}
+
+/**
+ * Envia a resposta e guarda o veredito do servidor, igual para todo tipo de
+ * atividade: quem diz se acertou é a API (#30), nunca a tela.
+ */
+export function useCorrecao(atividadeId: number, concluida = false): Correcao {
+  const submissao = useSubmeterResposta(atividadeId)
+  const [estado, setEstado] = useState<EstadoCorrecao>(concluida ? 'certa' : 'aguardando')
+  const [tentativas, setTentativas] = useState(0)
+  const [feedback, setFeedback] = useState<string | null>(null)
+  // Tempo desde a última tentativa, não desde a abertura: a meta do dia soma
+  // as tentativas, e medir do início contaria o mesmo minuto várias vezes.
+  const desde = useRef(Date.now())
+
+  async function enviar(conteudo: string) {
+    const tempoGastoSegundos = Math.round((Date.now() - desde.current) / 1000)
+    try {
+      const correcao = await submissao.mutateAsync({ conteudo, tempoGastoSegundos })
+      desde.current = Date.now()
+      setFeedback(correcao.feedback)
+      if (correcao.correta) setEstado('certa')
+      else if (correcao.em_analise) setEstado('em-analise')
+      else {
+        setEstado('errada')
+        setTentativas((n) => n + 1)
+      }
+    } catch {
+      // A API não respondeu: não dá para afirmar que errou, então a tentativa
+      // não é contada e o aluno pode mandar de novo.
+    }
+  }
+
+  return { estado, tentativas, feedback, enviando: submissao.isPending, enviar }
+}
+
 export function useSubmeterResposta(atividadeId: number) {
   const queryClient = useQueryClient()
 
@@ -32,6 +79,10 @@ export function useSubmeterResposta(atividadeId: number) {
       void queryClient.invalidateQueries({
         queryKey: chaves.atividades.tentativas(atividadeId),
       })
+      // Toda tentativa soma minutos na meta do dia, acertando ou não.
+      void queryClient.invalidateQueries({ queryKey: chaves.gamificacao.metaDiaria() })
+      // O ✓ da atividade no mapa e no detalhe do módulo.
+      if (correcao.correta) void queryClient.invalidateQueries({ queryKey: chaves.trilhas.todas })
       // XP mudou: perfil e ranking saem do lugar.
       if (correcao.xp_ganho > 0) {
         void queryClient.invalidateQueries({ queryKey: chaves.perfil.todas })

@@ -11,6 +11,7 @@ Três regras mandam aqui:
   novo — a checagem é a existência de uma tentativa correta anterior.
 """
 
+import json
 from dataclasses import dataclass
 
 from sqlalchemy import func, select
@@ -47,10 +48,15 @@ class Correcao:
     feedback: str
 
 
-# Tipos que já sabemos corrigir sozinhos. Os outros (múltipla escolha,
-# ordenação, lacuna, desafio) precisam de campos que o modelo ainda não tem:
-# alternativas, ordem esperada, posição da lacuna. Entram com as telas deles.
-TIPOS_CORRIGIVEIS = {TipoAtividade.terminal, TipoAtividade.resposta_aberta}
+# Tipos que já sabemos corrigir sozinhos. O desafio de código precisa rodar o
+# programa do aluno, e isso ainda não existe.
+TIPOS_CORRIGIVEIS = {
+    TipoAtividade.terminal,
+    TipoAtividade.resposta_aberta,
+    TipoAtividade.multipla_escolha,
+    TipoAtividade.ordenacao,
+    TipoAtividade.preencher_lacuna,
+}
 
 # Mínimo para uma resposta aberta ser considerada uma tentativa de verdade, e
 # não um "sei lá" para destravar a tela.
@@ -72,6 +78,22 @@ def normalizar_comando(texto: str) -> str:
     return " ".join(texto.split()).lower()
 
 
+def _normalizar_texto(texto: str | None) -> str:
+    """Espaço sobrando nas pontas e no meio não é erro de conteúdo."""
+    return " ".join((texto or "").split())
+
+
+def _lista(texto: str | None) -> list[str]:
+    """Uma lista JSON de textos. Qualquer outra coisa vira lista vazia, que nunca acerta."""
+    try:
+        valor = json.loads(texto or "")
+    except ValueError:
+        return []
+    if not isinstance(valor, list):
+        return []
+    return [str(item) for item in valor]
+
+
 def corrigir(atividade: Atividade, conteudo: str) -> Correcao:
     """Decide se a resposta está certa. Não toca no banco — é só a regra."""
     if atividade.tipo not in TIPOS_CORRIGIVEIS:
@@ -87,6 +109,53 @@ def corrigir(atividade: Atividade, conteudo: str) -> Correcao:
                 "Comando correto!"
                 if acertou
                 else "Esse não é o comando que a atividade pede. Confira a dica e tente de novo."
+            ),
+        )
+
+    if atividade.tipo is TipoAtividade.multipla_escolha:
+        acertou = _normalizar_texto(conteudo) == _normalizar_texto(atividade.resposta_esperada)
+        return Correcao(
+            correta=acertou,
+            em_analise=False,
+            feedback="Isso mesmo!" if acertou else "Não é essa. Releia o enunciado e tente outra.",
+        )
+
+    if atividade.tipo is TipoAtividade.ordenacao:
+        esperado = _lista(atividade.resposta_esperada)
+        enviado = _lista(conteudo)
+        acertou = bool(esperado) and [_normalizar_texto(i) for i in enviado] == [
+            _normalizar_texto(i) for i in esperado
+        ]
+        return Correcao(
+            correta=acertou,
+            em_analise=False,
+            feedback=(
+                "Ordem certa!"
+                if acertou
+                else "Quase: alguma linha está fora do lugar. Pense no que precisa vir antes."
+            ),
+        )
+
+    if atividade.tipo is TipoAtividade.preencher_lacuna:
+        esperado = _lista(atividade.resposta_esperada)
+        enviado = _lista(conteudo)
+        certas = sum(
+            1
+            for resposta, gabarito in zip(enviado, esperado, strict=False)
+            # Sem baixar a caixa, como no terminal: em código `True` e `true`
+            # são coisas diferentes.
+            if _normalizar_texto(resposta) == _normalizar_texto(gabarito)
+        )
+        acertou = bool(esperado) and len(enviado) == len(esperado) and certas == len(esperado)
+        return Correcao(
+            correta=acertou,
+            em_analise=False,
+            feedback=(
+                "Todas as lacunas certas!"
+                if acertou
+                else "Ainda não é isso. Confira a lacuna."
+                if len(esperado) == 1
+                else f"{certas} de {len(esperado)} lacunas certas. Confira as outras."
             ),
         )
 
@@ -254,6 +323,23 @@ def _bonus_da_trilha(db: Session, *, usuario_id: int, trilha: Trilha) -> int:
         referencia_id=trilha.id,
     )
     return XP_POR_TRILHA
+
+
+def acertadas(db: Session, *, usuario_id: int, atividade_ids: list[int]) -> set[int]:
+    """Quais destas atividades o aluno já acertou. Uma consulta para a trilha inteira."""
+    if not atividade_ids:
+        return set()
+    return set(
+        db.scalars(
+            select(RespostaUsuario.atividade_id)
+            .where(
+                RespostaUsuario.usuario_id == usuario_id,
+                RespostaUsuario.atividade_id.in_(atividade_ids),
+                RespostaUsuario.correta.is_(True),
+            )
+            .distinct()
+        )
+    )
 
 
 def _acertou_antes(db: Session, *, usuario_id: int, atividade_id: int) -> bool:

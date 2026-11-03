@@ -58,7 +58,13 @@ services:
     entrypoint:
       - sh
       - -c
-      - ollama pull ${OLLAMA_MODELO:-llama3.2} && ollama pull ${OLLAMA_MODELO_EMBEDDING:-bge-m3}
+      # Sem internet, o `pull` falha mesmo com o modelo já baixado: o `show`
+      # confere que ele existe no volume, e o worker sobe assim mesmo.
+      - >-
+        for modelo in ${OLLAMA_MODELO:-llama3.2} ${OLLAMA_MODELO_TAREFAS:-llama3.2}
+        ${OLLAMA_MODELO_EMBEDDING:-bge-m3}; do
+        ollama pull $$modelo || ollama show $$modelo > /dev/null || exit 1;
+        done
     environment:
       OLLAMA_HOST: http://ollama:11434
     depends_on:
@@ -87,6 +93,10 @@ services:
       REDIS_URL: redis://redis:6379/0
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODELO: ${OLLAMA_MODELO:-llama3.2}
+      # Modelo das tarefas do worker (leitura da ementa, vídeos, exercícios).
+      # O padrão é o mesmo do chat: o llama3.2:1b foi testado na leitura do PPC
+      # e devolveu JSON quebrado, sem ganhar tempo.
+      OLLAMA_MODELO_TAREFAS: ${OLLAMA_MODELO_TAREFAS:-llama3.2}
       OLLAMA_MODELO_EMBEDDING: ${OLLAMA_MODELO_EMBEDDING:-bge-m3}
       # O trabalho longo (a leitura da ementa) vai para a fila do RQ, e o
       # `worker` o executa fora da API (#206).
@@ -155,6 +165,10 @@ services:
       # Saudável é o backend que já aplicou as migrações.
       backend:
         condition: service_healthy
+      # O modelo das tarefas precisa estar baixado: sem esperar, a primeira
+      # tarefa que pega o worker recém-criado falha com "model not found".
+      ollama-modelo:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   frontend:

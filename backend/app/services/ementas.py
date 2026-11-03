@@ -126,6 +126,35 @@ def precisa_processar(ementa: Ementa) -> bool:
     )
 
 
+INTERROMPIDA = "A leitura foi interrompida no meio. Tente de novo."
+
+
+def em_andamento(ementa: Ementa) -> bool:
+    """O banco diz que a leitura ainda vai rodar ou está rodando."""
+    return ementa.status in (StatusEmenta.pendente, StatusEmenta.processando) or (
+        ementa.status is StatusEmenta.processada
+        and ementa.status_assuntos in (StatusAssuntos.pendente, StatusAssuntos.processando)
+    )
+
+
+def marcar_se_interrompida(db: Session, ementa: Ementa, *, tarefa_viva: bool) -> bool:
+    """A leitura parece em andamento, mas a tarefa morreu (o worker caiu no meio).
+
+    Vira `falhou`, com o motivo, para a tela parar de esperar e oferecer ler de
+    novo. Devolve se marcou.
+    """
+    if tarefa_viva or not em_andamento(ementa):
+        return False
+    if ementa.status is StatusEmenta.processada:
+        ementa.status_assuntos = StatusAssuntos.falhou
+        ementa.erro_assuntos = INTERROMPIDA
+    else:
+        ementa.status = StatusEmenta.falhou
+        ementa.erro = INTERROMPIDA
+    db.commit()
+    return True
+
+
 def reler_assuntos(db: Session, ementa: Ementa) -> bool:
     """Põe a leitura dos assuntos de volta na fila. `False` se ela não pode ser refeita agora.
 

@@ -6,11 +6,23 @@
  */
 import { apiGet, apiPost } from '@/services/api'
 import type { components } from '@/types/api'
-import type { CategoriaTrilha, TrilhaResumo } from '@/types/trilha'
+import type { TrilhaAtual } from '@/types/ranking'
+import type {
+  AtividadeModulo,
+  CategoriaTrilha,
+  ModuloTrilha,
+  StatusAtividade,
+  StatusModulo,
+  TipoAtividade,
+  TrilhaComModulos,
+  TrilhaResumo,
+} from '@/types/trilha'
 
 export type TrilhaApi = components['schemas']['Trilha']
 export type TrilhaDetalheApi = components['schemas']['TrilhaDetalhe']
 export type TrilhaRecomendadaApi = components['schemas']['TrilhaRecomendada']
+export type TrilhaAtualApi = components['schemas']['TrilhaAtual']
+export type AtividadeResumoApi = components['schemas']['AtividadeResumo']
 export type PassoApi = components['schemas']['PassoDetalhe']
 export type PaginaTrilhas = components['schemas']['Pagina_Trilha_']
 
@@ -41,6 +53,23 @@ export function buscarCatalogo(filtros: FiltrosCatalogo = {}): Promise<PaginaTri
 
 export function buscarRecomendadas(): Promise<TrilhaRecomendadaApi[]> {
   return apiGet<TrilhaRecomendadaApi[]>('/trilhas/recomendadas')
+}
+
+/** A trilha do card da home; `null` quando não há trilha publicada. */
+export function buscarTrilhaAtual(): Promise<TrilhaAtualApi | null> {
+  return apiGet<TrilhaAtualApi | null>('/trilhas/atual')
+}
+
+export function paraTrilhaAtual(trilha: TrilhaAtualApi): TrilhaAtual {
+  return {
+    id: trilha.slug,
+    nome: trilha.nome,
+    disciplina: trilha.disciplina,
+    periodo: trilha.periodo ?? null,
+    modulosConcluidos: trilha.progresso,
+    totalModulos: trilha.total_modulos,
+    proximoModulo: trilha.proximo_modulo ?? null,
+  }
 }
 
 export function buscarTrilha(slug: string): Promise<TrilhaDetalheApi> {
@@ -92,4 +121,77 @@ export function paraCard(
     // backend; hoje o que trava é o passo dentro da trilha (#29).
     bloqueada: false,
   }
+}
+
+/** Para a atividade sem tempo sugerido cadastrado. */
+const MINUTOS_POR_TIPO: Record<TipoAtividade, number> = {
+  'multipla-escolha': 3,
+  'preencher-lacuna': 4,
+  ordenacao: 4,
+  terminal: 5,
+  'resposta-aberta': 5,
+  'desafio-codigo': 10,
+}
+
+/**
+ * Converte o detalhe da API para o mapa da tela 26.
+ *
+ * O estado de cada passo vem pronto do servidor, que é quem decide o que está
+ * liberado. Daqui só sai qual dos abertos é o "atual": o primeiro que falta.
+ */
+export function paraMapa(trilha: TrilhaDetalheApi): TrilhaComModulos {
+  const modulos = [...(trilha.modulos ?? [])].sort((a, b) => a.ordem - b.ordem)
+  const atual = modulos.find((m) => m.status === 'em-andamento')
+
+  return {
+    ...paraCard(trilha, { motivo: trilha.disciplina }),
+    disciplina: trilha.disciplina,
+    parceiro: trilha.parceiro_nome ?? null,
+    modulos: modulos.map((modulo): ModuloTrilha => {
+      const status: StatusModulo =
+        modulo.status === 'concluido'
+          ? 'concluido'
+          : modulo.status === 'bloqueado'
+            ? 'bloqueado'
+            : modulo === atual
+              ? 'atual'
+              : 'disponivel'
+      return {
+        id: String(modulo.id),
+        ordem: modulo.ordem,
+        titulo: modulo.titulo,
+        descricao: modulo.descricao ?? '',
+        xp: modulo.xp ?? 0,
+        status,
+        atividades: paraAtividades(modulo.atividades ?? [], status),
+      }
+    }),
+  }
+}
+
+function paraAtividades(
+  atividades: AtividadeResumoApi[],
+  statusDoModulo: StatusModulo,
+): AtividadeModulo[] {
+  const ordenadas = [...atividades].sort((a, b) => a.ordem - b.ordem)
+  const proxima = ordenadas.find((a) => !a.concluida)
+
+  return ordenadas.map((atividade) => {
+    const status: StatusAtividade = atividade.concluida
+      ? 'feita'
+      : statusDoModulo === 'bloqueado'
+        ? 'bloqueada'
+        : atividade === proxima
+          ? 'proxima'
+          : 'pendente'
+    return {
+      id: String(atividade.id),
+      tipo: atividade.tipo,
+      titulo: atividade.enunciado,
+      minutos: atividade.tempo_sugerido_segundos
+        ? Math.max(1, Math.round(atividade.tempo_sugerido_segundos / 60))
+        : MINUTOS_POR_TIPO[atividade.tipo],
+      status,
+    }
+  })
 }
