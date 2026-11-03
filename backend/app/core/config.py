@@ -114,6 +114,9 @@ class Settings(BaseSettings):
     whisper_computacao: str = "int8"
     # Vídeo mais longo que isto não é transcrito: ocuparia o worker por horas.
     transcricao_duracao_maxima: int = 3 * 60 * 60
+    # Duração máxima de uma parte do vídeo, em segundos (#209). O vídeo mais
+    # curto que isto vira uma parte só, sem chamar a IA.
+    segmentacao_duracao_maxima: int = 25 * 60
     # Tentativas contra o Ollama fora, só antes do primeiro pedaço: depois dele,
     # tentar de novo repetiria o texto que o aluno já viu.
     ia_tentativas: int = 2
