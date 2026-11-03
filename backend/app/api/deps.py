@@ -2,10 +2,11 @@
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.core import logs
 from app.core.database import get_db
 from app.core.seguranca import TokenInvalido, decodificar
 from app.models import Usuario
@@ -22,6 +23,7 @@ NAO_AUTORIZADO = HTTPException(
 
 
 def get_current_user(
+    request: Request,
     credenciais: Annotated[HTTPAuthorizationCredentials | None, Depends(esquema)] = None,
     db: Session = Depends(get_db),
 ) -> Usuario:
@@ -48,6 +50,11 @@ def get_current_user(
         # minutos que ainda tem.
         raise NAO_AUTORIZADO
 
+    # A linha da requisição diz de quem ela é. Pelo `request.state`, e não só
+    # pelo contexto: a dependência roda numa thread com uma cópia do contexto,
+    # e o que ela grava ali não volta para o middleware.
+    request.state.usuario_id = usuario.id
+    logs.usuario_id.set(usuario.id)
     return usuario
 
 
@@ -55,6 +62,7 @@ UsuarioAtual = Annotated[Usuario, Depends(get_current_user)]
 
 
 def get_usuario_opcional(
+    request: Request,
     credenciais: Annotated[HTTPAuthorizationCredentials | None, Depends(esquema)] = None,
     db: Session = Depends(get_db),
 ) -> Usuario | None:
@@ -70,7 +78,7 @@ def get_usuario_opcional(
         return None
 
     try:
-        return get_current_user(credenciais, db)
+        return get_current_user(request, credenciais, db)
     except HTTPException:
         return None
 
