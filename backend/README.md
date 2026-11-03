@@ -520,6 +520,23 @@ tabela de eventos está no `/docs`.
   tokens. A mensagem tem até `CHAT_MAXIMO_CARACTERES`, e o aluno tem o
   `RATE_LIMIT_CHAT_*` por janela.
 
+O histórico tem as suas próprias rotas, todas em `/api/v1/chat`. Conversa ou grupo
+de outro aluno responde 404.
+
+| Rota                                             | O que faz                                                                    |
+| ------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `POST /conversas`                                | cria a conversa; o título sai da `primeira_mensagem`                          |
+| `GET /conversas?busca=&arquivadas=&grupo_id=`    | o histórico paginado, da mais recente; `busca` olha o título e as mensagens   |
+| `GET /conversas/{id}/mensagens`                  | as mensagens, na ordem, paginadas                                            |
+| `PATCH /conversas/{id}`                          | renomeia, arquiva ou põe num grupo (`grupo_id: null` tira)                    |
+| `DELETE /conversas/{id}`                         | apaga a conversa e as mensagens                                              |
+| `POST`, `GET /grupos` e `GET`, `PATCH`, `DELETE /grupos/{id}` | grupos temáticos; apagar o grupo deixa as conversas, sem grupo  |
+| `GET /sugestoes`                                 | tópicos da tela 21: o passo em andamento e as conversas recentes             |
+
+A busca usa o full-text do PostgreSQL em português (índice GIN em
+`mensagens_chat.conteudo`), que acha "laços" buscando "laço". No SQLite dos testes,
+cai num `LIKE`.
+
 A IA mora em `app/ia/`, separada de quem a usa:
 
 | Arquivo       | O que tem                                                                                                   |

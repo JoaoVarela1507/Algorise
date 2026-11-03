@@ -775,6 +775,52 @@
         "title": "Certificado",
         "type": "object"
       },
+      "ConversaResumo": {
+        "properties": {
+          "arquivada": {
+            "title": "Arquivada",
+            "type": "boolean"
+          },
+          "atualizado_em": {
+            "format": "date-time",
+            "title": "Atualizado Em",
+            "type": "string"
+          },
+          "criado_em": {
+            "format": "date-time",
+            "title": "Criado Em",
+            "type": "string"
+          },
+          "grupo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grupo Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "arquivada",
+          "criado_em",
+          "atualizado_em"
+        ],
+        "title": "ConversaResumo",
+        "type": "object"
+      },
       "Correcao": {
         "description": "A resposta da submissão.",
         "properties": {
@@ -941,6 +987,81 @@
           "assuntos"
         ],
         "title": "DisciplinaRevisada",
+        "type": "object"
+      },
+      "EdicaoDeConversa": {
+        "properties": {
+          "arquivada": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arquivada"
+          },
+          "grupo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grupo Id"
+          },
+          "titulo": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo"
+          }
+        },
+        "title": "EdicaoDeConversa",
+        "type": "object"
+      },
+      "EdicaoDeGrupo": {
+        "properties": {
+          "conversa_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversa Ids"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          }
+        },
+        "title": "EdicaoDeGrupo",
         "type": "object"
       },
       "EmentaStatus": {
@@ -1271,6 +1392,38 @@
         "title": "ExerciciosDoPasso",
         "type": "object"
       },
+      "Grupo": {
+        "properties": {
+          "conversas": {
+            "items": {
+              "$ref": "#/components/schemas/ConversaResumo"
+            },
+            "title": "Conversas",
+            "type": "array"
+          },
+          "criado_em": {
+            "format": "date-time",
+            "title": "Criado Em",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "nome",
+          "conversas",
+          "criado_em"
+        ],
+        "title": "Grupo",
+        "type": "object"
+      },
       "InstituicaoResumo": {
         "properties": {
           "id": {
@@ -1474,6 +1627,39 @@
           "senha"
         ],
         "title": "Login",
+        "type": "object"
+      },
+      "Mensagem": {
+        "properties": {
+          "conteudo": {
+            "title": "Conteudo",
+            "type": "string"
+          },
+          "criado_em": {
+            "format": "date-time",
+            "title": "Criado Em",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "incompleta": {
+            "title": "Incompleta",
+            "type": "boolean"
+          },
+          "papel": {
+            "$ref": "#/components/schemas/PapelMensagem"
+          }
+        },
+        "required": [
+          "id",
+          "papel",
+          "conteudo",
+          "incompleta",
+          "criado_em"
+        ],
+        "title": "Mensagem",
         "type": "object"
       },
       "MetricasAtividade": {
@@ -1771,6 +1957,37 @@
         "title": "NivelExperiencia",
         "type": "string"
       },
+      "NovaConversa": {
+        "properties": {
+          "primeira_mensagem": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primeira Mensagem"
+          },
+          "titulo": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo"
+          }
+        },
+        "title": "NovaConversa",
+        "type": "object"
+      },
       "NovaMensagem": {
         "properties": {
           "conteudo": {
@@ -1802,6 +2019,30 @@
           "conteudo"
         ],
         "title": "NovaMensagem",
+        "type": "object"
+      },
+      "NovoGrupo": {
+        "properties": {
+          "conversa_ids": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 200,
+            "title": "Conversa Ids",
+            "type": "array"
+          },
+          "nome": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nome"
+        ],
+        "title": "NovoGrupo",
         "type": "object"
       },
       "Onboarding": {
@@ -1891,6 +2132,94 @@
         "title": "OrigemModulo",
         "type": "string"
       },
+      "Pagina_ConversaResumo_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ConversaResumo"
+            },
+            "title": "Itens",
+            "type": "array"
+          },
+          "pagina": {
+            "description": "Página atual, começando em 1",
+            "minimum": 1.0,
+            "title": "Pagina",
+            "type": "integer"
+          },
+          "tamanho_pagina": {
+            "description": "Quantos itens cabem na página",
+            "minimum": 1.0,
+            "title": "Tamanho Pagina",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de itens em todas as páginas",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "total_paginas": {
+            "description": "Quantas páginas existem no total",
+            "minimum": 0.0,
+            "title": "Total Paginas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "itens",
+          "pagina",
+          "tamanho_pagina",
+          "total",
+          "total_paginas"
+        ],
+        "title": "Pagina[ConversaResumo]",
+        "type": "object"
+      },
+      "Pagina_Mensagem_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/Mensagem"
+            },
+            "title": "Itens",
+            "type": "array"
+          },
+          "pagina": {
+            "description": "Página atual, começando em 1",
+            "minimum": 1.0,
+            "title": "Pagina",
+            "type": "integer"
+          },
+          "tamanho_pagina": {
+            "description": "Quantos itens cabem na página",
+            "minimum": 1.0,
+            "title": "Tamanho Pagina",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de itens em todas as páginas",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "total_paginas": {
+            "description": "Quantas páginas existem no total",
+            "minimum": 0.0,
+            "title": "Total Paginas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "itens",
+          "pagina",
+          "tamanho_pagina",
+          "total",
+          "total_paginas"
+        ],
+        "title": "Pagina[Mensagem]",
+        "type": "object"
+      },
       "Pagina_Trilha_": {
         "properties": {
           "itens": {
@@ -1979,6 +2308,15 @@
         ],
         "title": "Painel",
         "type": "object"
+      },
+      "PapelMensagem": {
+        "description": "Quem escreveu a mensagem do chat (telas 21 a 23).",
+        "enum": [
+          "usuario",
+          "assistente"
+        ],
+        "title": "PapelMensagem",
+        "type": "string"
       },
       "ParceiroAdmin": {
         "properties": {
@@ -3048,6 +3386,35 @@
           "conteudo"
         ],
         "title": "Submissao",
+        "type": "object"
+      },
+      "Sugestao": {
+        "properties": {
+          "conversa_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversa Id"
+          },
+          "origem": {
+            "title": "Origem",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "texto",
+          "origem"
+        ],
+        "title": "Sugestao",
         "type": "object"
       },
       "TamanhoFonte": {
@@ -5743,6 +6110,717 @@
         ]
       }
     },
+    "/api/v1/chat/conversas": {
+      "get": {
+        "description": "Da mais recente para a mais antiga. `busca` procura a palavra no título e no conteúdo das mensagens (full-text em português no PostgreSQL).",
+        "operationId": "listarConversas",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "busca",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Busca"
+            }
+          },
+          {
+            "description": "As arquivadas, em vez das ativas",
+            "in": "query",
+            "name": "arquivadas",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "As arquivadas, em vez das ativas",
+              "title": "Arquivadas",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Só as de um grupo",
+            "in": "query",
+            "name": "grupo_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Só as de um grupo",
+              "title": "Grupo Id"
+            }
+          },
+          {
+            "description": "Página, começando em 1",
+            "in": "query",
+            "name": "pagina",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Página, começando em 1",
+              "minimum": 1,
+              "title": "Pagina",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Itens por página (máximo 100)",
+            "in": "query",
+            "name": "tamanho_pagina",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Itens por página (máximo 100)",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Tamanho Pagina",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Campo de ordenação; cada rota documenta os seus",
+            "in": "query",
+            "name": "ordenar_por",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Campo de ordenação; cada rota documenta os seus",
+              "title": "Ordenar Por"
+            }
+          },
+          {
+            "description": "Inverte a ordem",
+            "in": "query",
+            "name": "decrescente",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Inverte a ordem",
+              "title": "Decrescente",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_ConversaResumo_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Histórico de conversas",
+        "tags": [
+          "chat"
+        ]
+      },
+      "post": {
+        "description": "O título sai da `primeira_mensagem`, se vier; senão, \"Nova conversa\".",
+        "operationId": "criarConversa",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NovaConversa"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversaResumo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cria uma conversa",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/v1/chat/conversas/{conversa_id}": {
+      "delete": {
+        "operationId": "apagarConversa",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversa_id",
+            "required": true,
+            "schema": {
+              "title": "Conversa Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apaga a conversa e as mensagens",
+        "tags": [
+          "chat"
+        ]
+      },
+      "patch": {
+        "operationId": "editarConversa",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversa_id",
+            "required": true,
+            "schema": {
+              "title": "Conversa Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicaoDeConversa"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversaResumo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Renomeia, arquiva ou põe a conversa num grupo",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/v1/chat/conversas/{conversa_id}/mensagens": {
+      "get": {
+        "operationId": "listarMensagens",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversa_id",
+            "required": true,
+            "schema": {
+              "title": "Conversa Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Página, começando em 1",
+            "in": "query",
+            "name": "pagina",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Página, começando em 1",
+              "minimum": 1,
+              "title": "Pagina",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Itens por página (máximo 100)",
+            "in": "query",
+            "name": "tamanho_pagina",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Itens por página (máximo 100)",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Tamanho Pagina",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Campo de ordenação; cada rota documenta os seus",
+            "in": "query",
+            "name": "ordenar_por",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Campo de ordenação; cada rota documenta os seus",
+              "title": "Ordenar Por"
+            }
+          },
+          {
+            "description": "Inverte a ordem",
+            "in": "query",
+            "name": "decrescente",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Inverte a ordem",
+              "title": "Decrescente",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_Mensagem_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mensagens da conversa, na ordem",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/v1/chat/grupos": {
+      "get": {
+        "operationId": "listarGrupos",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Grupo"
+                  },
+                  "title": "Response Listargrupos",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Grupos do aluno",
+        "tags": [
+          "chat"
+        ]
+      },
+      "post": {
+        "operationId": "criarGrupo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NovoGrupo"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Grupo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cria um grupo temático com as conversas escolhidas",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/v1/chat/grupos/{grupo_id}": {
+      "delete": {
+        "operationId": "apagarGrupo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grupo_id",
+            "required": true,
+            "schema": {
+              "title": "Grupo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apaga o grupo; as conversas ficam",
+        "tags": [
+          "chat"
+        ]
+      },
+      "get": {
+        "operationId": "obterGrupo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grupo_id",
+            "required": true,
+            "schema": {
+              "title": "Grupo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Grupo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Um grupo, com as conversas",
+        "tags": [
+          "chat"
+        ]
+      },
+      "patch": {
+        "operationId": "editarGrupo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grupo_id",
+            "required": true,
+            "schema": {
+              "title": "Grupo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicaoDeGrupo"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Grupo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Renomeia o grupo ou troca as conversas dele",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
     "/api/v1/chat/mensagens": {
       "post": {
         "description": "Responde em `text/event-stream`, um evento por pedaço da resposta:\n\n| Evento | Dados | Quando |\n| --- | --- | --- |\n| `chat.conversa` | `conversa_id`, `titulo`, `mensagem_id` | primeiro, com a pergunta já gravada |\n| `chat.token` | `texto` | a cada pedaço da resposta |\n| `chat.fim` | `mensagem_id` | resposta completa e gravada |\n| `chat.erro` | `code`, `message`, `mensagem_id` | a IA parou no meio; o parcial fica gravado |\n\nA IA fora do ar **antes** do primeiro pedaço responde 503 no formato de erro da\nAPI, sem gravar a pergunta: o aluno tenta de novo sem deixar pergunta órfã no\nhistórico.",
@@ -5821,6 +6899,57 @@
           }
         ],
         "summary": "Envia uma mensagem ao tutor e recebe a resposta em streaming",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/v1/chat/sugestoes": {
+      "get": {
+        "description": "O passo em que o aluno está e as conversas recentes.",
+        "operationId": "listarSugestoes",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Sugestao"
+                  },
+                  "title": "Response Listarsugestoes",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Tópicos sugeridos na tela 21",
         "tags": [
           "chat"
         ]
