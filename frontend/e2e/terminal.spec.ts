@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { criarConta, entrar } from './apoio'
 
 /**
@@ -43,47 +43,77 @@ test('o Avançar só libera com o comando certo', async ({ page }) => {
   await expect(avancar).toBeDisabled()
 })
 
-test('concluir o passo leva ao próximo e soma no progresso da trilha', async ({ page }) => {
-  // As duas atividades de terminal do passo 1 do seed.
-  await page.getByLabel('Digite o comando da atividade').fill('winget install Python.Python.3.14')
-  await page.keyboard.press('Enter')
-  const avancar = page.getByRole('button', { name: 'Avançar' })
-  await expect(avancar).toBeEnabled({ timeout: 15_000 })
-  await avancar.click()
+/** Responde e avança: o Avançar só libera depois da correção do servidor. */
+async function avancar(page: Page) {
+  const botao = page.getByRole('button', { name: 'Avançar' })
+  await expect(botao).toBeEnabled({ timeout: 15_000 })
+  await botao.click()
+}
 
-  await page.getByLabel('Digite o comando da atividade').fill('python --version')
+async function terminal(page: Page, comando: string) {
+  await page.getByLabel('Digite o comando da atividade').fill(comando)
   await page.keyboard.press('Enter')
-  await expect(avancar).toBeEnabled()
-  await avancar.click()
+  await avancar(page)
+}
 
-  // Quem fechou o passo foi a API, e foi ela que disse qual é o próximo.
-  await expect(page).toHaveURL('/trilhas/introducao-python/questao/2')
+async function escolher(page: Page, alternativa: string) {
+  // O rádio fica escondido atrás do cartão: clica-se no texto, como o aluno.
+  await page.getByText(alternativa, { exact: true }).click()
+  await page.getByRole('button', { name: 'Conferir' }).click()
+  await avancar(page)
+}
+
+test('concluir o passo comemora e soma no progresso da trilha', async ({ page }) => {
+  // As sete atividades do passo 1 do seed, uma de cada jeito.
+  await terminal(page, 'winget install Python.Python.3.14')
+  await terminal(page, 'python --version')
+
+  await page
+    .getByLabel('Sua resposta')
+    .fill('A flag muda o comportamento do comando: --version mostra a versão.')
+  await page.getByRole('button', { name: 'Enviar' }).click()
+  await avancar(page)
+
+  await escolher(page, 'Uma linguagem de programação')
+  await escolher(page, 'Mostrar a versão do Python instalada')
+
+  await page.getByRole('button', { name: '--version' }).click()
+  await page.getByRole('button', { name: 'Conferir' }).click()
+  await avancar(page)
+
+  // Começa em "Escrever, Instalar, Abrir, Conferir"; a certa é "Abrir,
+  // Instalar, Conferir, Escrever".
+  for (const botao of ['Descer a linha 1', 'Descer a linha 2', 'Descer a linha 3']) {
+    await page.getByRole('button', { name: botao }).click()
+  }
+  await page.getByRole('button', { name: 'Subir a linha 2' }).click()
+  await page.getByRole('button', { name: 'Conferir' }).click()
+  await avancar(page)
+
+  // Quem fechou o passo foi a API: a comemoração diz qual é o próximo.
+  await expect(page.getByRole('heading', { name: 'Mandou bem!' })).toBeVisible()
+  await page.getByRole('button', { name: 'Voltar para o caminho' }).click()
+  await expect(page).toHaveURL('/trilhas/introducao-python')
 
   // E o catálogo já mostra o passo fechado, sem recarregar na mão.
   await page.goto('/trilhas')
   await expect(page.getByText('1/10')).toBeVisible()
 })
 
-test('encadeia as duas atividades do passo', async ({ page }) => {
-  await expect(page.getByRole('progressbar', { name: 'Atividade 1 de 2' })).toBeVisible()
+test('encadeia as atividades do passo', async ({ page }) => {
+  await expect(page.getByRole('progressbar', { name: 'Atividade 1 de 7' })).toBeVisible()
 
-  await page.getByLabel('Digite o comando da atividade').fill('winget install Python.Python.3.14')
-  await page.keyboard.press('Enter')
-  const avancar = page.getByRole('button', { name: 'Avançar' })
-  await expect(avancar).toBeEnabled({ timeout: 15_000 })
-  await avancar.click()
+  await terminal(page, 'winget install Python.Python.3.14')
 
-  // Segunda atividade: o terminal recomeça limpo.
-  await expect(page.getByRole('progressbar', { name: 'Atividade 2 de 2' })).toBeVisible()
-  await expect(avancar).toBeDisabled()
+  // Segunda atividade: o terminal recomeça limpo, e o Avançar volta a travar.
+  await expect(page.getByRole('progressbar', { name: 'Atividade 2 de 7' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Avançar' })).toBeDisabled()
 
-  await page.getByLabel('Digite o comando da atividade').fill('python --version')
-  await page.keyboard.press('Enter')
-  await expect(avancar).toBeEnabled()
-  await avancar.click()
+  await terminal(page, 'python --version')
 
-  // Fim do passo: a API fecha o passo e manda para o próximo.
-  await expect(page).toHaveURL('/trilhas/introducao-python/questao/2')
+  // Daí em diante, as atividades que não são de terminal.
+  await expect(page.getByRole('progressbar', { name: 'Atividade 3 de 7' })).toBeVisible()
+  await expect(page.getByLabel('Sua resposta')).toBeVisible()
 })
 
 test('o erro do protótipo mostra a dica do python -h', async ({ page }) => {
