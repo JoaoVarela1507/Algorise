@@ -43,6 +43,9 @@ class Usuario(Base, TimestampMixin):
     # Saldo desnormalizado: a verdade são os registros em `xp_eventos`. Existe
     # para o ranking não somar a tabela inteira a cada consulta.
     xp_total: Mapped[int] = mapped_column(default=0, index=True)
+    # Quando o saldo chegou ao valor atual: no empate de XP, fica na frente do
+    # ranking quem chegou antes (#31).
+    xp_alcancado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # O que pode além de estudar (#41): cadastrar conteúdo, ver métricas.
     papel: Mapped[PapelUsuario] = mapped_column(

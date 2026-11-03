@@ -24,6 +24,7 @@ from app.models import (
     TipoAtividade,
     Trilha,
     Usuario,
+    XPEvento,
 )
 from app.services import certificados, progresso, xp
 
@@ -58,6 +59,8 @@ MINIMO_RESPOSTA_ABERTA = 20
 # Bônus por fechar o passo, além do XP de cada atividade. A curva de níveis e as
 # demais regras de pontuação são a #31.
 XP_POR_PASSO = 20
+# Bônus de concluir a trilha inteira, uma vez só (telas 38 e 41).
+XP_POR_TRILHA = 40
 
 
 def normalizar_comando(texto: str) -> str:
@@ -193,9 +196,35 @@ def concluir_passo(
             referencia_id=modulo.id,
         )
 
+        ganho += _bonus_da_trilha(db, usuario_id=usuario.id, trilha=trilha)
+
     ordens = sorted(m.ordem for m in trilha.modulos)
     proximo = next((ordem for ordem in ordens if ordem > modulo.ordem), None)
     return ganho, proximo
+
+
+def _bonus_da_trilha(db: Session, *, usuario_id: int, trilha: Trilha) -> int:
+    """O bônus de quem acabou de fechar o último passo. Uma vez só por trilha."""
+    concluidos = progresso.concluidos_por_trilha(db, usuario_id=usuario_id, trilha_ids=[trilha.id])
+    if concluidos.get(trilha.id, 0) < len(trilha.modulos):
+        return 0
+    ja_pago = db.scalar(
+        select(XPEvento.id).where(
+            XPEvento.usuario_id == usuario_id,
+            XPEvento.origem == OrigemXP.trilha,
+            XPEvento.referencia_id == trilha.id,
+        )
+    )
+    if ja_pago is not None:
+        return 0
+    xp.registrar_xp(
+        db,
+        usuario_id=usuario_id,
+        valor=XP_POR_TRILHA,
+        origem=OrigemXP.trilha,
+        referencia_id=trilha.id,
+    )
+    return XP_POR_TRILHA
 
 
 def _acertou_antes(db: Session, *, usuario_id: int, atividade_id: int) -> bool:
