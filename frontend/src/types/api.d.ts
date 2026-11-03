@@ -617,6 +617,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/trilhas/{slug}/passos/{ordem}/reportar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reporta o vídeo de um módulo gerado automaticamente
+         * @description Um reporte por aluno. Com `REPORTES_PARA_REMOVER` alunos, o módulo sai da trilha e o assunto volta para a busca de conteúdo. 409 para módulo que não veio de vídeo.
+         */
+        post: operations["reportarPasso"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/usuarios/me": {
         parameters: {
             query?: never;
@@ -1160,6 +1180,8 @@ export interface components {
              * @default true
              */
             bloqueado: boolean;
+            /** Canal */
+            canal?: string | null;
             /**
              * Concluido
              * @default false
@@ -1167,10 +1189,16 @@ export interface components {
             concluido: boolean;
             /** Descricao */
             descricao?: string | null;
+            /** Fim Segundos */
+            fim_segundos?: number | null;
             /** Id */
             id: number;
+            /** Inicio Segundos */
+            inicio_segundos?: number | null;
             /** Ordem */
             ordem: number;
+            /** @default manual */
+            origem: components["schemas"]["OrigemModulo"];
             /** @default bloqueado */
             status: components["schemas"]["StatusProgresso"];
             /** Titulo */
@@ -1250,6 +1278,12 @@ export interface components {
             periodo?: number | null;
             tipo_trilha: components["schemas"]["TipoTrilha"];
         };
+        /**
+         * OrigemModulo
+         * @description Quem fez o módulo: o seed e o professor (`manual`) ou a busca de vídeos (#210).
+         * @enum {string}
+         */
+        OrigemModulo: "manual" | "youtube";
         /** Pagina[Trilha] */
         Pagina_Trilha_: {
             /** Itens */
@@ -1320,6 +1354,8 @@ export interface components {
              * @default true
              */
             bloqueado: boolean;
+            /** Canal */
+            canal?: string | null;
             /**
              * Concluido
              * @default false
@@ -1327,10 +1363,16 @@ export interface components {
             concluido: boolean;
             /** Descricao */
             descricao?: string | null;
+            /** Fim Segundos */
+            fim_segundos?: number | null;
             /** Id */
             id: number;
+            /** Inicio Segundos */
+            inicio_segundos?: number | null;
             /** Ordem */
             ordem: number;
+            /** @default manual */
+            origem: components["schemas"]["OrigemModulo"];
             /** Proximo */
             proximo?: number | null;
             /** @default bloqueado */
@@ -1498,6 +1540,16 @@ export interface components {
         Renovacao: {
             /** Refresh Token */
             refresh_token: string;
+        };
+        /**
+         * ReporteDoModulo
+         * @description O resultado de reportar o vídeo de um módulo automático.
+         */
+        ReporteDoModulo: {
+            /** Removido */
+            removido: boolean;
+            /** Reportes */
+            reportes: number;
         };
         /**
          * RespostaDeErro
@@ -3162,6 +3214,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PassoConcluido"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    reportarPasso: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                ordem: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReporteDoModulo"];
                 };
             };
             /** @description Dados inválidos */

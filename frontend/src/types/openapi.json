@@ -887,6 +887,17 @@
             "title": "Bloqueado",
             "type": "boolean"
           },
+          "canal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canal"
+          },
           "concluido": {
             "default": false,
             "title": "Concluido",
@@ -903,13 +914,39 @@
             ],
             "title": "Descricao"
           },
+          "fim_segundos": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fim Segundos"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
           },
+          "inicio_segundos": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inicio Segundos"
+          },
           "ordem": {
             "title": "Ordem",
             "type": "integer"
+          },
+          "origem": {
+            "$ref": "#/components/schemas/OrigemModulo",
+            "default": "manual"
           },
           "status": {
             "$ref": "#/components/schemas/StatusProgresso",
@@ -1120,6 +1157,15 @@
         "title": "Onboarding",
         "type": "object"
       },
+      "OrigemModulo": {
+        "description": "Quem fez o módulo: o seed e o professor (`manual`) ou a busca de vídeos (#210).",
+        "enum": [
+          "manual",
+          "youtube"
+        ],
+        "title": "OrigemModulo",
+        "type": "string"
+      },
       "Pagina_Trilha_": {
         "properties": {
           "itens": {
@@ -1255,6 +1301,17 @@
             "title": "Bloqueado",
             "type": "boolean"
           },
+          "canal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canal"
+          },
           "concluido": {
             "default": false,
             "title": "Concluido",
@@ -1271,13 +1328,39 @@
             ],
             "title": "Descricao"
           },
+          "fim_segundos": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fim Segundos"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
           },
+          "inicio_segundos": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inicio Segundos"
+          },
           "ordem": {
             "title": "Ordem",
             "type": "integer"
+          },
+          "origem": {
+            "$ref": "#/components/schemas/OrigemModulo",
+            "default": "manual"
           },
           "proximo": {
             "anyOf": [
@@ -1671,6 +1754,25 @@
           "refresh_token"
         ],
         "title": "Renovacao",
+        "type": "object"
+      },
+      "ReporteDoModulo": {
+        "description": "O resultado de reportar o vídeo de um módulo automático.",
+        "properties": {
+          "removido": {
+            "title": "Removido",
+            "type": "boolean"
+          },
+          "reportes": {
+            "title": "Reportes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reportes",
+          "removido"
+        ],
+        "title": "ReporteDoModulo",
         "type": "object"
       },
       "RespostaDeErro": {
@@ -4295,6 +4397,73 @@
           }
         ],
         "summary": "Fecha o passo e concede o XP",
+        "tags": [
+          "trilhas"
+        ]
+      }
+    },
+    "/api/v1/trilhas/{slug}/passos/{ordem}/reportar": {
+      "post": {
+        "description": "Um reporte por aluno. Com `REPORTES_PARA_REMOVER` alunos, o módulo sai da trilha e o assunto volta para a busca de conteúdo. 409 para módulo que não veio de vídeo.",
+        "operationId": "reportarPasso",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ordem",
+            "required": true,
+            "schema": {
+              "title": "Ordem",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReporteDoModulo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reporta o vídeo de um módulo gerado automaticamente",
         "tags": [
           "trilhas"
         ]

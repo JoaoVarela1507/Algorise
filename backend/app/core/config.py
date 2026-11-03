@@ -120,6 +120,9 @@ class Settings(BaseSettings):
     # Confiança mínima da IA para uma parte de vídeo entrar na trilha (#202).
     # Abaixo, a parte é descartada, como a que não é de matéria nenhuma.
     categorizacao_confianca_minima: float = 0.6
+    # Quantos alunos precisam reportar o vídeo de um módulo automático para ele
+    # sair da trilha e a lacuna voltar para a busca (#210).
+    reportes_para_remover: int = 3
     # Tentativas contra o Ollama fora, só antes do primeiro pedaço: depois dele,
     # tentar de novo repetiria o texto que o aluno já viu.
     ia_tentativas: int = 2

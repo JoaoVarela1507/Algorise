@@ -65,7 +65,9 @@ def ementa_confirmada(db: Session, usuario_id: int) -> Ementa | None:
             .selectinload(DisciplinaEmenta.assuntos)
             .options(
                 selectinload(AssuntoEmenta.modulo).selectinload(Modulo.trilha),
-                selectinload(AssuntoEmenta.lacuna),
+                selectinload(AssuntoEmenta.lacuna)
+                .selectinload(Lacuna.modulo)
+                .selectinload(Modulo.trilha),
             )
         )
     ).first()
@@ -87,13 +89,15 @@ def montar(db: Session, usuario: Usuario) -> tuple[Ementa | None, list[Item]]:
 
     for disciplina in disciplinas:
         for assunto in disciplina.assuntos:
-            if assunto.modulo is not None:
-                item = por_modulo.get(assunto.modulo.id)
+            # A lacuna coberta por um módulo feito de vídeo (#210) é esse módulo.
+            modulo = assunto.modulo or (assunto.lacuna.modulo if assunto.lacuna else None)
+            if modulo is not None:
+                item = por_modulo.get(modulo.id)
                 if item is None:
                     if usuario.nivel_experiencia is NivelExperiencia.baixo:
-                        _incluir_base(itens, por_modulo, disciplina, assunto.modulo)
-                    item = Item(disciplina.nome, disciplina.periodo, modulo=assunto.modulo)
-                    por_modulo[assunto.modulo.id] = item
+                        _incluir_base(itens, por_modulo, disciplina, modulo)
+                    item = Item(disciplina.nome, disciplina.periodo, modulo=modulo)
+                    por_modulo[modulo.id] = item
                     itens.append(item)
                 item.assuntos.append(assunto.texto)
                 # Entrou como pré-requisito de outro, mas a ementa também o pede.

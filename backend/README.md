@@ -611,6 +611,24 @@ aprovada cobre tem a ligação com o vídeo recusada (`video_lacunas.recusada`):
 volta para `pendente`, se nenhum outro vídeo estiver a caminho, e a busca roda de
 novo sem escolher aquele vídeo para ela.
 
+**Módulos.** Categorizado o vídeo, cada parte aprovada vira um módulo
+(`app/services/modulos_de_videos.py`), publicado direto, sem aprovação: entra no
+fim da trilha da disciplina da parte (criada, publicada, se não existir), com
+`origem = youtube`, o intervalo em `inicio_segundos` e `fim_segundos` e a parte
+de origem (`parte_video_id`, única: a mesma parte não vira dois módulos). As
+lacunas que a parte cobre ficam `coberta`, apontando para o módulo, e a trilha
+guiada passa a mostrar o módulo no lugar do "em preparação". O player toca só o
+intervalo (`?start=&end=`), e o módulo mostra "Gerado automaticamente" e o canal.
+
+| Rota                                          | O que faz                                        |
+| --------------------------------------------- | ------------------------------------------------ |
+| `POST /api/v1/trilhas/{slug}/passos/{ordem}/reportar` | reporta o vídeo de um módulo automático (409 nos outros) |
+
+Um reporte por aluno. Com `REPORTES_PARA_REMOVER` (3) alunos, o módulo sai da
+trilha (os passos seguintes sobem uma posição), as lacunas voltam para
+`pendente`, a parte não é publicada de novo, e a busca procura outro vídeo sem
+escolher este.
+
 **Termos do YouTube:** baixar o áudio vai contra os termos de uso do YouTube,
 exceto quando o dono do vídeo permite, como nos vídeos com licença Creative
 Commons. Para o projeto acadêmico o risco foi aceito. Antes de qualquer uso
