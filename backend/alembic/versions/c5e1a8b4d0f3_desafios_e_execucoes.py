@@ -1,7 +1,7 @@
 """desafios e execuções
 
 Revision ID: c5e1a8b4d0f3
-Revises: a3c9e6f2b8d1
+Revises: b4d0f7a3c9e2
 Create Date: 2026-11-03 18:00:00.000000
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "c5e1a8b4d0f3"
-down_revision: str | None = "a3c9e6f2b8d1"
+down_revision: str | None = "b4d0f7a3c9e2"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

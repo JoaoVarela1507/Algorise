@@ -22,6 +22,7 @@ from app.api.v1 import (
     desafios,
     ementas,
     gamificacao,
+    notificacoes,
     oauth,
     onboarding,
     ranking,
@@ -50,5 +51,6 @@ router.include_router(chat.router)
 router.include_router(conversas.router)
 router.include_router(desafios.router)
 router.include_router(tempo_real.router)
+router.include_router(notificacoes.router)
 router.include_router(admin.router)
 router.include_router(certificados.router)

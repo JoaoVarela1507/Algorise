@@ -900,6 +900,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notificacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Notificações do aluno, da mais recente */
+        get: operations["listarNotificacoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notificacoes/contagem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quantas notificações faltam ler (o número no sino) */
+        get: operations["contarNotificacoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notificacoes/lidas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Marca todas como lidas */
+        post: operations["marcarTodasLidas"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notificacoes/{notificacao_id}/lida": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Marca uma notificação como lida */
+        post: operations["marcarNotificacaoLida"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/onboarding": {
         parameters: {
             query?: never;
@@ -1643,6 +1711,11 @@ export interface components {
             /** Trilha Id */
             trilha_id: number;
         };
+        /** ContagemDeNotificacoes */
+        ContagemDeNotificacoes: {
+            /** Nao Lidas */
+            nao_lidas: number;
+        };
         /** ConversaResumo */
         ConversaResumo: {
             /** Arquivada */
@@ -2101,6 +2174,11 @@ export interface components {
             /** Senha */
             senha: string;
         };
+        /** Marcadas */
+        Marcadas: {
+            /** Marcadas */
+            marcadas: number;
+        };
         /** Mensagem */
         Mensagem: {
             /** Conteudo */
@@ -2237,6 +2315,28 @@ export interface components {
          * @enum {string}
          */
         NivelExperiencia: "baixo" | "medio" | "alto";
+        /** NotificacaoSaida */
+        NotificacaoSaida: {
+            /**
+             * Criado Em
+             * Format: date-time
+             */
+            criado_em: string;
+            /** Dados */
+            dados: {
+                [key: string]: unknown;
+            };
+            /** Id */
+            id: number;
+            /** Lida Em */
+            lida_em?: string | null;
+            /** Mensagem */
+            mensagem: string;
+            /** Tipo */
+            tipo: string;
+            /** Titulo */
+            titulo: string;
+        };
         /** NovaConversa */
         NovaConversa: {
             /** Primeira Mensagem */
@@ -2337,6 +2437,31 @@ export interface components {
         Pagina_Mensagem_: {
             /** Itens */
             itens: components["schemas"]["Mensagem"][];
+            /**
+             * Pagina
+             * @description Página atual, começando em 1
+             */
+            pagina: number;
+            /**
+             * Tamanho Pagina
+             * @description Quantos itens cabem na página
+             */
+            tamanho_pagina: number;
+            /**
+             * Total
+             * @description Total de itens em todas as páginas
+             */
+            total: number;
+            /**
+             * Total Paginas
+             * @description Quantas páginas existem no total
+             */
+            total_paginas: number;
+        };
+        /** Pagina[NotificacaoSaida] */
+        Pagina_NotificacaoSaida_: {
+            /** Itens */
+            itens: components["schemas"]["NotificacaoSaida"][];
             /**
              * Pagina
              * @description Página atual, começando em 1
@@ -5654,6 +5779,171 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CursoResumo"][];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    listarNotificacoes: {
+        parameters: {
+            query?: {
+                /** @description Só as que ainda não foram lidas */
+                nao_lidas?: boolean;
+                /** @description Página, começando em 1 */
+                pagina?: number;
+                /** @description Itens por página (máximo 100) */
+                tamanho_pagina?: number;
+                /** @description Campo de ordenação; cada rota documenta os seus */
+                ordenar_por?: string | null;
+                /** @description Inverte a ordem */
+                decrescente?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pagina_NotificacaoSaida_"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    contarNotificacoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContagemDeNotificacoes"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    marcarTodasLidas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Marcadas"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    marcarNotificacaoLida: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notificacao_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificacaoSaida"];
                 };
             };
             /** @description Dados inválidos */

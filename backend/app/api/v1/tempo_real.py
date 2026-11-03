@@ -45,7 +45,7 @@ from app.schemas.tempo_real import (
     PingDoServidor,
     PongDoServidor,
 )
-from app.services import chat_ao_vivo
+from app.services import chat_ao_vivo, ranking_ao_vivo
 from app.services.tempo_real import (
     Conexao,
     LimiteDeMensagens,
@@ -92,6 +92,7 @@ async def gateway(
         )
         return
     ouvinte.garantir()
+    ranking_ao_vivo.agregador.garantir(fabrica)
     conexao.enviar(Autenticado(usuario_id=usuario_id).model_dump())
 
     sessao = _Sessao(websocket, conexao, fabrica, provedor, expira)
