@@ -113,8 +113,9 @@ def test_vtt_tira_cabecalho_marcacao_e_repeticao_e_guarda_o_tempo() -> None:
     falas = ler_transcricao(VTT, "aula.VTT")
 
     assert falas == [
-        Fala("Um laço repete um bloco de código.", 0.0),
-        Fala("O for percorre uma lista.", 68.5),
+        # A linha repetida enquanto rola na tela estende a mesma fala até 8,5 s.
+        Fala("Um laço repete um bloco de código.", 0.0, 8.5),
+        Fala("O for percorre uma lista.", 68.5, 72.0),
     ]
 
 
@@ -122,8 +123,8 @@ def test_srt_junta_as_linhas_da_fala_e_le_as_horas() -> None:
     falas = ler_transcricao(SRT.replace("\n", "\r\n"), "aula.srt")
 
     assert falas == [
-        Fala("Uma função recebe parâmetros.", 1.0),
-        Fala("E devolve um valor com return.", 3602.25),
+        Fala("Uma função recebe parâmetros.", 1.0, 3.0),
+        Fala("E devolve um valor com return.", 3602.25, 3605.0),
     ]
 
 
