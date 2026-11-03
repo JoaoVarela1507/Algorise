@@ -1,7 +1,7 @@
 """anexos e resumo do chat
 
 Revision ID: d6f2b9c5e1a4
-Revises: b4d0f7a3c9e2
+Revises: c5e1a8b4d0f3
 Create Date: 2026-11-03 19:00:00.000000
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "d6f2b9c5e1a4"
-down_revision: str | None = "b4d0f7a3c9e2"
+down_revision: str | None = "c5e1a8b4d0f3"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

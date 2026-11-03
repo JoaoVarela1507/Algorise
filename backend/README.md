@@ -555,6 +555,47 @@ cai num `LIKE`.
   anterior e as mensagens que acabaram de sair da janela viram um novo.
 - Se a IA falhar, fica o resumo antigo, e a próxima resposta tenta de novo.
 
+### Desafio de código (sandbox)
+
+O desafio da tela 40 roda o código do aluno contra casos de teste (#34):
+
+| Rota                                | O que faz                                                   |
+| ----------------------------------- | ----------------------------------------------------------- |
+| `GET /desafios/{id}`                | enunciado, dica e os casos públicos                         |
+| `POST /desafios/{id}/execucoes`     | grava, põe na fila e responde 202 com o id                  |
+| `GET /execucoes/{id}`               | status (`na_fila`, `executando`, `concluida`, `falhou`) e resultado |
+
+**Execução:**
+- O worker roda cada caso num container novo (`app/sandbox`): sem rede, com o disco
+  só de leitura, como `nobody`, sem capabilities e com teto de memória, CPU,
+  processos, tempo e tamanho da saída.
+- O primeiro caso que falha encerra a execução, com o motivo: `tempo_esgotado`,
+  `memoria_estourada`, `saida_grande_demais`, `erro_de_execucao` ou
+  `saida_diferente`.
+- O caso público mostra entrada, esperado e obtido; o oculto só diz se passou.
+- A saída volta sem escapes de terminal e com teto.
+- Passar em todos registra o acerto e paga o XP uma vez só.
+
+**Configuração e limites:**
+- **Variáveis:** `SANDBOX_MEMORIA_MB`, `SANDBOX_CPUS`, `SANDBOX_PROCESSOS`,
+  `SANDBOX_TEMPO_SEGUNDOS` e `SANDBOX_SAIDA_MAXIMA`.
+- **Rate limit:** `RATE_LIMIT_EXECUCOES_*` por aluno.
+- **Sem Docker na máquina:** use `SANDBOX_MODO=desligada`, e a execução vira
+  `falhou`, sem rodar nada.
+
+**Riscos e deploy:**
+- O worker fala com o Docker do host pelo socket montado no compose. Quem tem
+  esse socket manda no Docker do host. Em produção, use o gVisor
+  (`SANDBOX_RUNTIME=runsc`), que também isola o kernel, ou um Docker rootless
+  dedicado à sandbox.
+- Baixe a imagem antes (`docker pull python:3.13-alpine`): o primeiro `docker run`
+  baixando a imagem estoura o prazo da execução.
+
+Os testes de contenção (`tests/test_sandbox_contencao.py`) rodam o código
+malicioso de verdade: loop infinito, fork bomb, leitura de `/etc/shadow`, escrita
+no disco, rede, memória e saída gigante. Eles precisam do Docker e de
+`SANDBOX_TESTES=1`; o CI liga os dois.
+
 ### Tempo real (WebSocket)
 
 `WS /api/v1/ws` é uma conexão por aba, multiplexada em canais. O contrato está em

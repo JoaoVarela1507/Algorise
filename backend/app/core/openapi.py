@@ -33,6 +33,7 @@ TAGS = [
         "description": "Gestão de trilhas, passos e atividades e métricas. Autor e admin.",
     },
     {"name": "ranking", "description": "Pódio e classificação por XP."},
+    {"name": "desafios", "description": "Desafio de código, corrigido numa sandbox isolada."},
     {"name": "notificacoes", "description": "Centro de notificações do aluno."},
     {"name": "academico", "description": "Instituições, cursos e períodos do onboarding."},
     {"name": "ementas", "description": "Upload da ementa em PDF e o status da leitura."},

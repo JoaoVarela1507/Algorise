@@ -14,6 +14,7 @@ from app.models.academico import (
 )
 from app.models.base import Base, TimestampMixin
 from app.models.chat import AnexoChat, Conversa, GrupoChat, MensagemChat
+from app.models.desafio import CasoDeTeste, Execucao
 from app.models.enums import (
     ModoResposta,
     NivelExperiencia,
@@ -24,6 +25,7 @@ from app.models.enums import (
     PapelUsuario,
     StatusAssuntos,
     StatusEmenta,
+    StatusExecucao,
     StatusGeracao,
     StatusLacuna,
     StatusProgresso,
@@ -52,6 +54,7 @@ __all__ = [
     "Atividade",
     "Base",
     "BuscaYoutube",
+    "CasoDeTeste",
     "Certificado",
     "Consentimento",
     "ContaOAuth",
@@ -60,6 +63,7 @@ __all__ = [
     "DisciplinaEmenta",
     "DocumentoVault",
     "Ementa",
+    "Execucao",
     "ExerciciosGerados",
     "GrupoChat",
     "Instituicao",
@@ -82,6 +86,7 @@ __all__ = [
     "RespostaUsuario",
     "StatusAssuntos",
     "StatusEmenta",
+    "StatusExecucao",
     "StatusGeracao",
     "StatusLacuna",
     "StatusProgresso",
