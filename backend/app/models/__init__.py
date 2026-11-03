@@ -34,7 +34,7 @@ from app.models.progresso import ProgressoUsuario, RespostaUsuario
 from app.models.trilha import Atividade, Modulo, Trilha
 from app.models.usuario import Consentimento, ContaOAuth, Usuario
 from app.models.vault import DocumentoVault, TrechoVault
-from app.models.youtube import BuscaYoutube, VideoLacuna, VideoYoutube
+from app.models.youtube import BuscaYoutube, ParteVideo, VideoLacuna, VideoYoutube
 
 __all__ = [
     "AssuntoEmenta",
@@ -58,6 +58,7 @@ __all__ = [
     "OrigemVault",
     "OrigemXP",
     "PapelMensagem",
+    "ParteVideo",
     "ProgressoUsuario",
     "RespostaUsuario",
     "StatusAssuntos",
