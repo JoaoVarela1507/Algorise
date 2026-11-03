@@ -6,5 +6,6 @@
 - `transcricao`: a transcrição de cada vídeo escolhido pela busca;
 - `segmentacao`: as partes de cada vídeo transcrito;
 - `categorizacao`: a matéria de cada parte e as lacunas que ela cobre;
-- `exercicios`: os exercícios de prática de um módulo, pedidos pelo aluno.
+- `exercicios`: os exercícios de prática de um módulo, pedidos pelo aluno;
+- `execucao`: o código do desafio, rodado na sandbox (`app/sandbox`).
 """

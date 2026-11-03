@@ -29,6 +29,9 @@ USER algorise
 # `docker build` sem `--target`, que é o que a CI constrói.
 FROM base AS worker
 USER root
+# A sandbox do desafio de código (#34) sobe um container por caso de teste: o
+# worker precisa do cliente do Docker. Só o binário, sem o daemon.
+COPY --from=docker:27-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY requirements-transcricao.txt .
 RUN pip install --no-cache-dir -r requirements-transcricao.txt \
     && mkdir -p /app/modelos && chown algorise:algorise /app/modelos

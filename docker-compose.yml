@@ -96,6 +96,9 @@ services:
       # Observabilidade (#39): sem o DSN, sem Sentry; sem o token, `/metrics` aberto.
       SENTRY_DSN: ${SENTRY_DSN:-}
       METRICAS_TOKEN: ${METRICAS_TOKEN:-}
+      # Sandbox do desafio de código (#34). `runsc` (gVisor) isola o kernel também.
+      SANDBOX_MODO: ${SANDBOX_MODO:-docker}
+      SANDBOX_RUNTIME: ${SANDBOX_RUNTIME:-}
       # Sem valor no ambiente, o perfil de produção não sobe — de propósito.
       JWT_SECRET: ${JWT_SECRET:-}
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
@@ -137,6 +140,13 @@ services:
     volumes:
       - midia:/app/media
       - modelos_whisper:/app/modelos
+      # A sandbox do desafio (#34) sobe os containers pelo Docker do host. Quem
+      # fala com este socket manda no Docker: em produção, prefira o gVisor
+      # (`SANDBOX_RUNTIME=runsc`) ou um Docker rootless só para a sandbox.
+      - /var/run/docker.sock:/var/run/docker.sock
+    # O dono do socket é o grupo `docker` do host; o worker roda sem root.
+    group_add:
+      - '${DOCKER_GID:-0}'
     depends_on:
       db:
         condition: service_healthy

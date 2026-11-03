@@ -148,6 +148,35 @@ def submeter(
     return tentativa, correcao, atividade.xp
 
 
+def registrar_acerto(db: Session, *, usuario: Usuario, atividade: Atividade, conteudo: str) -> int:
+    """Grava o acerto corrigido fora daqui (o desafio, pela sandbox, #34).
+
+    Paga o XP só no primeiro acerto, como `submeter`. Devolve o XP ganho agora.
+    """
+    ja_tinha_acertado = _acertou_antes(db, usuario_id=usuario.id, atividade_id=atividade.id)
+    db.add(
+        RespostaUsuario(
+            usuario_id=usuario.id,
+            atividade_id=atividade.id,
+            tentativa=_proxima_tentativa(db, usuario_id=usuario.id, atividade_id=atividade.id),
+            conteudo=conteudo,
+            correta=True,
+            feedback="Todos os casos de teste passaram.",
+        )
+    )
+    db.commit()
+    if ja_tinha_acertado:
+        return 0
+    xp.registrar_xp(
+        db,
+        usuario_id=usuario.id,
+        valor=atividade.xp,
+        origem=OrigemXP.atividade,
+        referencia_id=atividade.id,
+    )
+    return atividade.xp
+
+
 def tentativas(db: Session, *, usuario_id: int, atividade_id: int) -> list[RespostaUsuario]:
     """As tentativas do aluno nesta atividade, da mais antiga para a mais nova."""
     return list(
