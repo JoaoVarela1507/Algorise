@@ -9,6 +9,7 @@ import { chaves } from '@/lib/query'
 import {
   buscarTentativas,
   concluirPasso,
+  reportarPasso,
   submeterResposta,
   type RespostaDoAluno,
 } from '@/services/atividades'
@@ -51,6 +52,18 @@ export function useConcluirPasso(slug: string | undefined) {
       void queryClient.invalidateQueries({ queryKey: chaves.perfil.todas })
       void queryClient.invalidateQueries({ queryKey: chaves.ranking.todas })
       void queryClient.invalidateQueries({ queryKey: chaves.gamificacao.todas })
+    },
+  })
+}
+
+export function useReportarPasso(slug: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (ordem: number) => reportarPasso(slug as string, ordem),
+    onSuccess: (resultado) => {
+      // O módulo removido some da trilha, do catálogo e da trilha guiada.
+      if (resultado.removido) void queryClient.invalidateQueries({ queryKey: chaves.trilhas.todas })
     },
   })
 }
