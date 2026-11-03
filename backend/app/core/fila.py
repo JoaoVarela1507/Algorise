@@ -42,6 +42,8 @@ TEMPO_MAXIMO_DA_BUSCA = 30 * 60
 TEMPO_MAXIMO_DA_TRANSCRICAO = 4 * 60 * 60
 # Uma chamada ao modelo com o índice da transcrição.
 TEMPO_MAXIMO_DA_SEGMENTACAO = 30 * 60
+# Uma chamada ao modelo por parte do vídeo.
+TEMPO_MAXIMO_DA_CATEGORIZACAO = 60 * 60
 # A tarefa que cai no meio (o worker reiniciou, o banco piscou) é tentada de
 # novo, esperando cada vez mais. A falha esperada (PDF ilegível, IA fora) não
 # chega aqui: a própria tarefa a grava na ementa e termina sem erro.
@@ -71,6 +73,10 @@ class Fila(Protocol):
 
     def segmentacao(self, video_id: int) -> bool:
         """Põe na fila o corte do vídeo transcrito em partes (#209)."""
+        ...
+
+    def categorizacao(self, video_id: int) -> bool:
+        """Põe na fila a categorização das partes do vídeo (#202)."""
         ...
 
 
@@ -119,6 +125,16 @@ class FilaRedis:
             video_id,
             chave=f"segmentacao-{video_id}",
             tempo_maximo=TEMPO_MAXIMO_DA_SEGMENTACAO,
+        )
+
+    def categorizacao(self, video_id: int) -> bool:
+        from app.tarefas import categorizacao
+
+        return self.enfileirar(
+            categorizacao.categorizar,
+            video_id,
+            chave=f"categorizacao-{video_id}",
+            tempo_maximo=TEMPO_MAXIMO_DA_CATEGORIZACAO,
         )
 
     def enfileirar(
@@ -189,6 +205,12 @@ class FilaLocal:
         self.tarefas.add_task(segmentacao.segmentar, video_id)
         return True
 
+    def categorizacao(self, video_id: int) -> bool:
+        from app.tarefas import categorizacao
+
+        self.tarefas.add_task(categorizacao.categorizar, video_id)
+        return True
+
 
 class FilaImediata:
     """Roda a tarefa agora, na thread de quem chamou.
@@ -219,6 +241,12 @@ class FilaImediata:
         from app.tarefas import segmentacao
 
         segmentacao.segmentar(video_id)
+        return True
+
+    def categorizacao(self, video_id: int) -> bool:
+        from app.tarefas import categorizacao
+
+        categorizacao.categorizar(video_id)
         return True
 
 
