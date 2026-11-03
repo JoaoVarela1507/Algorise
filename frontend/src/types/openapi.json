@@ -95,6 +95,393 @@
         "title": "AssuntosRevisados",
         "type": "object"
       },
+      "AtividadeAdmin": {
+        "properties": {
+          "comando_esperado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comando Esperado"
+          },
+          "dica": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dica"
+          },
+          "enunciado": {
+            "title": "Enunciado",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "ordem": {
+            "title": "Ordem",
+            "type": "integer"
+          },
+          "passo_id": {
+            "title": "Passo Id",
+            "type": "integer"
+          },
+          "resposta_esperada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resposta Esperada"
+          },
+          "saida_esperada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saida Esperada"
+          },
+          "tempo_sugerido_segundos": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo Sugerido Segundos"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoAtividade"
+          },
+          "xp": {
+            "title": "Xp",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "passo_id",
+          "ordem",
+          "tipo",
+          "enunciado",
+          "xp"
+        ],
+        "title": "AtividadeAdmin",
+        "type": "object"
+      },
+      "AtividadeCriacao": {
+        "properties": {
+          "comando_esperado": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comando Esperado"
+          },
+          "dica": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dica"
+          },
+          "enunciado": {
+            "minLength": 1,
+            "title": "Enunciado",
+            "type": "string"
+          },
+          "ordem": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ordem"
+          },
+          "passo_id": {
+            "title": "Passo Id",
+            "type": "integer"
+          },
+          "resposta_esperada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resposta Esperada"
+          },
+          "saida_esperada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saida Esperada"
+          },
+          "tempo_sugerido_segundos": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo Sugerido Segundos"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoAtividade"
+          },
+          "xp": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xp"
+          }
+        },
+        "required": [
+          "tipo",
+          "enunciado",
+          "passo_id"
+        ],
+        "title": "AtividadeCriacao",
+        "type": "object"
+      },
+      "AtividadeEdicao": {
+        "description": "Os campos que se pode mudar. O que não vem fica como está.",
+        "properties": {
+          "comando_esperado": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comando Esperado"
+          },
+          "dica": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dica"
+          },
+          "enunciado": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enunciado"
+          },
+          "resposta_esperada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resposta Esperada"
+          },
+          "saida_esperada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saida Esperada"
+          },
+          "tempo_sugerido_segundos": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo Sugerido Segundos"
+          },
+          "tipo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TipoAtividade"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "xp": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xp"
+          }
+        },
+        "title": "AtividadeEdicao",
+        "type": "object"
+      },
+      "AtividadeImportada": {
+        "properties": {
+          "comando_esperado": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comando Esperado"
+          },
+          "dica": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dica"
+          },
+          "enunciado": {
+            "minLength": 1,
+            "title": "Enunciado",
+            "type": "string"
+          },
+          "resposta_esperada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resposta Esperada"
+          },
+          "saida_esperada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saida Esperada"
+          },
+          "tempo_sugerido_segundos": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tempo Sugerido Segundos"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoAtividade"
+          },
+          "xp": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xp"
+          }
+        },
+        "required": [
+          "tipo",
+          "enunciado"
+        ],
+        "title": "AtividadeImportada",
+        "type": "object"
+      },
       "AtividadeResumo": {
         "description": "Atividade sem gabarito — é o que pode ir para o cliente.",
         "properties": {
@@ -674,6 +1061,24 @@
         "title": "Erro",
         "type": "object"
       },
+      "ErroComum": {
+        "properties": {
+          "resposta": {
+            "title": "Resposta",
+            "type": "string"
+          },
+          "vezes": {
+            "title": "Vezes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "resposta",
+          "vezes"
+        ],
+        "title": "ErroComum",
+        "type": "object"
+      },
       "EsqueciSenha": {
         "properties": {
           "email": {
@@ -904,6 +1309,117 @@
           "senha"
         ],
         "title": "Login",
+        "type": "object"
+      },
+      "MetricasAtividade": {
+        "properties": {
+          "abandono": {
+            "title": "Abandono",
+            "type": "number"
+          },
+          "acertos": {
+            "title": "Acertos",
+            "type": "integer"
+          },
+          "alunos": {
+            "title": "Alunos",
+            "type": "integer"
+          },
+          "atividade_id": {
+            "title": "Atividade Id",
+            "type": "integer"
+          },
+          "erros_comuns": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ErroComum"
+            },
+            "title": "Erros Comuns",
+            "type": "array"
+          },
+          "ordem": {
+            "title": "Ordem",
+            "type": "integer"
+          },
+          "passo": {
+            "title": "Passo",
+            "type": "integer"
+          },
+          "taxa_de_acerto": {
+            "title": "Taxa De Acerto",
+            "type": "number"
+          },
+          "tentativas": {
+            "title": "Tentativas",
+            "type": "integer"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoAtividade"
+          }
+        },
+        "required": [
+          "atividade_id",
+          "passo",
+          "ordem",
+          "tipo",
+          "tentativas",
+          "alunos",
+          "acertos",
+          "taxa_de_acerto",
+          "abandono"
+        ],
+        "title": "MetricasAtividade",
+        "type": "object"
+      },
+      "MetricasTrilha": {
+        "properties": {
+          "alunos_concluiram": {
+            "title": "Alunos Concluiram",
+            "type": "integer"
+          },
+          "alunos_iniciaram": {
+            "title": "Alunos Iniciaram",
+            "type": "integer"
+          },
+          "atividades": {
+            "items": {
+              "$ref": "#/components/schemas/MetricasAtividade"
+            },
+            "title": "Atividades",
+            "type": "array"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "publicada": {
+            "title": "Publicada",
+            "type": "boolean"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "taxa_de_conclusao": {
+            "title": "Taxa De Conclusao",
+            "type": "number"
+          },
+          "trilha_id": {
+            "title": "Trilha Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "trilha_id",
+          "slug",
+          "nome",
+          "publicada",
+          "alunos_iniciaram",
+          "alunos_concluiram",
+          "taxa_de_conclusao",
+          "atividades"
+        ],
+        "title": "MetricasTrilha",
         "type": "object"
       },
       "ModoResposta": {
@@ -1299,6 +1815,85 @@
         "title": "Painel",
         "type": "object"
       },
+      "PassoAdmin": {
+        "properties": {
+          "atividades": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AtividadeAdmin"
+            },
+            "title": "Atividades",
+            "type": "array"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao"
+          },
+          "fim_segundos": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fim Segundos"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "inicio_segundos": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inicio Segundos"
+          },
+          "ordem": {
+            "title": "Ordem",
+            "type": "integer"
+          },
+          "origem": {
+            "$ref": "#/components/schemas/OrigemModulo"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          }
+        },
+        "required": [
+          "id",
+          "ordem",
+          "titulo",
+          "origem"
+        ],
+        "title": "PassoAdmin",
+        "type": "object"
+      },
       "PassoConcluido": {
         "description": "O que volta ao fechar um passo.",
         "properties": {
@@ -1327,6 +1922,80 @@
           "xp_total"
         ],
         "title": "PassoConcluido",
+        "type": "object"
+      },
+      "PassoCriacao": {
+        "properties": {
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao"
+          },
+          "fim_segundos": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fim Segundos"
+          },
+          "inicio_segundos": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inicio Segundos"
+          },
+          "ordem": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ordem"
+          },
+          "titulo": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Titulo",
+            "type": "string"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          }
+        },
+        "required": [
+          "titulo"
+        ],
+        "title": "PassoCriacao",
         "type": "object"
       },
       "PassoDetalhe": {
@@ -1458,6 +2127,166 @@
           "total_passos"
         ],
         "title": "PassoDetalhe",
+        "type": "object"
+      },
+      "PassoEdicao": {
+        "properties": {
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao"
+          },
+          "fim_segundos": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fim Segundos"
+          },
+          "inicio_segundos": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inicio Segundos"
+          },
+          "ordem": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ordem"
+          },
+          "titulo": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          }
+        },
+        "title": "PassoEdicao",
+        "type": "object"
+      },
+      "PassoImportado": {
+        "properties": {
+          "atividades": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AtividadeImportada"
+            },
+            "title": "Atividades",
+            "type": "array"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao"
+          },
+          "fim_segundos": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fim Segundos"
+          },
+          "inicio_segundos": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inicio Segundos"
+          },
+          "ordem": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ordem"
+          },
+          "titulo": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Titulo",
+            "type": "string"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          }
+        },
+        "required": [
+          "titulo"
+        ],
+        "title": "PassoImportado",
         "type": "object"
       },
       "Perfil": {
@@ -1672,6 +2501,19 @@
           }
         },
         "title": "Preferencias",
+        "type": "object"
+      },
+      "Publicacao": {
+        "properties": {
+          "publicada": {
+            "title": "Publicada",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "publicada"
+        ],
+        "title": "Publicacao",
         "type": "object"
       },
       "Ranking": {
@@ -2106,6 +2948,145 @@
         "title": "Trilha",
         "type": "object"
       },
+      "TrilhaAdmin": {
+        "properties": {
+          "categoria": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categoria"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao"
+          },
+          "disciplina": {
+            "title": "Disciplina",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "passos": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PassoAdmin"
+            },
+            "title": "Passos",
+            "type": "array"
+          },
+          "periodo": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo"
+          },
+          "publicada": {
+            "title": "Publicada",
+            "type": "boolean"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "nome",
+          "disciplina",
+          "publicada"
+        ],
+        "title": "TrilhaAdmin",
+        "type": "object"
+      },
+      "TrilhaCriacao": {
+        "properties": {
+          "categoria": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categoria"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao"
+          },
+          "disciplina": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Disciplina",
+            "type": "string"
+          },
+          "nome": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Nome",
+            "type": "string"
+          },
+          "periodo": {
+            "anyOf": [
+              {
+                "maximum": 12.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo"
+          },
+          "slug": {
+            "maxLength": 120,
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nome",
+          "disciplina",
+          "slug"
+        ],
+        "title": "TrilhaCriacao",
+        "type": "object"
+      },
       "TrilhaDetalhe": {
         "properties": {
           "categoria": {
@@ -2185,6 +3166,74 @@
         "title": "TrilhaDetalhe",
         "type": "object"
       },
+      "TrilhaEdicao": {
+        "properties": {
+          "categoria": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categoria"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao"
+          },
+          "disciplina": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disciplina"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "periodo": {
+            "anyOf": [
+              {
+                "maximum": 12.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo"
+          }
+        },
+        "title": "TrilhaEdicao",
+        "type": "object"
+      },
       "TrilhaGuiada": {
         "properties": {
           "concluidos": {
@@ -2224,6 +3273,86 @@
           "concluidos"
         ],
         "title": "TrilhaGuiada",
+        "type": "object"
+      },
+      "TrilhaImportada": {
+        "description": "Uma trilha inteira. Importar de novo o mesmo slug atualiza, em vez de duplicar.",
+        "properties": {
+          "categoria": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categoria"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao"
+          },
+          "disciplina": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Disciplina",
+            "type": "string"
+          },
+          "nome": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Nome",
+            "type": "string"
+          },
+          "passos": {
+            "items": {
+              "$ref": "#/components/schemas/PassoImportado"
+            },
+            "minItems": 1,
+            "title": "Passos",
+            "type": "array"
+          },
+          "periodo": {
+            "anyOf": [
+              {
+                "maximum": 12.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo"
+          },
+          "publicada": {
+            "default": false,
+            "title": "Publicada",
+            "type": "boolean"
+          },
+          "slug": {
+            "maxLength": 120,
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nome",
+          "disciplina",
+          "slug",
+          "passos"
+        ],
+        "title": "TrilhaImportada",
         "type": "object"
       },
       "TrilhaRecomendada": {
@@ -2410,6 +3539,832 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/admin/atividades": {
+      "post": {
+        "operationId": "adminCriarAtividade",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtividadeCriacao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtividadeAdmin"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cria uma atividade num passo",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/atividades/{atividade_id}": {
+      "delete": {
+        "operationId": "adminApagarAtividade",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "atividade_id",
+            "required": true,
+            "schema": {
+              "title": "Atividade Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apaga uma atividade que ninguém respondeu",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "operationId": "adminEditarAtividade",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "atividade_id",
+            "required": true,
+            "schema": {
+              "title": "Atividade Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtividadeEdicao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtividadeAdmin"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edita uma atividade",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/metricas": {
+      "get": {
+        "description": "Conclusão por trilha; por atividade, tentativas, acerto, abandono (tentou e nunca acertou) e, no terminal, as respostas erradas mais comuns. Só admin.",
+        "operationId": "adminMetricas",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MetricasTrilha"
+                  },
+                  "title": "Response Adminmetricas",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Desempenho por trilha e por atividade",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/passos/{passo_id}/previa": {
+      "get": {
+        "description": "Sem gabarito, liberado, mesmo em trilha que ainda não foi publicada.",
+        "operationId": "adminPreviaDoPasso",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "passo_id",
+            "required": true,
+            "schema": {
+              "title": "Passo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassoDetalhe"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "O passo como o aluno vê",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/trilhas": {
+      "get": {
+        "operationId": "adminListarTrilhas",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TrilhaAdmin"
+                  },
+                  "title": "Response Adminlistartrilhas",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Todas as trilhas, com gabarito",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "adminCriarTrilha",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrilhaCriacao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrilhaAdmin"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cria uma trilha em rascunho",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/trilhas/importar": {
+      "post": {
+        "description": "Cria ou atualiza pelo slug, com passos e atividades pela posição. Passo que sobra e tem progresso recusa a importação (409).",
+        "operationId": "adminImportarTrilha",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrilhaImportada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrilhaAdmin"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Importa uma trilha inteira em JSON",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/trilhas/{trilha_id}": {
+      "delete": {
+        "description": "Com progresso, 409: despublique em vez de apagar.",
+        "operationId": "adminApagarTrilha",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trilha_id",
+            "required": true,
+            "schema": {
+              "title": "Trilha Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apaga uma trilha sem progresso de aluno",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "operationId": "adminEditarTrilha",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trilha_id",
+            "required": true,
+            "schema": {
+              "title": "Trilha Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrilhaEdicao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrilhaAdmin"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edita uma trilha",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/trilhas/{trilha_id}/passos": {
+      "post": {
+        "description": "Sem `ordem`, no fim; com ela, os passos dali em diante descem uma posição.",
+        "operationId": "adminCriarPasso",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trilha_id",
+            "required": true,
+            "schema": {
+              "title": "Trilha Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PassoCriacao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassoAdmin"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Acrescenta um passo à trilha",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/trilhas/{trilha_id}/passos/{passo_id}": {
+      "delete": {
+        "operationId": "adminApagarPasso",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trilha_id",
+            "required": true,
+            "schema": {
+              "title": "Trilha Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "passo_id",
+            "required": true,
+            "schema": {
+              "title": "Passo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apaga um passo sem progresso de aluno",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "operationId": "adminEditarPasso",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trilha_id",
+            "required": true,
+            "schema": {
+              "title": "Trilha Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "passo_id",
+            "required": true,
+            "schema": {
+              "title": "Passo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PassoEdicao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassoAdmin"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edita ou move um passo",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/trilhas/{trilha_id}/publicar": {
+      "post": {
+        "description": "Publicar confere o gabarito de cada atividade; com problema, 422 com a lista.",
+        "operationId": "adminPublicarTrilha",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trilha_id",
+            "required": true,
+            "schema": {
+              "title": "Trilha Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Publicacao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrilhaAdmin"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Publica ou despublica a trilha",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/atividades/{atividade_id}": {
       "get": {
         "description": "Nunca inclui o gabarito: a correção é do servidor (`POST .../submissoes`).",
@@ -5258,6 +7213,10 @@
     {
       "description": "Catálogo de trilhas, módulos e atividades.",
       "name": "trilhas"
+    },
+    {
+      "description": "Gestão de trilhas, passos e atividades e métricas. Autor e admin.",
+      "name": "admin"
     },
     {
       "description": "Pódio e classificação por XP.",
