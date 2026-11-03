@@ -12,6 +12,7 @@ O contrato das mensagens está em `app/schemas/tempo_real.py`, e o pub/sub em
 
 import asyncio
 import contextlib
+import logging
 import time
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -26,22 +27,35 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import settings
 from app.core.database import get_fabrica_de_sessoes
 from app.core.seguranca import TokenInvalido, decodificar
+from app.ia import ProvedorIA, get_provedor_ia
 from app.models import Usuario
 from app.schemas.tempo_real import (
     Autenticado,
     Autenticar,
     Cancelado,
     Cancelar,
+    DigitandoNoChat,
+    EnviarMensagemDoChat,
     ErroDoWebSocket,
     Inscrever,
     Inscrito,
     MensagemDoCliente,
+    PararChat,
     Ping,
     PingDoServidor,
     PongDoServidor,
 )
-from app.services import ranking_ao_vivo
-from app.services.tempo_real import Conexao, LimiteDeMensagens, gerenciador, ouvinte, pode_ouvir
+from app.services import chat_ao_vivo, ranking_ao_vivo
+from app.services.tempo_real import (
+    Conexao,
+    LimiteDeMensagens,
+    gerenciador,
+    ouvinte,
+    pode_ouvir,
+    publicar,
+)
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["tempo-real"])
 
@@ -58,7 +72,11 @@ class Fechar(Exception):
 
 
 @router.websocket("/ws")
-async def gateway(websocket: WebSocket, fabrica: Fabrica = Depends(get_fabrica_de_sessoes)) -> None:
+async def gateway(
+    websocket: WebSocket,
+    fabrica: Fabrica = Depends(get_fabrica_de_sessoes),
+    provedor: ProvedorIA = Depends(get_provedor_ia),
+) -> None:
     await websocket.accept()
     try:
         usuario_id, expira = await _autenticar(websocket, fabrica)
@@ -77,7 +95,7 @@ async def gateway(websocket: WebSocket, fabrica: Fabrica = Depends(get_fabrica_d
     ranking_ao_vivo.agregador.garantir(fabrica)
     conexao.enviar(Autenticado(usuario_id=usuario_id).model_dump())
 
-    sessao = _Sessao(websocket, conexao, fabrica, expira)
+    sessao = _Sessao(websocket, conexao, fabrica, provedor, expira)
     motivo: Fechar | None = None
 
     async def correr(laco: Callable[[], Awaitable[None]], grupo: TaskGroup) -> None:
@@ -92,6 +110,7 @@ async def gateway(websocket: WebSocket, fabrica: Fabrica = Depends(get_fabrica_d
 
     try:
         async with anyio.create_task_group() as grupo:
+            sessao.grupo = grupo
             for laco in (sessao.receber, sessao.escrever, sessao.vigiar):
                 grupo.start_soon(correr, laco, grupo)
         if motivo is not None:
@@ -101,15 +120,24 @@ async def gateway(websocket: WebSocket, fabrica: Fabrica = Depends(get_fabrica_d
 
 
 class _Sessao:
-    """Os três laços de uma conexão autenticada."""
+    """Os três laços de uma conexão autenticada, e as respostas do chat em curso."""
 
     def __init__(
-        self, websocket: WebSocket, conexao: Conexao, fabrica: Fabrica, expira: float
+        self,
+        websocket: WebSocket,
+        conexao: Conexao,
+        fabrica: Fabrica,
+        provedor: ProvedorIA,
+        expira: float,
     ) -> None:
         self.websocket = websocket
         self.conexao = conexao
         self.fabrica = fabrica
+        self.provedor = provedor
         self.expira = expira
+        # As respostas do chat rodam no grupo da conexão: fechar a aba cancela a
+        # geração, e o parcial fica gravado (ver `services/chat_ao_vivo.py`).
+        self.grupo: TaskGroup | None = None
         self.limite = LimiteDeMensagens(
             settings.ws_mensagens_por_janela, settings.ws_janela_segundos
         )
@@ -153,7 +181,36 @@ class _Sessao:
                 raise Fechar(NAO_AUTENTICADO, "nao_autenticado", "Token de outro usuário")
             self.expira = expira
             self.conexao.enviar(Autenticado(usuario_id=usuario_id).model_dump())
+        elif isinstance(mensagem, EnviarMensagemDoChat):
+            if self.grupo is not None:
+                self.grupo.start_soon(self._responder, mensagem)
+        elif isinstance(mensagem, PararChat | DigitandoNoChat):
+            canal = chat_ao_vivo.canal_da(mensagem.conversa_id)
+            permitido = await run_in_threadpool(
+                _pode_ouvir, self.fabrica, self.conexao.usuario_id, canal
+            )
+            if not permitido:
+                self._erro("conversa_nao_encontrada", "Conversa não encontrada")
+            elif isinstance(mensagem, PararChat):
+                await run_in_threadpool(chat_ao_vivo.pedir_parada, mensagem.conversa_id)
+            else:
+                await run_in_threadpool(
+                    publicar, canal, "chat.digitando", {"usuario_id": self.conexao.usuario_id}
+                )
         # `pong` só conta como sinal de vida, já anotado em `receber`.
+
+    async def _responder(self, mensagem: EnviarMensagemDoChat) -> None:
+        try:
+            await chat_ao_vivo.responder(
+                fabrica=self.fabrica,
+                provedor=self.provedor,
+                remetente=self.conexao,
+                dados=mensagem,
+            )
+        except Exception:
+            # Um erro inesperado na resposta não pode derrubar a conexão inteira.
+            logger.exception("Falha na resposta do chat pelo WebSocket")
+            self._erro("erro_interno", "Não consegui responder agora")
 
     async def escrever(self) -> None:
         """O único que escreve no socket: tudo passa pela fila da conexão."""

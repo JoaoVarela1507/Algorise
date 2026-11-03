@@ -1,14 +1,16 @@
 """Tempo real (#35): as conexões de WebSocket, os canais e o pub/sub no Redis.
 
 Quem tem algo a avisar chama `publicar(canal, evento, payload)`, de qualquer
-lugar: uma rota, um serviço, uma tarefa do worker. A mensagem vai para o canal
-`ws:{canal}` do Redis, e cada instância da API tem um `Ouvinte` inscrito em
-`ws:*` que entrega às conexões locais inscritas naquele canal. Assim duas abas
-do mesmo aluno, ligadas a instâncias diferentes, recebem o mesmo evento, e
-derrubar uma instância não tira os eventos das outras.
+lugar: uma rota, um serviço, uma tarefa do worker. As conexões desta instância
+recebem na hora, direto. Para as outras, a mensagem vai para o canal
+`ws:{canal}` do Redis, marcada com a instância de origem, e cada instância tem
+um `Ouvinte` inscrito em `ws:*` que entrega às suas conexões e ignora o que ela
+mesma publicou. Assim duas abas do mesmo aluno, ligadas a instâncias
+diferentes, recebem o mesmo evento, e derrubar uma instância não tira os
+eventos das outras.
 
-Sem Redis, ou sem ninguém ouvindo, a entrega é direta para as conexões desta
-instância: com uma instância só, que é o caso do desenvolvimento, nada se perde.
+A entrega local não depende da volta pelo Redis: com o Redis fora, ou com o
+ouvinte desta instância se reinscrevendo, as abas daqui continuam recebendo.
 
 O `Ouvinte` é uma thread, e não uma tarefa do asyncio, porque cada conexão pode
 viver num event loop diferente (é o que o `TestClient` faz) e porque o cliente
@@ -22,6 +24,7 @@ import json
 import logging
 import threading
 import time
+import uuid
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
@@ -37,6 +40,8 @@ from app.schemas.tempo_real import Evento
 logger = logging.getLogger(__name__)
 
 PREFIXO = "ws:"
+# Marca o que esta instância publica, para o ouvinte dela não entregar duas vezes.
+INSTANCIA = uuid.uuid4().hex
 # Teto da fila de saída de cada conexão. Um cliente que não lê não pode fazer
 # a memória da API crescer sem fim: passando disso, a mensagem nova é descartada.
 TAMANHO_DA_FILA = 1000
@@ -137,8 +142,9 @@ class Ouvinte:
     crescente, quando o Redis cai.
     """
 
-    def __init__(self, gerenciador: Gerenciador) -> None:
+    def __init__(self, gerenciador: Gerenciador, instancia: str = INSTANCIA) -> None:
         self._gerenciador = gerenciador
+        self._instancia = instancia
         self._trava = threading.Lock()
         self._thread: threading.Thread | None = None
         self._parar = threading.Event()
@@ -172,8 +178,10 @@ class Ouvinte:
                 while not self._parar.is_set():
                     recebida = pubsub.get_message(timeout=ESPERA_DO_OUVINTE)
                     if recebida and recebida.get("type") == "pmessage":
-                        canal = str(recebida["channel"]).removeprefix(PREFIXO)
-                        self._gerenciador.entregar_local(canal, json.loads(recebida["data"]))
+                        envelope = json.loads(recebida["data"])
+                        if envelope.get("origem") != self._instancia:
+                            canal = str(recebida["channel"]).removeprefix(PREFIXO)
+                            self._gerenciador.entregar_local(canal, envelope["mensagem"])
             except (RedisError, OSError, ValueError) as erro:
                 logger.warning("Ouvinte do WebSocket sem Redis, tentando de novo: %s", erro)
             finally:
@@ -192,15 +200,13 @@ ouvinte = Ouvinte(gerenciador)
 def publicar(canal: str, evento: str, payload: dict[str, Any] | None = None) -> None:
     """Avisa todo mundo inscrito em `canal`, em qualquer instância da API.
 
-    Se o Redis está fora, ou ninguém está inscrito no pub/sub (`PUBLISH`
-    devolve 0), a entrega é direta às conexões desta instância.
+    Daqui, direto; das outras instâncias, pelo Redis. Sem Redis, só as
+    conexões desta instância recebem.
     """
     mensagem = Evento(canal=canal, evento=evento, payload=payload or {}).model_dump(mode="json")
-    entregues = nucleo_redis.executar(
-        lambda r: r.publish(f"{PREFIXO}{canal}", json.dumps(mensagem)), padrao=None
-    )
-    if not entregues:
-        gerenciador.entregar_local(canal, mensagem)
+    gerenciador.entregar_local(canal, mensagem)
+    envelope = json.dumps({"origem": INSTANCIA, "mensagem": mensagem})
+    nucleo_redis.executar(lambda r: r.publish(f"{PREFIXO}{canal}", envelope))
 
 
 def pode_ouvir(db: Session, usuario_id: int, canal: str) -> bool:
