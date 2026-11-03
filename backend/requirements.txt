@@ -9,6 +9,9 @@ alembic==1.20.1
 redis[hiredis]==8.1.0
 # Fila do trabalho longo (#206), sobre o mesmo Redis; o worker é o `rq worker`.
 rq==3.0.0
+# Observabilidade (#39): métricas em `/metrics` e captura de exceções, se houver DSN.
+prometheus-client==0.26.0
+sentry-sdk==2.72.0
 pyjwt[crypto]==2.15.1
 bcrypt==5.0.0
 authlib==1.9.1

@@ -19,6 +19,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core import auditoria
 from app.core.cache import chave
 from app.core.config import settings
 from app.core.politica_senha import problema_da_senha
@@ -139,6 +140,7 @@ def autenticar(db: Session, *, email: str, senha: str) -> Usuario:
     """
     email = email.strip().lower()
     if restante := _bloqueio_restante(email):
+        auditoria.registrar("login_bloqueado", email=auditoria.email_parcial(email))
         raise LoginBloqueado(restante)
 
     usuario = _por_email(db, email)
@@ -146,9 +148,11 @@ def autenticar(db: Session, *, email: str, senha: str) -> Usuario:
 
     if not conferir_senha(senha, hash_atual) or usuario is None:
         _registrar_falha(email)
+        auditoria.registrar("login_falhou", email=auditoria.email_parcial(email))
         raise CredenciaisInvalidas(email)
 
     _limpar_falhas(email)
+    auditoria.registrar("login", usuario_id=usuario.id)
     return usuario
 
 
@@ -264,6 +268,7 @@ def redefinir_senha(db: Session, *, token: str, senha: str) -> Usuario:
     # Quem trocou a senha provavelmente trocou por suspeitar de invasão; as
     # sessões que já estavam abertas não podem sobreviver a isso.
     sessoes.revogar_sessoes_do_usuario(usuario.id)
+    auditoria.registrar("senha_redefinida", usuario_id=usuario.id)
     return usuario
 
 

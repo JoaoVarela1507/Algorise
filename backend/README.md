@@ -110,6 +110,35 @@ autenticação. No rate limit é o contrário, falha **aberta**: liberar a requi
 Quem concede XP deve chamar `app/services/xp.py`, não escrever em `xp_eventos` na
 mão — é ele que corrige o ranking em seguida.
 
+## Observabilidade
+
+- **Logs estruturados** (`app/core/logs.py`): com `LOG_FORMATO=json` (o padrão em
+  produção), cada linha é um JSON com `request_id`, `rota` e, na linha da
+  requisição, o aluno (`aluno_id`), o status e a duração. Em desenvolvimento, texto
+  com o `request_id` no fim. O id vem no `X-Request-Id` e no corpo de todo erro:
+  um `grep` por ele traz a requisição inteira.
+- **Nunca vai para o log:** senha, token e o conteúdo do chat. Um filtro apaga os
+  campos com esses nomes e o que tem cara de credencial (`Bearer ...`, JWT) no
+  meio do texto, antes de qualquer formatador.
+- **Auditoria** (`app/core/auditoria.py`, logger `app.auditoria`): login, login
+  errado e bloqueado (com o e-mail parcial, `an***@ufrpe.br`), troca de senha,
+  exclusão de conta agendada, cancelada e expurgada.
+- **Exceções:** com `SENTRY_DSN`, o Sentry recebe as exceções do backend, sem
+  dados pessoais (nem IP, nem cookie, nem corpo).
+- **Métricas** em `GET /metrics`, no formato do Prometheus, com o token
+  `METRICAS_TOKEN` se definido:
+
+| Métrica                         | O que mede                                          |
+| ------------------------------- | --------------------------------------------------- |
+| `algorise_requisicoes_segundos` | latência por método, modelo da rota e status        |
+| `algorise_erros_total`          | respostas 5xx por rota                              |
+| `algorise_ia_segundos`          | tempo das chamadas à IA, por operação e resultado   |
+| `algorise_fila_tarefas`         | tarefas esperando na fila do RQ (só com `FILA=redis`) |
+
+A rota na métrica é o modelo (`/api/v1/trilhas/{slug}`), tirado do OpenAPI, para
+um id não virar uma série nova por aluno. `/health` (o processo vivo) e `/ready`
+(banco e Redis) continuam separados.
+
 ## Fila e worker
 
 O trabalho longo, como a leitura da ementa (e, depois, a busca e a transcrição

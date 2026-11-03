@@ -90,6 +90,9 @@ services:
       # O trabalho longo (a leitura da ementa) vai para a fila do RQ, e o
       # `worker` o executa fora da API (#206).
       FILA: redis
+      # Observabilidade (#39): sem o DSN, sem Sentry; sem o token, `/metrics` aberto.
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      METRICAS_TOKEN: ${METRICAS_TOKEN:-}
       # Sem valor no ambiente, o perfil de produção não sobe — de propósito.
       JWT_SECRET: ${JWT_SECRET:-}
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}

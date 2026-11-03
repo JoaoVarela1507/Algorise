@@ -4820,6 +4820,53 @@
         ]
       }
     },
+    "/metrics": {
+      "get": {
+        "description": "Com `METRICAS_TOKEN` definido, pede `Authorization: Bearer <token>`.",
+        "operationId": "coletarMetricas",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "summary": "Métricas do Prometheus",
+        "tags": [
+          "health"
+        ]
+      }
+    },
     "/ready": {
       "get": {
         "description": "Pronta para servir: o banco respondeu.\n\nDevolve 503 em vez de estourar exceção, para o orquestrador tirar a\ninstância do balanceador sem a API cair.\n\nO Redis aparece no corpo mas não muda o status: ele é cache, e sem ele a API\ncontinua servindo — tirar a instância do balanceador só pioraria as coisas.",

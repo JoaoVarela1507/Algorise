@@ -12,6 +12,7 @@ from typing import Any
 
 import httpx2
 
+from app.core.metricas import medir_ia
 from app.ia.base import DIMENSOES_EMBEDDING, IAIndisponivel, MensagemIA
 
 # Erros de rede em que vale tentar de novo: o pedido nem chegou ao modelo.
@@ -65,6 +66,12 @@ class Ollama:
         if formato is not None:
             corpo["format"] = formato
 
+        with medir_ia("gerar"):
+            async for pedaco in self._gerar(corpo):
+                yield pedaco
+
+    async def _gerar(self, corpo: dict[str, Any]) -> AsyncGenerator[str]:
+
         for tentativa in range(1, self.tentativas + 1):
             emitiu = False
             try:
@@ -106,6 +113,10 @@ class Ollama:
         """Todos os textos num pedido só: o `/api/embed` aceita uma lista em `input`."""
         if not textos:
             return []
+        with medir_ia("embeddings"):
+            return await self._embeddings(textos)
+
+    async def _embeddings(self, textos: Sequence[str]) -> list[list[float]]:
         corpo = {"model": self.modelo_embedding, "input": list(textos)}
 
         for tentativa in range(1, self.tentativas + 1):
