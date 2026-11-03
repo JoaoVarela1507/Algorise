@@ -2,6 +2,7 @@ import { ArrowLeft, Flag } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AtividadeTerminal } from '@/components/atividades/AtividadeTerminal'
+import { PraticaDoPasso } from '@/components/atividades/PraticaDoPasso'
 import { PlayerYoutube } from '@/components/trilha/PlayerYoutube'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -154,6 +155,8 @@ export function QuestaoPage() {
           }
         />
       )}
+
+      {trilhaId && <PraticaDoPasso slug={trilhaId} ordem={ordem} />}
     </div>
   )
 }
