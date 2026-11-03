@@ -2,11 +2,11 @@
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import JSON, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
-from app.models.enums import OrigemModulo, TipoAtividade
+from app.models.enums import NivelExperiencia, OrigemModulo, StatusGeracao, TipoAtividade
 
 if TYPE_CHECKING:
     from app.models.youtube import ParteVideo
@@ -82,6 +82,27 @@ class ReporteModulo(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     modulo_id: Mapped[int] = mapped_column(ForeignKey("modulos.id", ondelete="CASCADE"), index=True)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"))
+
+
+class ExerciciosGerados(Base, TimestampMixin):
+    """Os exercícios de prática de um módulo para um nível, gerados pela IA (#201).
+
+    Um por módulo e nível: gerado uma vez, na fila, e servido a todos os
+    alunos daquele nível. Não conta para concluir o passo.
+    """
+
+    __tablename__ = "exercicios_gerados"
+    __table_args__ = (
+        UniqueConstraint("modulo_id", "nivel", name="uq_exercicios_gerados_modulo_nivel"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    modulo_id: Mapped[int] = mapped_column(ForeignKey("modulos.id", ondelete="CASCADE"), index=True)
+    nivel: Mapped[NivelExperiencia]
+    status: Mapped[StatusGeracao] = mapped_column(default=StatusGeracao.gerando)
+    # Lista de {enunciado, resposta_esperada, dica}, validada pela skill.
+    exercicios: Mapped[list[dict]] = mapped_column(JSON, default=list)
+    erro: Mapped[str | None] = mapped_column(Text)
 
 
 class Atividade(Base, TimestampMixin):

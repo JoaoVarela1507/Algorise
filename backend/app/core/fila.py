@@ -44,6 +44,8 @@ TEMPO_MAXIMO_DA_TRANSCRICAO = 4 * 60 * 60
 TEMPO_MAXIMO_DA_SEGMENTACAO = 30 * 60
 # Uma chamada ao modelo por parte do vídeo.
 TEMPO_MAXIMO_DA_CATEGORIZACAO = 60 * 60
+# Uma chamada ao modelo com o conteúdo do módulo.
+TEMPO_MAXIMO_DOS_EXERCICIOS = 30 * 60
 # A tarefa que cai no meio (o worker reiniciou, o banco piscou) é tentada de
 # novo, esperando cada vez mais. A falha esperada (PDF ilegível, IA fora) não
 # chega aqui: a própria tarefa a grava na ementa e termina sem erro.
@@ -77,6 +79,10 @@ class Fila(Protocol):
 
     def categorizacao(self, video_id: int) -> bool:
         """Põe na fila a categorização das partes do vídeo (#202)."""
+        ...
+
+    def exercicios(self, geracao_id: int) -> bool:
+        """Põe na fila a geração dos exercícios de um módulo (#201)."""
         ...
 
 
@@ -135,6 +141,16 @@ class FilaRedis:
             video_id,
             chave=f"categorizacao-{video_id}",
             tempo_maximo=TEMPO_MAXIMO_DA_CATEGORIZACAO,
+        )
+
+    def exercicios(self, geracao_id: int) -> bool:
+        from app.tarefas import exercicios
+
+        return self.enfileirar(
+            exercicios.gerar,
+            geracao_id,
+            chave=f"exercicios-{geracao_id}",
+            tempo_maximo=TEMPO_MAXIMO_DOS_EXERCICIOS,
         )
 
     def enfileirar(
@@ -211,6 +227,12 @@ class FilaLocal:
         self.tarefas.add_task(categorizacao.categorizar, video_id)
         return True
 
+    def exercicios(self, geracao_id: int) -> bool:
+        from app.tarefas import exercicios
+
+        self.tarefas.add_task(exercicios.gerar_com, self.fabrica, self.provedor, geracao_id)
+        return True
+
 
 class FilaImediata:
     """Roda a tarefa agora, na thread de quem chamou.
@@ -247,6 +269,12 @@ class FilaImediata:
         from app.tarefas import categorizacao
 
         categorizacao.categorizar(video_id)
+        return True
+
+    def exercicios(self, geracao_id: int) -> bool:
+        from app.tarefas import exercicios
+
+        exercicios.gerar(geracao_id)
         return True
 
 
