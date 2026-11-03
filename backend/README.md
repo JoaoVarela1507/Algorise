@@ -552,9 +552,10 @@ cai num `LIKE`.
   - `chat:{conversa_id}`: só as conversas dele;
   - `ranking:geral` e `ranking:{trilha_id}`: qualquer aluno logado.
 - **Publicar:** de qualquer lugar (rota, serviço, worker), chame
-  `tempo_real.publicar(canal, evento, payload)`. A mensagem passa pelo pub/sub do
-  Redis (`ws:{canal}`), e cada instância da API entrega às suas conexões. Sem Redis,
-  a entrega é só para as conexões da própria instância.
+  `tempo_real.publicar(canal, evento, payload)`. As conexões da própria instância
+  recebem direto. As outras instâncias recebem pelo pub/sub do Redis (`ws:{canal}`),
+  numa mensagem marcada com a origem, que cada instância usa para ignorar o que ela
+  mesma publicou. Sem Redis, só as conexões da própria instância recebem.
 - **Vida da conexão:** o servidor manda `ping` a cada `WS_INTERVALO_PING`. Uma
   conexão calada por mais que `WS_TEMPO_MORTO` é derrubada.
 - **Limites:** `WS_CONEXOES_POR_USUARIO` abas por instância e
@@ -570,6 +571,34 @@ O cliente do frontend (`src/services/tempoReal.ts`) reconecta com espera exponen
 e jitter. Num 4401, renova a sessão antes de reconectar. Ao voltar, refaz as
 inscrições e manda o que ficou na fila offline. O estado da conexão fica no
 `useTempoRealStore`, e `useCanal(canal, aoReceber)` ouve um canal.
+
+#### Chat pelo WebSocket
+
+A tela do chat pergunta pelo socket quando ele está aberto (`chat.mensagem.enviar`,
+com os campos do `POST /chat/mensagens`). A resposta chega no canal
+`chat:{conversa_id}`, e todas as abas inscritas na conversa veem a mesma geração:
+
+| Evento           | Quando                                                     |
+| ---------------- | ---------------------------------------------------------- |
+| `chat.conversa`  | começou; traz a pergunta, o título e o id da conversa       |
+| `chat.token`     | mais um pedaço da resposta                                 |
+| `chat.fim`       | resposta completa e gravada                                |
+| `chat.parado`    | o aluno parou; o parcial fica gravado como incompleto      |
+| `chat.erro`      | a IA caiu no meio, ou a aba que perguntou fechou           |
+| `chat.digitando` | o aluno está escrevendo em outra aba                       |
+
+- **Conversa nova:** quem perguntou entra sozinho no canal dela.
+- **Parar:** `chat.parar` vale de qualquer aba e de qualquer instância. A instância
+  que gera confere uma marca no Redis a cada pedaço. Parar fecha o fluxo do
+  provedor, e o modelo para de gerar.
+- **Uma geração por conversa:** uma segunda pergunta antes do fim recebe o erro
+  `chat_ocupado`.
+- **O rate limit** é o mesmo do `POST /chat/mensagens`.
+
+O `POST /chat/mensagens` em SSE continua sendo o fallback. O frontend
+(`src/services/chatAoVivo.ts`) usa o SSE quando o WebSocket não está aberto, como
+numa rede que bloqueia WebSocket ou numa reconexão em curso. O `parar`, ali, corta
+a requisição, e o servidor grava o parcial do mesmo jeito.
 
 A IA mora em `app/ia/`, separada de quem a usa:
 

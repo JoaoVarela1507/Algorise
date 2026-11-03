@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Layers, SquarePen } from 'lucide-react'
+import { Layers, Square, SquarePen } from 'lucide-react'
 import { Composer } from '@/components/chat/Composer'
 import { IndicadorDigitando, MensagemChat } from '@/components/chat/MensagemChat'
 import { PainelConversas } from '@/components/chat/PainelConversas'
@@ -9,7 +9,9 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { saudacaoDoHorario } from '@/lib/tempo'
 import { conversasIniciais, gruposIniciais } from '@/mocks/chat'
 import { ApiError } from '@/services/api'
-import { CHAVE_HISTORICO_CHAT, perguntarAoTutor } from '@/services/chat'
+import { CHAVE_HISTORICO_CHAT } from '@/services/chat'
+import { perguntar } from '@/services/chatAoVivo'
+import { tempoReal } from '@/stores/useTempoRealStore'
 import type { Conversa, GrupoConversas, Mensagem, ModoResposta } from '@/types/chat'
 import mascotePolvo from '@/assets/images/mascote-polvo.png'
 
@@ -52,10 +54,13 @@ function novaMensagem(dados: Omit<Mensagem, 'id' | 'criadaEm'>): Mensagem {
 function ListaMensagens({
   mensagens,
   aguardando,
+  parcial,
   digitandoMensagemId,
 }: {
   mensagens: Mensagem[]
   aguardando: boolean
+  /** A resposta chegando, pedaço a pedaço (#36). */
+  parcial: string
   digitandoMensagemId: string | null
 }) {
   const rolagemRef = useRef<HTMLDivElement>(null)
@@ -96,7 +101,12 @@ function ListaMensagens({
             animarDigitacao={mensagem.id === digitandoMensagemId}
           />
         ))}
-        <AnimatePresence>{aguardando && <IndicadorDigitando />}</AnimatePresence>
+        {aguardando && parcial && (
+          <MensagemChat
+            mensagem={{ id: 'parcial', autor: 'assistente', conteudo: parcial, criadaEm: 0 }}
+          />
+        )}
+        <AnimatePresence>{aguardando && !parcial && <IndicadorDigitando />}</AnimatePresence>
       </div>
     </div>
   )
@@ -109,6 +119,9 @@ export function ChatPage() {
   const [modo, setModo] = useState<ModoResposta>('medio')
   const [aguardandoId, setAguardandoId] = useState<string | null>(null)
   const [digitandoMensagemId, setDigitandoMensagemId] = useState<string | null>(null)
+  const [parcial, setParcial] = useState('')
+  // Para a resposta em curso: pelo WebSocket ou cortando o SSE.
+  const pararRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     try {
@@ -154,8 +167,15 @@ export function ChatPage() {
     }
 
     setAguardandoId(conversaId)
+    setParcial('')
     try {
-      const doTutor = await perguntarAoTutor({ conversaId: servidorId, conteudo: texto, modo })
+      const pergunta = perguntar(
+        tempoReal,
+        { conversaId: servidorId, conteudo: texto, modo },
+        setParcial,
+      )
+      pararRef.current = pergunta.parar
+      const doTutor = await pergunta.resposta
       const local = conversaId
       setEstado((atual) => ({
         ...atual,
@@ -173,7 +193,8 @@ _A resposta foi interrompida. Tente perguntar de novo._`
         erro: doTutor.incompleta && !doTutor.resposta,
       })
       adicionarMensagem(conversaId, doAssistente)
-      setDigitandoMensagemId(doAssistente.id)
+      // Já veio aparecendo em pedaços: não repete a animação de digitação.
+      if (!doTutor.resposta) setDigitandoMensagemId(doAssistente.id)
     } catch (erro) {
       adicionarMensagem(
         conversaId,
@@ -189,6 +210,8 @@ _A resposta foi interrompida. Tente perguntar de novo._`
         }),
       )
     } finally {
+      pararRef.current = null
+      setParcial('')
       setAguardandoId(null)
     }
   }
@@ -273,8 +296,18 @@ _A resposta foi interrompida. Tente perguntar de novo._`
                 <ListaMensagens
                   mensagens={conversaAtiva.mensagens}
                   aguardando={aguardandoId === conversaAtiva.id}
+                  parcial={parcial}
                   digitandoMensagemId={digitandoMensagemId}
                 />
+
+                {aguardandoId === conversaAtiva.id && (
+                  <div className="flex justify-center pt-2">
+                    <Button variant="secondary" size="sm" onClick={() => pararRef.current?.()}>
+                      <Square />
+                      Parar resposta
+                    </Button>
+                  </div>
+                )}
 
                 <div className="mx-auto w-full max-w-3xl pt-2">
                   <Composer

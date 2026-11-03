@@ -66,6 +66,8 @@ export class ClienteTempoReal {
   private espera: ReturnType<typeof setTimeout> | null = null
   private readonly canais = new Map<string, Set<Ouvinte>>()
   private readonly fila: MensagemDoCliente[] = []
+  private readonly doServidor = new Set<(mensagem: MensagemDoServidor) => void>()
+  private readonly deEstado = new Set<(estado: EstadoConexao) => void>()
   estado: EstadoConexao = 'desligado'
 
   constructor(private readonly opcoes: OpcoesTempoReal) {}
@@ -113,6 +115,21 @@ export class ClienteTempoReal {
     }
   }
 
+  /**
+   * Ouve toda mensagem do servidor, de qualquer canal, e os erros. É o que o
+   * chat usa para pegar a conversa nova, cujo canal ele ainda não conhece.
+   */
+  ouvirServidor(ouvinte: (mensagem: MensagemDoServidor) => void): () => void {
+    this.doServidor.add(ouvinte)
+    return () => this.doServidor.delete(ouvinte)
+  }
+
+  /** Ouve as mudanças de estado da conexão. */
+  ouvirEstado(ouvinte: (estado: EstadoConexao) => void): () => void {
+    this.deEstado.add(ouvinte)
+    return () => this.deEstado.delete(ouvinte)
+  }
+
   /** Envia agora, ou guarda para quando a conexão voltar. */
   enviar(mensagem: MensagemDoCliente) {
     if (this.autenticado) {
@@ -151,6 +168,7 @@ export class ClienteTempoReal {
     } catch {
       return
     }
+    this.doServidor.forEach((ouvinte) => ouvinte(mensagem))
     switch (mensagem.tipo) {
       case 'autenticado':
         if (!this.autenticado) this.aoAutenticar()
@@ -215,5 +233,6 @@ export class ClienteTempoReal {
     if (this.estado === estado) return
     this.estado = estado
     this.opcoes.aoMudarEstado?.(estado)
+    this.deEstado.forEach((ouvinte) => ouvinte(estado))
   }
 }
