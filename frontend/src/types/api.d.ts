@@ -1503,6 +1503,26 @@ export interface components {
             reduzir_animacoes?: boolean | null;
             tamanho_fonte?: components["schemas"]["TamanhoFonte"] | null;
         };
+        /** Autenticado */
+        Autenticado: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "autenticado";
+            /** Usuario Id */
+            usuario_id: number;
+        };
+        /** Autenticar */
+        Autenticar: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "autenticar";
+            /** Token */
+            token: string;
+        };
         /** Body_enviarAvatar */
         Body_enviarAvatar: {
             /**
@@ -1518,6 +1538,26 @@ export interface components {
              * @description PDF de até 30 MB
              */
             arquivo: string;
+        };
+        /** Cancelado */
+        Cancelado: {
+            /** Canal */
+            canal: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "cancelado";
+        };
+        /** Cancelar */
+        Cancelar: {
+            /** Canal */
+            canal: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "cancelar";
         };
         /** Certificado */
         Certificado: {
@@ -1717,6 +1757,18 @@ export interface components {
             /** Vezes */
             vezes: number;
         };
+        /** ErroDoWebSocket */
+        ErroDoWebSocket: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "erro";
+        };
         /** EsqueciSenha */
         EsqueciSenha: {
             /**
@@ -1724,6 +1776,25 @@ export interface components {
              * Format: email
              */
             email: string;
+        };
+        /** Evento */
+        Evento: {
+            /** Canal */
+            canal: string;
+            /** Evento */
+            evento: string;
+            /**
+             * Payload
+             * @default {}
+             */
+            payload: {
+                [key: string]: unknown;
+            };
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "evento";
         };
         /** ExclusaoAgendada */
         ExclusaoAgendada: {
@@ -1782,6 +1853,26 @@ export interface components {
             id: number;
             /** Nome */
             nome: string;
+        };
+        /** Inscrever */
+        Inscrever: {
+            /** Canal */
+            canal: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "inscrever";
+        };
+        /** Inscrito */
+        Inscrito: {
+            /** Canal */
+            canal: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "inscrito";
         };
         /** InstituicaoResumo */
         InstituicaoResumo: {
@@ -1874,6 +1965,10 @@ export interface components {
             incompleta: boolean;
             papel: components["schemas"]["PapelMensagem"];
         };
+        /** MensagemDoCliente */
+        MensagemDoCliente: components["schemas"]["Autenticar"] | components["schemas"]["Inscrever"] | components["schemas"]["Cancelar"] | components["schemas"]["Ping"] | components["schemas"]["Pong"];
+        /** MensagemDoServidor */
+        MensagemDoServidor: components["schemas"]["Autenticado"] | components["schemas"]["Inscrito"] | components["schemas"]["Cancelado"] | components["schemas"]["Evento"] | components["schemas"]["PingDoServidor"] | components["schemas"]["PongDoServidor"] | components["schemas"]["ErroDoWebSocket"];
         /** MetricasAtividade */
         MetricasAtividade: {
             /** Abandono */
@@ -2403,6 +2498,38 @@ export interface components {
             itens: components["schemas"]["ItemDeCertificado"][];
             /** Periodo */
             periodo?: number | null;
+        };
+        /** Ping */
+        Ping: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "ping";
+        };
+        /** PingDoServidor */
+        PingDoServidor: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "ping";
+        };
+        /** Pong */
+        Pong: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "pong";
+        };
+        /** PongDoServidor */
+        PongDoServidor: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            tipo: "pong";
         };
         /**
          * Preferencias

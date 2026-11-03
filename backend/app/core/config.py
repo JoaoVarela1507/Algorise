@@ -53,6 +53,16 @@ class Settings(BaseSettings):
     rate_limit_chat_requisicoes: int = 20
     rate_limit_chat_janela: int = 60
 
+    # WebSocket (#35). O token vem no primeiro frame, dentro do prazo; o servidor
+    # manda `ping` a cada intervalo e derruba a conexão calada por mais tempo
+    # que `ws_tempo_morto`. Os limites são por instância da API.
+    ws_tempo_para_autenticar: float = 10
+    ws_intervalo_ping: float = 25
+    ws_tempo_morto: float = 60
+    ws_conexoes_por_usuario: int = 5
+    ws_mensagens_por_janela: int = 30
+    ws_janela_segundos: float = 10
+
     # IA do chat (#11): um modelo só, servido pelo Ollama. `eco` é o provedor de
     # teste, que responde sem rede — para o E2E e para rodar sem o Ollama; em
     # produção a aplicação não sobe com ele.
