@@ -165,6 +165,9 @@ def reler_assuntos(db: Session, ementa: Ementa) -> bool:
         return False
     if ementa.status_assuntos is StatusAssuntos.processando:
         return False
+    if ementa.partes_pendentes:
+        # A segunda leva ainda está sendo lida, pela mesma tarefa.
+        return False
     ementa.status_assuntos = StatusAssuntos.pendente
     ementa.erro_assuntos = None
     db.commit()

@@ -202,7 +202,7 @@ def test_marcador_do_streak_expira_na_virada_do_dia(
     db: Session, usuario: Usuario, redis_falso: fakeredis.FakeRedis
 ) -> None:
     """O streak é por dia de calendário, não por intervalo de 24 horas."""
-    streak.registrar_acesso(db, usuario.id, hoje=date.today())
+    streak.registrar_acesso(db, usuario.id, hoje=streak.hoje_no_fuso())
 
     marcador = redis_falso.keys("*streak*")[0]
     assert 0 < redis_falso.ttl(marcador) <= 86400

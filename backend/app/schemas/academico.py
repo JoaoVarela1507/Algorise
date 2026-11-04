@@ -62,6 +62,9 @@ class EmentaStatus(BaseModel):
     # A leitura das disciplinas e dos assuntos pela IA (#38), depois do texto.
     status_assuntos: StatusAssuntos
     erro_assuntos: str | None = None
+    # Com os assuntos já prontos, quantas partes do texto ainda estão sendo
+    # lidas: outras disciplinas podem aparecer na revisão.
+    partes_pendentes: int = 0
     # Quando o aluno revisou os assuntos e pediu a trilha guiada.
     confirmada_em: datetime | None = None
     criado_em: datetime

@@ -20,13 +20,19 @@ import type { EmentaStatus } from '@/services/onboarding'
 
 /** Ler um PDF e chamar a IA leva segundos, não milissegundos. */
 const INTERVALO_DA_LEITURA = 3000
+/** O resto da ementa é lido parte a parte, e cada parte leva minutos na CPU. */
+const INTERVALO_DO_RESTO = 15_000
 
 export function useEmentaAtual() {
   return useQuery({
     queryKey: chaves.ementa.atual(),
     queryFn: buscarEmentaAtual,
-    refetchInterval: (query) =>
-      query.state.data && emLeitura(query.state.data) ? INTERVALO_DA_LEITURA : false,
+    refetchInterval: (query) => {
+      const ementa = query.state.data
+      if (!ementa) return false
+      if (emLeitura(ementa)) return INTERVALO_DA_LEITURA
+      return ementa.partes_pendentes > 0 ? INTERVALO_DO_RESTO : false
+    },
   })
 }
 
