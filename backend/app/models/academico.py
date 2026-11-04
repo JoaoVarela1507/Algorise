@@ -83,6 +83,9 @@ class Ementa(Base, TimestampMixin):
         default=StatusAssuntos.pendente, server_default=StatusAssuntos.pendente.value
     )
     erro_assuntos: Mapped[str | None] = mapped_column(Text)
+    # Partes do texto ainda na fila de leitura, depois de os assuntos ficarem
+    # prontos: as disciplinas de programação saem primeiro e o resto vem depois.
+    partes_pendentes: Mapped[int] = mapped_column(default=0, server_default="0")
     # O aluno revisou os assuntos e pediu a trilha. A confirmada por último é a
     # base da trilha guiada dele (`services/trilha_guiada.py`).
     confirmada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

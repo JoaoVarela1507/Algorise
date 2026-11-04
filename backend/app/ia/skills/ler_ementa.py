@@ -124,6 +124,30 @@ def dividir_texto(texto: str, *, tamanho: int = TAMANHO_DA_PARTE) -> list[str]:
     return partes
 
 
+# Sinais de que a parte traz disciplina de programação, a que entra na trilha
+# guiada. Não decide nada sozinho (quem decide é o modelo, e o aluno corrige):
+# só escolhe a ordem de leitura.
+_PROGRAMACAO = re.compile(
+    r"programa[cç][aã]o|algoritmo|linguagem de programa|estrutura[s]? de dados|"
+    r"orienta[cç][aã]o a objetos|python|\bjava\b|\bc\+\+|desenvolvimento (web|mobile)|"
+    r"engenharia de software|banco de dados",
+    re.IGNORECASE,
+)
+
+
+def priorizar(partes: Sequence[str]) -> tuple[list[str], list[str]]:
+    """Separa as partes com cara de programação (lidas primeiro) das outras.
+
+    Na CPU, cada parte leva minutos. Lendo antes as que alimentam a trilha
+    guiada, o aluno revisa e começa a estudar enquanto o resto ainda é lido.
+    Sem nenhuma com cara de programação, todas vão na primeira leva.
+    """
+    primeiras = [parte for parte in partes if _PROGRAMACAO.search(parte)]
+    if not primeiras:
+        return list(partes), []
+    return primeiras, [parte for parte in partes if not _PROGRAMACAO.search(parte)]
+
+
 def mensagens(parte: str) -> list[MensagemIA]:
     return [MensagemIA("system", PROMPT), MensagemIA("user", f"Texto da ementa:\n\n{parte}")]
 

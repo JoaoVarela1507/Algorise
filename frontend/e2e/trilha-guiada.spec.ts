@@ -186,3 +186,44 @@ test('sem trilha guiada, a página leva à revisão da ementa', async ({ page, r
   await page.getByRole('link', { name: 'Revisar a ementa' }).click()
   await expect(page.getByText('Você ainda não enviou uma ementa')).toBeVisible()
 })
+
+test('com o resto da ementa ainda em leitura, dá para revisar e depois ver as novas', async ({
+  page,
+  request,
+}) => {
+  await entrar(page, await criarConta(request))
+  // A espera entre consultas do resto da ementa é de 15 s: o relógio adianta.
+  await page.clock.install()
+  let pendentes = 2
+  await page.route(`${API}/ementas/atual`, (route) =>
+    json(route, { ...EMENTA, partes_pendentes: pendentes }),
+  )
+  let lidaInteira = false
+  await page.route(`${API}/ementas/1/assuntos`, (route) =>
+    json(route, {
+      ...ASSUNTOS,
+      disciplinas: lidaInteira
+        ? [
+            ...ASSUNTOS.disciplinas,
+            { nome: 'Cálculo I', na_trilha: false, assuntos: [{ texto: 'Limites' }] },
+          ]
+        : ASSUNTOS.disciplinas,
+    }),
+  )
+
+  await page.goto('/trilha-guiada/revisao')
+
+  await expect(
+    page.getByText(/Ainda estamos lendo o resto da sua ementa \(2 partes\)/),
+  ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Confirmar e gerar trilha' })).toBeEnabled()
+
+  pendentes = 0
+  lidaInteira = true
+  await page.clock.fastForward(16_000)
+
+  await expect(page.getByText('Terminamos de ler a ementa')).toBeVisible()
+  await expect(page.getByText('Ainda estamos lendo')).toBeHidden()
+  await page.getByRole('button', { name: 'Mostrar' }).click()
+  await expect(page.getByText('Cálculo I')).toBeVisible()
+})
