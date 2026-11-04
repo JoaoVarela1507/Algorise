@@ -1,7 +1,7 @@
 """partes pendentes da ementa
 
 Revision ID: e7a3c0d6f2b5
-Revises: d6f2b9c5e1a4
+Revises: c8e3a1f5d2b7
 Create Date: 2026-11-03 21:30:00.000000
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "e7a3c0d6f2b5"
-down_revision: str | None = "d6f2b9c5e1a4"
+down_revision: str | None = "c8e3a1f5d2b7"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

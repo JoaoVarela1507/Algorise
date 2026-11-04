@@ -301,8 +301,14 @@ def test_trilha_de_cada_origem(db: Session, trilha: Trilha) -> None:
 def test_aceite_duas_contas_na_trilha_veem_a_posicao_mudar(
     cliente: TestClient, db: Session, trilha: Trilha, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """O critério de aceite: concluir uma atividade numa conta move a posição na outra."""
-    monkeypatch.setattr(settings, "ranking_intervalo_ao_vivo", 0.1)
+    """O critério de aceite: concluir uma atividade numa conta move a posição na outra.
+
+    A descarga do ranking roda aqui, na thread do teste. A do agregador fica
+    parada (intervalo de uma hora): o SQLite dos testes é uma conexão só, e a
+    thread dele consultando enquanto o teste grava derrubava o socket às vezes.
+    O agregador subindo e parando tem o teste dele.
+    """
+    monkeypatch.setattr(settings, "ranking_intervalo_ao_vivo", 3600)
     ana, bia = aluno(db, "ana"), aluno(db, "bia")
     canal = ranking_ao_vivo.canal_da_trilha(trilha.id)
     atividade = trilha.modulos[0].atividades[0]
@@ -312,6 +318,7 @@ def test_aceite_duas_contas_na_trilha_veem_a_posicao_mudar(
     ws_bia = entrar(cliente, bia, canal)
     try:
         # A primeira descarga (de Bia) tira a foto.
+        ranking_ao_vivo.descarregar(db)
         assert ate_o_evento(ws_bia, "ranking.atualizado")
 
         xp.registrar_xp(
@@ -321,6 +328,7 @@ def test_aceite_duas_contas_na_trilha_veem_a_posicao_mudar(
             origem=OrigemXP.atividade,
             referencia_id=trilha.modulos[0].atividades[1].id,
         )
+        ranking_ao_vivo.descarregar(db)
         evento = ate_o_evento(ws_bia, "ranking.atualizado")["payload"]
     finally:
         ws_bia.__exit__(None, None, None)
