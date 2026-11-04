@@ -1,6 +1,6 @@
 """Testes de níveis, streak e teto de XP (#31)."""
 
-from datetime import date, timedelta
+from datetime import timedelta
 
 import fakeredis
 import pytest
@@ -122,7 +122,7 @@ def test_dia_seguinte_incrementa(
     autenticado: dict[str, str],
     redis_falso: fakeredis.FakeRedis,
 ) -> None:
-    streak.registrar_acesso(db, usuario.id, hoje=date.today() - timedelta(days=1))
+    streak.registrar_acesso(db, usuario.id, hoje=streak.hoje_no_fuso() - timedelta(days=1))
 
     corpo = cliente.post("/api/v1/gamificacao/checkin", headers=autenticado).json()
 
@@ -136,7 +136,7 @@ def test_buraco_zera_mas_guarda_o_recorde(
     autenticado: dict[str, str],
     redis_falso: fakeredis.FakeRedis,
 ) -> None:
-    hoje = date.today()
+    hoje = streak.hoje_no_fuso()
     streak.registrar_acesso(db, usuario.id, hoje=hoje - timedelta(days=10))
     streak.registrar_acesso(db, usuario.id, hoje=hoje - timedelta(days=9))
 
