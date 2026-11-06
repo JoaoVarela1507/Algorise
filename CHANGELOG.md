@@ -14,6 +14,25 @@ O tipo do commit define o bump:
 - `feat!: ...` ou `BREAKING CHANGE:` no corpo — major (**1**.0.0)
 - `chore:`, `docs:`, `test:` — não geram release
 
+## [0.24.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.23.0...v0.24.0) (2026-11-04)
+
+
+### Adicionado
+
+* anexos nas mensagens do chat e resumo do historico que sai da janela de contexto ([#248](https://github.com/JoaoVarela1507/Algorise/issues/248)) ([3f31e5f](https://github.com/JoaoVarela1507/Algorise/commit/3f31e5fad374a3934ef0cd7fe327118ff87e9602))
+* desafio de codigo com execucao em sandbox isolada no worker e testes de contencao ([#246](https://github.com/JoaoVarela1507/Algorise/issues/246)) ([0eb64a5](https://github.com/JoaoVarela1507/Algorise/commit/0eb64a51715c79915361a74ee98f198749b146db))
+* ementa lida em duas levas, programacao primeiro, e parte invalida pulada ([#251](https://github.com/JoaoVarela1507/Algorise/issues/251)) ([26bae42](https://github.com/JoaoVarela1507/Algorise/commit/26bae4234e2bca8c084461ecfb2214fbf29ff816))
+* home, trilha e atividades ligadas à API, com novos tipos de atividade e comemoração do módulo ([#252](https://github.com/JoaoVarela1507/Algorise/issues/252)) ([d6964ae](https://github.com/JoaoVarela1507/Algorise/commit/d6964aeb3bf1247a0aa2ca5717e9803a5a30d27c))
+* modelo proprio para as tarefas do worker, que espera os modelos baixarem ([#249](https://github.com/JoaoVarela1507/Algorise/issues/249)) ([7ccdbd8](https://github.com/JoaoVarela1507/Algorise/commit/7ccdbd8752f7c92c5445b05b0862e6fc8d56162a))
+* ranking, XP e notificacoes em tempo real, com centro de notificacoes ([#245](https://github.com/JoaoVarela1507/Algorise/issues/245)) ([d2bc78c](https://github.com/JoaoVarela1507/Algorise/commit/d2bc78c26cba1bdf973dff4557bd2f2c795c561d))
+
+
+### Corrigido
+
+* CI da main de volta ao verde, com testes das trilhas, E2E do passo novo e a pratica de volta ([#253](https://github.com/JoaoVarela1507/Algorise/issues/253)) ([8c0a95c](https://github.com/JoaoVarela1507/Algorise/commit/8c0a95c5230cb58c5b24c2ff5c4c2f92b1124f30))
+* leitura da ementa que morre com o worker vira falhou e pode ser refeita ([#250](https://github.com/JoaoVarela1507/Algorise/issues/250)) ([0d5e1a2](https://github.com/JoaoVarela1507/Algorise/commit/0d5e1a2f5876f4b23e89f0f2343d31c76a5d33f4))
+* testes do streak usam o dia no fuso, como o codigo, e nao o do relogio ([#254](https://github.com/JoaoVarela1507/Algorise/issues/254)) ([9078e03](https://github.com/JoaoVarela1507/Algorise/commit/9078e036ae0ab66279e2f23c2f022b23b0273c2f))
+
 ## [0.23.0](https://github.com/JoaoVarela1507/Algorise/compare/v0.22.0...v0.23.0) (2026-11-03)
 
 
