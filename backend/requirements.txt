@@ -24,7 +24,7 @@ httpx2==2.16.0
 python-multipart==0.0.32
 pillow==13.0.0
 # Texto da ementa em PDF (#28). Puro Python: não pede nada instalado no sistema.
-pypdf==6.21.4
+pypdf==7.0.0
 # Coluna `vector` do vault das skills (#200) no SQLAlchemy.
 pgvector==0.5.1
 # PDF do certificado (#32): Python puro, com as fontes embutidas do PDF.
