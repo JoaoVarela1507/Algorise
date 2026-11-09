@@ -1,31 +1,31 @@
 fastapi==0.162.0
 uvicorn[standard]==0.54.0
-pydantic==2.14.2
+pydantic==2.14.3
 pydantic-settings==2.16.2
 python-dotenv==1.2.4
-sqlalchemy==2.1.6
-psycopg[binary]==3.3.6
+sqlalchemy==2.1.8
+psycopg[binary]==3.3.8
 alembic==1.20.1
 redis[hiredis]==8.1.0
 # Fila do trabalho longo (#206), sobre o mesmo Redis; o worker é o `rq worker`.
 rq==3.0.0
 # Observabilidade (#39): métricas em `/metrics` e captura de exceções, se houver DSN.
 prometheus-client==0.26.0
-sentry-sdk==2.72.0
+sentry-sdk==2.74.0
 pyjwt[crypto]==2.15.1
 bcrypt==5.0.0
-authlib==1.9.1
+authlib==1.9.5
 email-validator==2.3.0
 itsdangerous==2.2.0
 # O Authlib 1.8 usa o httpx2 e marca o httpx antigo como obsoleto.
 httpx2==2.16.0
 # Upload da foto do perfil: o FastAPI precisa do multipart para ler o arquivo,
 # e o Pillow reprocessa a imagem (tira o EXIF, padroniza o tamanho).
-python-multipart==0.0.32
+python-multipart==0.0.33
 pillow==13.0.0
 # Texto da ementa em PDF (#28). Puro Python: não pede nada instalado no sistema.
 pypdf==6.21.4
 # Coluna `vector` do vault das skills (#200) no SQLAlchemy.
 pgvector==0.5.1
 # PDF do certificado (#32): Python puro, com as fontes embutidas do PDF.
-fpdf2==2.8.9
+fpdf2==2.9.0
