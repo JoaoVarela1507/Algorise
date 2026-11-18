@@ -18,11 +18,18 @@ cair direto em funções. Nos níveis médio e alto, só o que cobre os assuntos
 
 O desbloqueio dos passos dentro da trilha guiada é de `services/progresso.py`,
 que usa `modulos_em_ordem` daqui.
+
+`montar` é lembrado na sessão (`Session.info`): um mesmo request chama
+`estados_dos_passos` várias vezes (uma por trilha na tela da trilha guiada, duas
+no conteúdo do passo), e cada uma remontava a trilha a partir da ementa — a
+consulta mais pesada do caminho. A lembrança é esquecida em todo flush, commit
+e rollback, porque aí a ementa, o nível do aluno ou os módulos podem ter mudado.
 """
 
 from dataclasses import dataclass, field
+from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import (
@@ -73,8 +80,32 @@ def ementa_confirmada(db: Session, usuario_id: int) -> Ementa | None:
     ).first()
 
 
+# Onde a trilha montada fica guardada em `Session.info`.
+_LEMBRADAS = "trilha_guiada.montadas"
+
+
 def montar(db: Session, usuario: Usuario) -> tuple[Ementa | None, list[Item]]:
-    """A ementa confirmada e os itens da trilha guiada, em ordem. Sem ementa, nada."""
+    """A ementa confirmada e os itens da trilha guiada, em ordem. Sem ementa, nada.
+
+    Quem chama não deve alterar a lista devolvida: ela é a mesma para todas as
+    chamadas da sessão até o próximo flush ou commit.
+    """
+    lembradas = db.info.setdefault(_LEMBRADAS, {})
+    # O nível entra na chave porque muda a profundidade (os módulos `base`).
+    chave = (usuario.id, usuario.nivel_experiencia)
+    if chave not in lembradas:
+        lembradas[chave] = _montar(db, usuario)
+    return lembradas[chave]
+
+
+@event.listens_for(Session, "after_flush")
+@event.listens_for(Session, "after_commit")
+@event.listens_for(Session, "after_soft_rollback")
+def _esquecer(sessao: Session, *_: Any) -> None:
+    sessao.info.pop(_LEMBRADAS, None)
+
+
+def _montar(db: Session, usuario: Usuario) -> tuple[Ementa | None, list[Item]]:
     ementa = ementa_confirmada(db, usuario.id)
     if ementa is None:
         return None, []
