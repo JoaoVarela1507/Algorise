@@ -23,6 +23,7 @@ risco foi aceito; antes de qualquer uso comercial, isto precisa ser revisto.
 import logging
 from functools import cache
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from app.core.config import settings
 from app.ia.vault.trechos import Fala, ler_transcricao
@@ -109,6 +110,21 @@ def _modelo():
     return WhisperModel(
         settings.whisper_modelo, device="cpu", compute_type=settings.whisper_computacao
     )
+
+
+def id_do_video(url: str | None) -> str | None:
+    """O id de uma URL do YouTube (`watch?v=`, `youtu.be/` ou `embed/`), ou `None`."""
+    if not url:
+        return None
+    endereco = urlparse(url)
+    host = (endereco.hostname or "").removeprefix("www.").removeprefix("m.")
+    if host == "youtu.be":
+        return endereco.path.strip("/") or None
+    if host not in ("youtube.com", "youtube-nocookie.com"):
+        return None
+    if endereco.path.startswith("/embed/"):
+        return endereco.path.removeprefix("/embed/").split("/")[0] or None
+    return (parse_qs(endereco.query).get("v") or [None])[0]
 
 
 def _url(youtube_id: str) -> str:

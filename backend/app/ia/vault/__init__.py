@@ -15,6 +15,7 @@ Pela linha de comando, da pasta `backend/`:
     python -m app.ia.vault registrar-modulos
     python -m app.ia.vault registrar-prompts
     python -m app.ia.vault reembeddar   # depois de trocar o provedor de embedding
+    python -m app.ia.vault transcrever  # vídeo dos módulos (legenda ou Whisper)
 
 O `registrar-modulos` também roda sozinho antes de cada leitura de ementa
 (#38), então só é preciso chamá-lo à mão para conferir o vault.

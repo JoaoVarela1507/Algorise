@@ -211,3 +211,27 @@ async def reembeddar(sessao: Session, provedor: ProvedorIA) -> int:
         sessao.commit()
         total += len(trechos)
     return total
+
+
+async def ingerir_falas_do_modulo(
+    sessao: Session, provedor: ProvedorIA, modulo: Modulo, falas: list[Fala]
+) -> Ingestao:
+    """Grava a transcrição do vídeo do módulo a partir das falas (com o tempo de cada uma).
+
+    O mesmo documento que `ingerir_transcricao` grava a partir de um arquivo: a
+    chave é o módulo, e o passo mostra a transcrição ao lado do vídeo (#21).
+    """
+    conteudo = "\n".join(
+        f"{fala.inicio}-{fala.fim} {fala.texto}" if fala.inicio is not None else fala.texto
+        for fala in falas
+    )
+    return await _ingerir(
+        sessao,
+        provedor,
+        chave=f"modulo:{modulo.id}",
+        origem=OrigemVault.transcricao,
+        titulo=modulo.titulo,
+        conteudo=conteudo,
+        trechos=dividir(falas),
+        modulo_id=modulo.id,
+    )

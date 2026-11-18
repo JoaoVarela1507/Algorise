@@ -523,3 +523,59 @@ def test_reembeddar_refaz_os_vetores_de_todo_o_vault(db: Session) -> None:
     assert asyncio.run(reembeddar(db, Constante())) == len(trechos)
     db.expire_all()
     assert all(next(iter(t.embedding)) == 1.0 for t in db.scalars(select(TrechoVault)))
+
+
+def test_linha_de_comando_transcreve_o_video_do_modulo(
+    db: Session,
+    sessao_factory,
+    provedor: ProvedorContado,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Sem rede: as falas vêm de um `falas_do_video` falso, como se fosse o Whisper."""
+    from app.services import transcricao
+
+    lacos, condicionais, _ = criar_modulos(db)
+    lacos.video_url = "https://www.youtube.com/watch?v=abcdefghijk"
+    condicionais.video_url = "https://vimeo.com/123"
+    db.commit()
+    pedidos: list[str] = []
+
+    def falas_do_video(youtube_id: str, pasta: Path) -> tuple[list[Fala], str]:
+        pedidos.append(youtube_id)
+        return [
+            Fala("O laço for repete.", 0.0, 2.0),
+            Fala("E o while também.", 2.0, 4.0),
+        ], "whisper"
+
+    monkeypatch.setattr(transcricao, "falas_do_video", falas_do_video)
+    monkeypatch.setattr(linha_de_comando, "SessionLocal", sessao_factory)
+    monkeypatch.setattr(linha_de_comando, "get_provedor_ia_tarefas", lambda: provedor)
+
+    assert linha_de_comando.main(["transcrever"]) == 0
+    # De novo: o módulo já transcrito fica de fora.
+    assert linha_de_comando.main(["transcrever"]) == 0
+
+    assert pedidos == ["abcdefghijk"]
+    saida = capsys.readouterr().out
+    assert f"modulo:{lacos.id}: versão 1" in saida
+    assert "pela whisper" in saida
+    assert "não é do YouTube" in saida
+    documento = db.scalar(select(DocumentoVault).where(DocumentoVault.modulo_id == lacos.id))
+    assert documento.origem is OrigemVault.transcricao
+
+
+@pytest.mark.parametrize(
+    ("url", "esperado"),
+    [
+        ("https://www.youtube.com/watch?v=S9uPNppGsGo", "S9uPNppGsGo"),
+        ("https://youtu.be/S9uPNppGsGo", "S9uPNppGsGo"),
+        ("https://www.youtube-nocookie.com/embed/S9uPNppGsGo?start=3", "S9uPNppGsGo"),
+        ("https://vimeo.com/123", None),
+        (None, None),
+    ],
+)
+def test_id_do_video(url: str | None, esperado: str | None) -> None:
+    from app.services.transcricao import id_do_video
+
+    assert id_do_video(url) == esperado

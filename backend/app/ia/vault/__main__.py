@@ -4,6 +4,9 @@ import argparse
 import asyncio
 import sys
 from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from sqlalchemy import select
 
 from app.core.database import SessionLocal
 from app.ia import IAIndisponivel, get_provedor_ia_tarefas
@@ -14,7 +17,9 @@ from app.ia.vault import (
     registrar_modulos,
     registrar_prompts,
 )
-from app.ia.vault.ingestao import reembeddar
+from app.ia.vault.ingestao import ingerir_falas_do_modulo, reembeddar
+from app.models import DocumentoVault, Modulo
+from app.services import transcricao
 
 
 def main(argumentos: list[str] | None = None) -> int:
@@ -29,6 +34,13 @@ def main(argumentos: list[str] | None = None) -> int:
     comandos.add_parser("registrar-prompts", help="grava os prompts das skills")
     comandos.add_parser(
         "reembeddar", help="refaz os vetores de todo o vault com o provedor de embedding atual"
+    )
+    transcrever = comandos.add_parser(
+        "transcrever",
+        help="transcreve o vídeo do YouTube do módulo (legenda ou Whisper) e grava no vault",
+    )
+    transcrever.add_argument(
+        "--modulo", type=int, help="id do módulo; sem ele, todo módulo com vídeo e sem transcrição"
     )
 
     args = parser.parse_args(argumentos)
@@ -51,6 +63,8 @@ async def _executar(args: argparse.Namespace) -> int:
                 nome_arquivo=args.arquivo.name,
             )
             _relatar(ingestao)
+        elif args.comando == "transcrever":
+            await _transcrever(sessao, provedor, args.modulo)
         elif args.comando == "reembeddar":
             print(f"{await reembeddar(sessao, provedor)} trechos com vetor novo")
         else:
@@ -60,6 +74,47 @@ async def _executar(args: argparse.Namespace) -> int:
             for ingestao in await registrar(sessao, provedor):
                 _relatar(ingestao)
     return 0
+
+
+async def _transcrever(sessao, provedor, modulo_id: int | None) -> None:
+    """A transcrição do vídeo inteiro do módulo, para o painel do passo e para o RAG.
+
+    Módulo que é um trecho de uma aula longa (`inicio_segundos`) fica de fora: a
+    transcrição dele vem da do vídeo de origem, pela tarefa de transcrição (#208).
+    """
+    if modulo_id is not None:
+        modulo = sessao.get(Modulo, modulo_id)
+        if modulo is None:
+            raise ModuloNaoEncontrado(f"Módulo {modulo_id} não existe")
+        modulos = [modulo]
+    else:
+        ja_tem = select(DocumentoVault.modulo_id).where(DocumentoVault.chave.like("modulo:%"))
+        modulos = list(
+            sessao.scalars(
+                select(Modulo).where(
+                    Modulo.video_url.is_not(None),
+                    Modulo.inicio_segundos.is_(None),
+                    Modulo.id.not_in(ja_tem.where(DocumentoVault.modulo_id.is_not(None))),
+                )
+            )
+        )
+    for modulo in modulos:
+        youtube_id = transcricao.id_do_video(modulo.video_url)
+        if youtube_id is None:
+            print(f"módulo {modulo.id}: o vídeo não é do YouTube, pulado")
+            continue
+        print(f"módulo {modulo.id} ({modulo.titulo}): transcrevendo {youtube_id}...", flush=True)
+        with TemporaryDirectory(prefix="algorise-video-") as pasta:
+            try:
+                falas, fonte = transcricao.falas_do_video(youtube_id, Path(pasta))
+            except transcricao.VideoIndisponivel as erro:
+                print(f"módulo {modulo.id}: vídeo indisponível ({erro})")
+                continue
+        if not falas:
+            print(f"módulo {modulo.id}: sem fala para transcrever")
+            continue
+        _relatar(await ingerir_falas_do_modulo(sessao, provedor, modulo, falas))
+        print(f"  {len(falas)} falas, pela {fonte}")
 
 
 def _relatar(ingestao: Ingestao) -> None:
