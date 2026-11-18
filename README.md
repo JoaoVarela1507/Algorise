@@ -89,6 +89,27 @@ npm run dev
 - Frontend: http://localhost:5173
 - Backend (docs automáticas): http://localhost:8000/docs
 
+### Sem Docker nenhum (banco no Supabase, IA pelo Gemini ou Ollama remoto)
+
+Para uma máquina leve, sem PostgreSQL, Redis nem Ollama instalados:
+
+1. **Python 3.13** (o projeto usa recursos dele). Com o `uv`:
+   `cd backend && uv venv --python 3.13 .venv && uv pip install -r requirements.txt -r requirements-dev.txt`.
+2. **`backend/.env`** a partir do `.env.example`, com:
+   - `DATABASE_URL` do Supabase (Session pooler) — rode `alembic upgrade head` uma vez;
+   - `IA_PROVEDOR=gemini` e `GEMINI_API_KEY` (grátis em <https://aistudio.google.com/apikey>),
+     **ou** `IA_PROVEDOR=ollama` e `OLLAMA_URL=http://<ip-da-outra-máquina>:11434`;
+   - `FILA=local` e `SANDBOX_MODO=processo` (o desafio de código roda sem Docker; só local).
+3. **Redis em memória** (o login precisa dele): `python scripts/redis_local.py`.
+4. **Backend:** `python main.py`. **Frontend:** `cd frontend && npm install && npm run dev`.
+
+Para conferir a IA antes de subir tudo, e comparar os dois provedores:
+
+```bash
+python scripts/testar_ia.py gemini
+python scripts/testar_ia.py ollama
+```
+
 Veja `frontend/README.md` e `backend/README.md` para detalhes de cada parte.
 
 ## Contribuindo
