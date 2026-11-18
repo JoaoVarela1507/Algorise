@@ -6,5 +6,9 @@ export interface PropsDaAtividade {
   /** Posição no passo, para a barra "1 de 3". */
   numero: number
   total: number
-  aoAvancar: () => void
+  /**
+   * Chamado no "Avançar", com quantas vezes o aluno errou antes de acertar:
+   * é o que o resumo do passo conta como "de primeira" (#22).
+   */
+  aoAvancar: (errosAntesDeAcertar?: number) => void
 }

@@ -47,3 +47,47 @@ describe('ModuloConcluido', () => {
     expect(screen.queryByText(/XP/)).not.toBeInTheDocument()
   })
 })
+
+describe('ModuloConcluido, resumo do passo (#22)', () => {
+  it('mostra quantas saíram de primeira e uma bolinha por atividade', () => {
+    render(
+      <ModuloConcluido
+        titulo="Filas"
+        xpGanho={20}
+        proximo={4}
+        aoContinuar={vi.fn()}
+        acertos={[true, false, true, true, false]}
+      />,
+    )
+
+    expect(screen.getByText('Bom trabalho!', { exact: false })).toBeInTheDocument()
+    expect(screen.getByText('3/5')).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Resultado de cada atividade' }).children).toHaveLength(
+      5,
+    )
+  })
+
+  it('"Continuar trilha" abre o próximo passo e "Voltar para trilhas" vai para a lista', async () => {
+    const continuarTrilha = vi.fn()
+    const irParaTrilhas = vi.fn()
+    render(
+      <ModuloConcluido
+        titulo="Filas"
+        xpGanho={20}
+        proximo={4}
+        aoContinuar={vi.fn()}
+        acertos={[true]}
+        aoContinuarTrilha={continuarTrilha}
+        aoIrParaTrilhas={irParaTrilhas}
+      />,
+    )
+
+    const continuar = screen.getByRole('button', { name: /Continuar trilha/ })
+    expect(continuar).toHaveFocus()
+    await userEvent.click(continuar)
+    await userEvent.click(screen.getByRole('button', { name: 'Voltar para trilhas' }))
+
+    expect(continuarTrilha).toHaveBeenCalledOnce()
+    expect(irParaTrilhas).toHaveBeenCalledOnce()
+  })
+})

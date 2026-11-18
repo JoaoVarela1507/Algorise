@@ -202,6 +202,57 @@ describe('resposta aberta', () => {
     await waitFor(() => expect(avancarBotao()).toBeEnabled())
     expect(screen.getByText('Resposta recebida.')).toBeInTheDocument()
   })
+
+  it('o polvo comemora o acerto da IA', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        resposta({
+          correta: true,
+          feedback: 'Isso, a flag muda o comportamento.',
+          corrigida_por_ia: true,
+          xp_ganho: 20,
+        }),
+      ),
+    )
+    montar(atividade({ tipo: 'resposta-aberta' }))
+
+    await userEvent.type(
+      screen.getByLabelText('Sua resposta'),
+      'Uma flag muda o que o comando faz.',
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Enviar' }))
+
+    expect(await screen.findByText('EXATAMENTE!!!')).toBeInTheDocument()
+    expect(screen.getByText('Isso, a flag muda o comportamento.')).toBeInTheDocument()
+    expect(avancarBotao()).toBeEnabled()
+  })
+
+  it('no erro, mostra o que faltou e deixa mandar de novo', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        resposta({
+          correta: false,
+          feedback: 'Você falou de variáveis.',
+          sugestao: 'Pense no que o --version faz.',
+          corrigida_por_ia: true,
+        }),
+      ),
+    )
+    montar(atividade({ tipo: 'resposta-aberta' }))
+
+    const campo = screen.getByLabelText('Sua resposta')
+    await userEvent.type(campo, 'Uma flag é uma variável qualquer.')
+    await userEvent.click(screen.getByRole('button', { name: 'Enviar' }))
+
+    expect(await screen.findByText('Quase lá!')).toBeInTheDocument()
+    expect(screen.getByText('Pense no que o --version faz.')).toBeInTheDocument()
+    // O feedback aparece uma vez só, no balão do polvo, e não no rodapé também.
+    expect(screen.getAllByText('Você falou de variáveis.')).toHaveLength(1)
+    expect(campo).toBeEnabled()
+    expect(avancarBotao()).toBeDisabled()
+  })
 })
 
 describe('desafio de código', () => {

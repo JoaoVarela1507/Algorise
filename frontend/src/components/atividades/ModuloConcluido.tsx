@@ -36,13 +36,26 @@ export function ModuloConcluido({
   xpGanho,
   proximo,
   aoContinuar,
+  acertos,
+  aoContinuarTrilha,
+  aoIrParaTrilhas,
 }: {
   /** O módulo que acabou de fechar. */
   titulo: string
   xpGanho: number
   /** Ordem do módulo seguinte; `null` quando era o último da trilha. */
   proximo: number | null
+  /** Volta para o caminho (o mapa). É também o Esc. */
   aoContinuar: () => void
+  /**
+   * Como foram as atividades desta visita (#22): uma entrada por atividade,
+   * `true` quando acertou de primeira. Sem ela, o resumo não aparece.
+   */
+  acertos?: boolean[]
+  /** Abre direto o próximo passo ("Continuar trilha"). */
+  aoContinuarTrilha?: () => void
+  /** Vai para a lista de trilhas ("Voltar para trilhas"). */
+  aoIrParaTrilhas?: () => void
 }) {
   const botao = useRef<HTMLButtonElement>(null)
   const xp = useContagem(xpGanho, { atraso: 0.6 })
@@ -156,18 +169,79 @@ export function ModuloConcluido({
           </motion.p>
         )}
 
+        {acertos && acertos.length > 0 && <ResumoDeAcertos acertos={acertos} />}
+
         <motion.div
-          className="relative mt-7"
+          className="relative mt-7 flex flex-col gap-2"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.75 }}
         >
-          <Button ref={botao} size="lg" full className="group" onClick={aoContinuar}>
-            {fimDaTrilha ? 'Ver a trilha completa' : 'Voltar para o caminho'}
-            <ArrowRight className="transition-transform group-hover:translate-x-1" />
-          </Button>
+          {!fimDaTrilha && aoContinuarTrilha ? (
+            <Button ref={botao} size="lg" full className="group" onClick={aoContinuarTrilha}>
+              Continuar trilha
+              <ArrowRight className="transition-transform group-hover:translate-x-1" />
+            </Button>
+          ) : (
+            <Button ref={botao} size="lg" full className="group" onClick={aoContinuar}>
+              {fimDaTrilha ? 'Ver a trilha completa' : 'Voltar para o caminho'}
+              <ArrowRight className="transition-transform group-hover:translate-x-1" />
+            </Button>
+          )}
+          {aoIrParaTrilhas && (
+            <Button variant="ghost" full onClick={aoIrParaTrilhas}>
+              Voltar para trilhas
+            </Button>
+          )}
         </motion.div>
       </motion.div>
+    </motion.div>
+  )
+}
+
+/**
+ * "Bom trabalho!" com o placar do passo: uma bolinha por atividade, verde quando
+ * saiu de primeira e amarela quando precisou de nova tentativa (#22).
+ */
+function ResumoDeAcertos({ acertos }: { acertos: boolean[] }) {
+  const dePrimeira = acertos.filter(Boolean).length
+  const total = acertos.length
+  const titulo =
+    dePrimeira === total
+      ? 'Perfeito!'
+      : dePrimeira >= total / 2
+        ? 'Bom trabalho!'
+        : 'Você conseguiu!'
+
+  return (
+    <motion.div
+      className="relative mx-auto mt-5 flex flex-col items-center gap-2 rounded-xl bg-secondary/60 px-5 py-3"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.65 }}
+    >
+      <p className="font-display text-lg font-bold text-foreground">
+        {titulo}{' '}
+        <span className="text-primary">
+          {dePrimeira}/{total}
+        </span>{' '}
+        <span className="text-sm font-semibold text-muted-foreground">de primeira</span>
+      </p>
+      <ol className="flex gap-1.5" aria-label="Resultado de cada atividade">
+        {acertos.map((certa, i) => (
+          <motion.li
+            key={i}
+            className={cn('size-3 rounded-full', certa ? 'bg-success' : 'bg-xp')}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.75 + i * 0.06, type: 'spring', stiffness: 500, damping: 20 }}
+          >
+            <span className="sr-only">
+              Atividade {i + 1}: {certa ? 'de primeira' : 'com nova tentativa'}
+            </span>
+          </motion.li>
+        ))}
+      </ol>
     </motion.div>
   )
 }

@@ -53,9 +53,9 @@ export function AtividadeDoPasso({
 }
 
 /**
- * Desafio de código (tela 34). O backend já corrige na sandbox (#34, rotas
- * `/desafios`), mas esta tela ainda não está ligada a ela: por enquanto a
- * atividade aparece e não trava o passo.
+ * Desafio de código dentro de um passo. O desafio proposto tem tela própria
+ * (`/trilhas/:slug/desafio`, #25) e o passo o tira da sequência; isto só
+ * aparece se outra tela montar a atividade, e não trava o passo.
  */
 function AtividadeDesafio({ atividade, numero, total, aoAvancar }: PropsDaAtividade) {
   const correcao = useCorrecao(atividade.id, atividade.concluida)

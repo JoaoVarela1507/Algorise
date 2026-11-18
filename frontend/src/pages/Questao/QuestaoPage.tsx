@@ -1,14 +1,15 @@
-import { ArrowLeft, Flag } from 'lucide-react'
+import { CheckCircle2, Flag, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { AtividadeDoPasso } from '@/components/atividades/AtividadeDoPasso'
 import { ModuloConcluido } from '@/components/atividades/ModuloConcluido'
 import { PlayerYoutube } from '@/components/trilha/PlayerYoutube'
+import { TranscricaoDoVideo } from '@/components/trilha/TranscricaoDoVideo'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Carregando, ErroAoCarregar, Vazio } from '@/components/ui/estados'
 import { useConcluirPasso, useReportarPasso } from '@/hooks/useAtividades'
-import { useIniciarTrilha, usePasso } from '@/hooks/useTrilhas'
+import { useIniciarTrilha, useMarcarVideoAssistido, usePasso } from '@/hooks/useTrilhas'
 import { roteiroDaAtividade } from '@/lib/terminal/mapa'
 import type { PassoConcluidoApi } from '@/services/atividades'
 import { PraticaDoPasso } from '@/components/atividades/PraticaDoPasso'
@@ -40,12 +41,16 @@ function Passo() {
   const concluir = useConcluirPasso(trilhaId)
   const reportar = useReportarPasso(trilhaId)
   const iniciar = useIniciarTrilha()
+  const marcarAssistido = useMarcarVideoAssistido(trilhaId, ordemPasso)
   const [escolhido, setEscolhido] = useState<number | null>(null)
   const inicio = useRef<number | null>(null)
   const [reportado, setReportado] = useState(false)
   // O que a API respondeu ao fechar o passo: enquanto existe, a comemoração
   // fica na tela. De lá o aluno volta ao mapa, com o polvo no módulo seguinte.
   const [concluido, setConcluido] = useState<PassoConcluidoApi | null>(null)
+  // Uma entrada por atividade feita nesta visita: `true` se acertou de primeira.
+  // É o placar do resumo do passo (#22).
+  const [acertos, setAcertos] = useState<boolean[]>([])
   const liberado = passo.isSuccess
 
   // Entrar num passo liberado é começar a trilha: é o que a põe no card
@@ -62,7 +67,11 @@ function Passo() {
     return <ErroAoCarregar erro={passo.error} aoTentarDeNovo={() => void passo.refetch()} />
   }
 
-  const atividades = [...passo.data.atividades].sort((a, b) => a.ordem - b.ordem)
+  // O desafio de código não é uma atividade do passo: ele fecha a trilha, com
+  // tela própria (`/trilhas/:slug/desafio`, #25), e não trava o passo.
+  const atividades = passo.data.atividades
+    .filter((atividade) => atividade.tipo !== 'desafio-codigo')
+    .sort((a, b) => a.ordem - b.ordem)
   // Retoma de onde o aluno parou: a primeira que ele ainda não acertou. Fica
   // gravado na primeira carga; senão, acertar uma atividade (que recarrega o
   // passo) pularia para a seguinte antes de o aluno clicar em Avançar.
@@ -73,6 +82,7 @@ function Passo() {
   const indice = escolhido ?? inicio.current
   const atual = atividades[indice]
   const ordem = passo.data.ordem
+  const feitas = atividades.filter((atividade) => atividade.concluida).length
 
   // Fecha na API, que paga o bônus e diz qual é o próximo, e comemora. Se ela
   // recusar (atividade pendente), volta para a trilha — lá o aluno vê o que falta.
@@ -94,15 +104,26 @@ function Passo() {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <Link
-          to={`/trilhas/${trilhaId}`}
-          className="flex w-fit items-center gap-1 text-sm font-semibold text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="size-4" aria-hidden />
-          {passo.data.trilha_nome}
-        </Link>
-        <h1 className="font-display text-2xl font-bold text-foreground">{passo.data.titulo}</h1>
+      <header className="flex flex-col gap-3">
+        {/* O X fecha o passo e volta ao caminho; a barra é o quanto do passo já foi feito (#21). */}
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="-ml-2 shrink-0"
+            aria-label={`Fechar e voltar para ${passo.data.trilha_nome}`}
+            onClick={() => navigate(`/trilhas/${trilhaId}`)}
+          >
+            <X />
+          </Button>
+          <BarraDoPasso feitas={feitas} total={atividades.length} />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-muted-foreground">
+            {passo.data.trilha_nome} · Passo {ordem}
+          </p>
+          <h1 className="font-display text-2xl font-bold text-foreground">{passo.data.titulo}</h1>
+        </div>
       </header>
 
       {passo.data.video_url && (
@@ -112,7 +133,21 @@ function Passo() {
             titulo={passo.data.titulo}
             inicio={passo.data.inicio_segundos}
             fim={passo.data.fim_segundos}
+            aoTerminar={() => {
+              if (!passo.data.video_assistido && !marcarAssistido.isPending)
+                marcarAssistido.mutate()
+            }}
           />
+          {passo.data.video_assistido && (
+            <p
+              role="status"
+              className="flex items-center gap-1.5 text-sm font-semibold text-success"
+            >
+              <CheckCircle2 className="size-4" aria-hidden />
+              Vídeo assistido
+            </p>
+          )}
+          {trilhaId && <TranscricaoDoVideo slug={trilhaId} ordem={ordem} />}
           {passo.data.origem === 'youtube' && (
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-2">
@@ -146,7 +181,8 @@ function Passo() {
           roteiro={roteiroDaAtividade(passo.data.trilha_slug, ordem, atual.ordem)}
           numero={indice + 1}
           total={atividades.length}
-          aoAvancar={() => {
+          aoAvancar={(errosAntesDeAcertar = 0) => {
+            setAcertos((antes) => [...antes, errosAntesDeAcertar === 0])
             if (indice + 1 < atividades.length) {
               setEscolhido(indice + 1)
               return
@@ -186,8 +222,40 @@ function Passo() {
           // De volta ao mapa: o detalhe da trilha já foi invalidado ao concluir,
           // então o polvo aparece no módulo que acabou de abrir.
           aoContinuar={() => navigate(`/trilhas/${trilhaId}`)}
+          acertos={acertos}
+          aoContinuarTrilha={
+            concluido.proximo
+              ? () => navigate(`/trilhas/${trilhaId}/questao/${concluido.proximo}`)
+              : undefined
+          }
+          aoIrParaTrilhas={() => navigate('/trilhas')}
         />
       )}
+    </div>
+  )
+}
+
+/** Quantas atividades do passo já foram feitas, numa barra com "2/5" ao lado. */
+function BarraDoPasso({ feitas, total }: { feitas: number; total: number }) {
+  if (total === 0) return <div className="flex-1" />
+  return (
+    <div className="flex flex-1 items-center gap-3">
+      <div
+        role="progressbar"
+        aria-label="Atividades feitas neste passo"
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-valuenow={feitas}
+        className="h-3 flex-1 overflow-hidden rounded-full bg-muted"
+      >
+        <div
+          className="h-full origin-left rounded-full bg-success transition-transform duration-500"
+          style={{ transform: `scaleX(${feitas / total})` }}
+        />
+      </div>
+      <span className="shrink-0 text-sm font-bold text-muted-foreground tabular-nums">
+        {feitas}/{total}
+      </span>
     </div>
   )
 }

@@ -1,9 +1,10 @@
-import { CheckCircle2, Clock, Hourglass, Lightbulb } from 'lucide-react'
+import { CheckCircle2, Clock, Hourglass, Lightbulb, Star } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion, useAnimate, useReducedMotion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import type { Correcao } from '@/hooks/useAtividades'
 import { cn } from '@/lib/utils'
+import { useAccessibilityStore } from '@/stores/useAccessibilityStore'
 
 /**
  * O que toda atividade tem em volta do exercício (telas 28 a 34): progresso no
@@ -32,7 +33,12 @@ export interface MolduraAtividadeProps {
   porQueBloqueado: string
   /** Atividade sem correção automática: o Avançar já nasce liberado. */
   semCorrecao?: boolean
-  aoAvancar: () => void
+  /**
+   * O exercício mostra o feedback do servidor do jeito dele (a resposta aberta,
+   * com o polvo): o rodapé só diz se acertou, sem repetir o texto.
+   */
+  feedbackNoExercicio?: boolean
+  aoAvancar: (errosAntesDeAcertar?: number) => void
   children: ReactNode
 }
 
@@ -48,6 +54,7 @@ export function MolduraAtividade({
   mensagemDeAcerto,
   porQueBloqueado,
   semCorrecao = false,
+  feedbackNoExercicio = false,
   aoAvancar,
   children,
 }: MolduraAtividadeProps) {
@@ -56,6 +63,7 @@ export function MolduraAtividade({
   const liberado = semCorrecao || estado === 'certa' || estado === 'em-analise'
   const mostrarDica = pediuDica || tentativas >= ERROS_ATE_A_DICA
   const idPorQue = `por-que-bloqueado-${numero}`
+  const mostrarCronometro = useAccessibilityStore((estado) => estado.mostrarCronometro)
 
   return (
     <section className="flex flex-col gap-4">
@@ -66,7 +74,7 @@ export function MolduraAtividade({
             Atividade {numero} de {total}
           </span>
         </div>
-        {tempoSugeridoSegundos ? (
+        {tempoSugeridoSegundos && mostrarCronometro ? (
           <Cronometro segundos={tempoSugeridoSegundos} parado={liberado} />
         ) : null}
       </header>
@@ -85,13 +93,13 @@ export function MolduraAtividade({
         </div>
       ) : null}
 
-      {children}
+      <RespostaAnimada correcao={correcao}>{children}</RespostaAnimada>
 
       <footer className="flex flex-wrap items-center justify-between gap-3">
         <Situacao
           estado={semCorrecao ? 'sem-correcao' : estado}
           tentativas={tentativas}
-          feedback={feedback}
+          feedback={feedbackNoExercicio && estado !== 'em-analise' ? null : feedback}
           instrucao={instrucao}
           mensagemDeAcerto={mensagemDeAcerto}
         />
@@ -99,7 +107,7 @@ export function MolduraAtividade({
         <Button
           size="lg"
           disabled={!liberado || correcao.enviando}
-          onClick={aoAvancar}
+          onClick={() => aoAvancar(tentativas)}
           // O botão desabilitado some do leitor de tela; o texto ao lado diz o
           // que falta, e isto explica o porquê de ele não responder.
           aria-describedby={liberado ? undefined : idPorQue}
@@ -113,6 +121,63 @@ export function MolduraAtividade({
         )}
       </footer>
     </section>
+  )
+}
+
+/**
+ * O retorno imediato de cada resposta, em volta do exercício: um "pulo" no
+ * acerto, um tremor no erro, e o "+XP" subindo na hora — antes só a cor e o
+ * texto mudavam, e o XP só aparecia no fim do passo.
+ *
+ * Dispara a cada resposta corrigida (`correcao.rodada`), inclusive no segundo
+ * erro seguido. Com "Reduzir animações", nada se mexe e o "+XP" aparece parado.
+ */
+function RespostaAnimada({ correcao, children }: { correcao: Correcao; children: ReactNode }) {
+  const [escopo, animar] = useAnimate()
+  const doSistema = useReducedMotion()
+  const doAluno = useAccessibilityStore((estado) => estado.reduzirAnimacoes)
+  const parado = Boolean(doSistema) || doAluno
+  const { estado, rodada, xpGanho } = correcao
+  const [xpVisivel, setXpVisivel] = useState<{ rodada: number; xp: number } | null>(null)
+
+  useEffect(() => {
+    if (rodada === 0) return
+    if (estado === 'certa' && xpGanho > 0) setXpVisivel({ rodada, xp: xpGanho })
+    if (parado || !escopo.current) return
+    if (estado === 'errada') {
+      void animar(escopo.current, { x: [0, -8, 8, -6, 6, -3, 0] }, { duration: 0.45 })
+    } else if (estado === 'certa') {
+      void animar(escopo.current, { scale: [1, 1.025, 1] }, { duration: 0.35, ease: 'easeOut' })
+    }
+    // Só a resposta nova anima; o resto entra pelo `rodada`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rodada])
+
+  useEffect(() => {
+    if (!xpVisivel) return
+    const tempo = setTimeout(() => setXpVisivel(null), 1600)
+    return () => clearTimeout(tempo)
+  }, [xpVisivel])
+
+  return (
+    <div className="relative">
+      <div ref={escopo}>{children}</div>
+      <AnimatePresence>
+        {xpVisivel && (
+          <motion.span
+            key={xpVisivel.rodada}
+            role="status"
+            className="pointer-events-none absolute -top-3 right-2 z-10 flex items-center gap-1 rounded-full bg-xp px-3 py-1 font-display text-sm font-extrabold text-foreground shadow-md"
+            initial={parado ? { opacity: 1 } : { opacity: 0, y: 8, scale: 0.6 }}
+            animate={parado ? { opacity: 1 } : { opacity: 1, y: -14, scale: 1 }}
+            exit={parado ? { opacity: 0 } : { opacity: 0, y: -30 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 18 }}
+          >
+            <Star className="size-4 fill-current" aria-hidden />+{xpVisivel.xp} XP
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 

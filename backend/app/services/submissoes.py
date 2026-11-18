@@ -12,6 +12,9 @@ Três regras mandam aqui:
 """
 
 import json
+import re
+import unicodedata
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from sqlalchemy import func, select
@@ -43,9 +46,19 @@ class Correcao:
     """O que a correção decidiu, antes de virar resposta HTTP."""
 
     correta: bool
-    # `True` quando a resposta ficou guardada esperando correção por IA (#11).
+    # `True` quando a IA não conseguiu corrigir agora (fora do ar, lenta): a
+    # resposta fica guardada, não paga XP e não prende o aluno.
     em_analise: bool
     feedback: str
+    # O que faltou, quando a IA corrigiu e a resposta não passou. Nunca o gabarito.
+    sugestao: str | None = None
+    corrigida_por_ia: bool = False
+
+
+# Quem corrige a resposta aberta com a IA. Recebe a atividade e a resposta e
+# devolve a correção, ou `None` quando não deu para corrigir agora. Vem de fora
+# porque depende do provedor e do event loop da API; a regra daqui é pura.
+CorretorAberta = Callable[[Atividade, str], Correcao | None]
 
 
 # Tipos que já sabemos corrigir sozinhos. O desafio de código precisa rodar o
@@ -94,8 +107,15 @@ def _lista(texto: str | None) -> list[str]:
     return [str(item) for item in valor]
 
 
-def corrigir(atividade: Atividade, conteudo: str) -> Correcao:
-    """Decide se a resposta está certa. Não toca no banco — é só a regra."""
+def corrigir(
+    atividade: Atividade, conteudo: str, corretor_aberta: CorretorAberta | None = None
+) -> Correcao:
+    """Decide se a resposta está certa. Não toca no banco.
+
+    As fechadas (terminal, múltipla escolha, ordenação, lacunas) são comparadas
+    com o gabarito, sem IA: o resultado é sempre o mesmo para a mesma resposta.
+    A aberta passa pelo `corretor_aberta`, quando há um.
+    """
     if atividade.tipo not in TIPOS_CORRIGIVEIS:
         raise TipoNaoSuportado(atividade.tipo)
 
@@ -159,9 +179,28 @@ def corrigir(atividade: Atividade, conteudo: str) -> Correcao:
             ),
         )
 
-    # Resposta aberta: quem corrige é a IA (#11), que ainda não existe. Guardar
-    # e marcar como em análise é mais honesto do que inventar um acerto — e não
-    # paga XP, para ninguém ganhar ponto por texto que ninguém leu.
+    return _corrigir_aberta(atividade, conteudo, corretor_aberta)
+
+
+def _sem_formatacao(texto: str | None) -> str:
+    """Só letras e números, sem acento e em minúsculas.
+
+    Para comparar a resposta aberta com o gabarito sem a IA: "Flags modificam o
+    comportamento." e "flags modificam o comportamento" são a mesma resposta.
+    """
+    sem_acento = unicodedata.normalize("NFKD", (texto or "").lower())
+    sem_acento = sem_acento.encode("ascii", "ignore").decode()
+    return " ".join(re.findall(r"[a-z0-9]+", sem_acento))
+
+
+def _corrigir_aberta(
+    atividade: Atividade, conteudo: str, corretor_aberta: CorretorAberta | None
+) -> Correcao:
+    """Gabarito igual primeiro, sem gastar IA; depois a IA; sem ela, em análise."""
+    esperado = _sem_formatacao(atividade.resposta_esperada)
+    if esperado and _sem_formatacao(conteudo) == esperado:
+        return Correcao(correta=True, em_analise=False, feedback="Exatamente isso!")
+
     if len(conteudo.strip()) < MINIMO_RESPOSTA_ABERTA:
         return Correcao(
             correta=False,
@@ -169,10 +208,19 @@ def corrigir(atividade: Atividade, conteudo: str) -> Correcao:
             feedback=(f"Escreva um pouco mais: pelo menos {MINIMO_RESPOSTA_ABERTA} caracteres."),
         )
 
+    correcao = corretor_aberta(atividade, conteudo) if corretor_aberta else None
+    if correcao is not None:
+        return correcao
+
+    # Sem a IA, guardar e marcar como em análise é mais honesto do que inventar
+    # um acerto, e não paga XP por texto que ninguém leu.
     return Correcao(
         correta=False,
         em_analise=True,
-        feedback="Resposta recebida. A correção automática desta atividade ainda está a caminho.",
+        feedback=(
+            "Sua resposta ficou guardada, mas não consegui corrigir agora. "
+            "Você pode seguir ou tentar de novo daqui a pouco."
+        ),
     )
 
 
@@ -183,13 +231,14 @@ def submeter(
     atividade: Atividade,
     conteudo: str,
     tempo_gasto_segundos: int | None = None,
+    corretor_aberta: CorretorAberta | None = None,
 ) -> tuple[RespostaUsuario, Correcao, int]:
     """Corrige, grava a tentativa e concede o XP quando é o primeiro acerto.
 
     Devolve a tentativa gravada, a correção e o XP ganho **nesta** submissão —
     zero quando o aluno já tinha acertado antes.
     """
-    correcao = corrigir(atividade, conteudo)
+    correcao = corrigir(atividade, conteudo, corretor_aberta)
     ja_tinha_acertado = _acertou_antes(db, usuario_id=usuario.id, atividade_id=atividade.id)
 
     tentativa = RespostaUsuario(
@@ -199,7 +248,12 @@ def submeter(
         conteudo=conteudo,
         correta=correcao.correta,
         tempo_gasto_segundos=tempo_gasto_segundos,
-        feedback=correcao.feedback,
+        # A pista vai junto: quem retoma a atividade vê o que a IA disse.
+        feedback=(
+            f"{correcao.feedback}\n\nO que faltou: {correcao.sugestao}"
+            if correcao.sugestao
+            else correcao.feedback
+        ),
     )
     db.add(tentativa)
     db.commit()

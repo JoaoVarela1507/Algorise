@@ -9,9 +9,16 @@ interface AccessibilityState {
   altoContraste: boolean
   /** Desliga as animações do app mesmo que o sistema não peça. */
   reduzirAnimacoes: boolean
+  /**
+   * O cronômetro das atividades (#22). Tempo correndo atrapalha quem lê devagar
+   * ou usa leitor de tela; desligado, o tempo sugerido some da atividade. Fica
+   * neste navegador (ainda não vai para a conta).
+   */
+  mostrarCronometro: boolean
   setTamanhoFonte: (tamanho: TamanhoFonte) => void
   setAltoContraste: (ativo: boolean) => void
   setReduzirAnimacoes: (ativo: boolean) => void
+  setMostrarCronometro: (ativo: boolean) => void
 }
 
 /**
@@ -28,9 +35,11 @@ export const useAccessibilityStore = create<AccessibilityState>()(
         tamanhoFonte: lerPreferencia<TamanhoFonte>('tamanho-fonte', 'normal'),
         altoContraste: lerPreferencia('alto-contraste', false),
         reduzirAnimacoes: lerPreferencia('reduzir-animacoes', false),
+        mostrarCronometro: true,
         setTamanhoFonte: (tamanhoFonte) => set({ tamanhoFonte }),
         setAltoContraste: (altoContraste) => set({ altoContraste }),
         setReduzirAnimacoes: (reduzirAnimacoes) => set({ reduzirAnimacoes }),
+        setMostrarCronometro: (mostrarCronometro) => set({ mostrarCronometro }),
       }),
       { name: 'algorise:acessibilidade' },
     ),

@@ -5,6 +5,9 @@ lida nem respondida. A regra de desbloqueio é a mesma de `/trilhas` — está e
 `app/services/progresso.py`, e existe uma cópia só dela.
 """
 
+import logging
+
+import anyio
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -12,10 +15,14 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.deps import UsuarioAtual
 from app.core.database import get_db
 from app.core.erros import ErroDeNegocio
+from app.ia import IAIndisponivel, ProvedorIA, get_provedor_ia
+from app.ia.skills import corrigir_resposta
 from app.models import Atividade, Modulo, Trilha, Usuario
 from app.schemas.submissao import Correcao, Submissao, Tentativa
 from app.schemas.trilha import AtividadeResumo
-from app.services import progresso, submissoes
+from app.services import correcao_aberta, progresso, submissoes
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/atividades", tags=["atividades"])
 
@@ -44,6 +51,7 @@ def submeter(
     dados: Submissao,
     usuario: UsuarioAtual,
     db: Session = Depends(get_db),
+    provedor: ProvedorIA = Depends(get_provedor_ia),
 ) -> Correcao:
     atividade, _, _ = _atividade_liberada(db, atividade_id, usuario)
 
@@ -54,6 +62,7 @@ def submeter(
             atividade=atividade,
             conteudo=dados.conteudo,
             tempo_gasto_segundos=dados.tempo_gasto_segundos,
+            corretor_aberta=_corretor_com_ia(provedor),
         )
     except submissoes.TipoNaoSuportado as erro:
         raise ErroDeNegocio(
@@ -68,6 +77,8 @@ def submeter(
         correta=correcao.correta,
         em_analise=correcao.em_analise,
         feedback=correcao.feedback,
+        sugestao=correcao.sugestao,
+        corrigida_por_ia=correcao.corrigida_por_ia,
         tentativa=tentativa.tentativa,
         xp_ganho=ganho,
         xp_total=usuario.xp_total,
@@ -88,6 +99,39 @@ def listar_submissoes(
         Tentativa.model_validate(tentativa)
         for tentativa in submissoes.tentativas(db, usuario_id=usuario.id, atividade_id=atividade_id)
     ]
+
+
+def _corretor_com_ia(provedor: ProvedorIA) -> submissoes.CorretorAberta:
+    """A correção da resposta aberta pela IA, para a rota síncrona.
+
+    A rota roda numa thread do FastAPI; `anyio.from_thread.run` leva a chamada
+    para o event loop da aplicação, onde o cliente HTTP do provedor já está
+    aberto (o do Gemini é um por loop). Falhou, devolve `None`: a resposta fica
+    em análise e o aluno segue.
+    """
+
+    def corrigir(atividade: Atividade, conteudo: str) -> submissoes.Correcao | None:
+        try:
+            veredito = anyio.from_thread.run(
+                lambda: correcao_aberta.corrigir(
+                    provedor,
+                    enunciado=atividade.enunciado,
+                    referencia=atividade.resposta_esperada or "",
+                    resposta=conteudo,
+                )
+            )
+        except (IAIndisponivel, corrigir_resposta.SaidaInvalida, TimeoutError) as erro:
+            logger.warning("Correção da atividade %s pela IA falhou: %s", atividade.id, erro)
+            return None
+        return submissoes.Correcao(
+            correta=veredito.correta,
+            em_analise=False,
+            feedback=veredito.feedback,
+            sugestao=veredito.faltou or None,
+            corrigida_por_ia=True,
+        )
+
+    return corrigir
 
 
 def _atividade_liberada(

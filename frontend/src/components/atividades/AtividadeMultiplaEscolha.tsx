@@ -6,6 +6,14 @@ import { useCorrecao } from '@/hooks/useAtividades'
 import { cn } from '@/lib/utils'
 import type { PropsDaAtividade } from '@/components/atividades/tipos'
 
+/**
+ * A alternativa é código (`print("Olá")`, `SELECT *`, `x >= 7`)? Só aí vai em
+ * fonte de código; "O maior item sai primeiro" em monoespaçada parecia código.
+ */
+function pareceCodigo(texto: string): boolean {
+  return /[()[\]{}=<>"'`;]|^\s*(SELECT|INSERT|DELETE|CREATE|python|pip|git)\b|\w\.\w+\(/.test(texto)
+}
+
 /** Múltipla escolha (tela 29): marca uma alternativa e confere. */
 export function AtividadeMultiplaEscolha({
   atividade,
@@ -68,7 +76,14 @@ export function AtividadeMultiplaEscolha({
                 >
                   {marcada && <Check className="size-3.5" strokeWidth={3} />}
                 </span>
-                <span className="font-mono text-sm text-foreground">{opcao}</span>
+                <span
+                  className={cn(
+                    'text-sm text-foreground',
+                    pareceCodigo(opcao) ? 'font-mono' : 'font-semibold',
+                  )}
+                >
+                  {opcao}
+                </span>
               </label>
             )
           })}
