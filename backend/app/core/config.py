@@ -135,9 +135,16 @@ class Settings(BaseSettings):
     # português; a dimensão dele (1024) está fixa na tabela `vault_trechos`.
     ollama_modelo_embedding: str = "bge-m3"
     # Distância de cosseno até o módulo mais próximo no vault abaixo da qual um
-    # assunto da ementa conta como coberto (#38). Acima, vira lacuna. Ponto de
-    # partida a calibrar com ementas reais: a distância de cada assunto fica
-    # gravada em `ementa_assuntos.distancia`.
+    # assunto da ementa conta como coberto (#38). Acima, vira lacuna. A distância
+    # de cada assunto fica gravada em `ementa_assuntos.distancia`.
+    #
+    # Calibrado em 17/11/2026 com o `bge-m3` e o PPC de Ciência da Computação da
+    # UFRPE: 40 assuntos com a resposta certa marcada à mão (24 com módulo no
+    # catálogo de 9 trilhas, 16 que deviam virar lacuna). Em 0,35: 12 certos, 4
+    # errados, 12 perdidos. Em 0,38: 16 certos, mas 12 errados; em 0,40, 19
+    # errados. Até 0,35 a maior parte acerta; acima, o erro cresce mais rápido
+    # que o acerto. Também foi testado embutir só o assunto, sem a disciplina, e
+    # o assunto antes da disciplina: os dois ordenam pior que "disciplina: assunto".
     ementa_distancia_maxima: float = 0.35
     # Tamanho de cada parte da ementa mandada à IA, em caracteres, e quantas
     # partes são lidas ao mesmo tempo. 0 escolhe pelo provedor: o Ollama lê 4 mil
