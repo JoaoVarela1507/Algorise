@@ -98,12 +98,15 @@ function SeuRank({ voce, acima }: { voce: PosicaoRanking; acima?: PosicaoRanking
 
 function Podio({ ranking }: { ranking: PosicaoRanking[] }) {
   return (
-    <ol className="flex items-end justify-center gap-3" aria-label="Pódio">
+    <ol className="flex items-end justify-center gap-2 sm:gap-3" aria-label="Pódio">
       {podio.map((degrau) => {
         const pessoa = ranking.find((p) => p.posicao === degrau.posicao)
         if (!pessoa) return null
         return (
-          <li key={degrau.posicao} className="flex w-28 flex-col items-center 2xl:w-32">
+          <li
+            key={degrau.posicao}
+            className="flex w-24 min-w-0 flex-col items-center sm:w-28 2xl:w-32"
+          >
             <motion.div
               initial={{ opacity: 0, y: -24 }}
               animate={{ opacity: 1, y: 0 }}
@@ -230,7 +233,7 @@ export function RankingCard({
   return (
     <div
       className={cn(
-        'flex flex-col rounded-lg border border-border bg-card p-6 shadow-sm',
+        'flex flex-col rounded-lg border border-border bg-card p-4 shadow-sm sm:p-6',
         className,
       )}
     >
@@ -262,7 +265,7 @@ export function RankingCard({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -24 }}
               transition={{ duration: 0.25 }}
-              className="grid items-end gap-6 sm:grid-cols-[auto_1fr] xl:grid-cols-1 2xl:grid-cols-[auto_1fr]"
+              className="grid grid-cols-[minmax(0,1fr)] items-end gap-6 sm:grid-cols-[auto_1fr] xl:grid-cols-1 2xl:grid-cols-[auto_1fr]"
             >
               {voce ? (
                 <SeuRank voce={voce} acima={acima} />

@@ -1,6 +1,7 @@
-import { AlertCircle, Inbox, Loader2 } from 'lucide-react'
+import { AlertCircle, Inbox } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
+import { LogoLoader } from '@/components/ui/logo-loader'
 import { mensagemDeErro } from '@/lib/erros'
 import { cn } from '@/lib/utils'
 
@@ -25,7 +26,7 @@ export function Carregando({
       aria-live="polite"
       className={cn('flex flex-col items-center gap-3 py-12 text-muted-foreground', className)}
     >
-      <Loader2 className="size-8 animate-spin" aria-hidden />
+      <LogoLoader />
       <p className="text-sm font-semibold">{rotulo}</p>
     </div>
   )

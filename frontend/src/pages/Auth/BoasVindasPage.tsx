@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -13,7 +13,6 @@ import { BotoesLoginSocial } from '@/components/auth/BotoesLoginSocial'
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { temProgresso, useOnboardingStore } from '@/stores/useOnboardingStore'
-import { LOGIN_TESTE, loginTesteHabilitado } from '@/lib/loginTeste'
 import { mensagemDeErro } from '@/lib/erros'
 import { cn } from '@/lib/utils'
 import { solicitarRedefinicao } from '@/services/auth'
@@ -74,9 +73,10 @@ function WelcomeCarousel() {
         if (event.key === 'ArrowLeft') goTo(index - 1)
         if (event.key === 'ArrowRight') goTo(index + 1)
       }}
-      className="flex w-full max-w-md flex-col items-center gap-8 text-center outline-none"
+      className="flex w-full max-w-md flex-col items-center gap-4 text-center outline-none md:gap-8"
     >
-      <div className="relative aspect-square w-full max-w-sm">
+      {/* Menor no celular: com a imagem cheia, "Entrar" e "Criar conta" ficavam abaixo da dobra. */}
+      <div className="relative aspect-square w-full max-w-[13rem] md:max-w-sm">
         <AnimatePresence initial={false} custom={direction} mode="wait">
           <motion.img
             key={slide.image}
@@ -107,7 +107,8 @@ function WelcomeCarousel() {
         </AnimatePresence>
       </div>
 
-      <div className="absolute inset-x-0 bottom-10 flex items-center justify-center gap-2">
+      {/* No celular, logo abaixo do texto: na posição absoluta, ficavam em cima dele. */}
+      <div className="flex items-center justify-center gap-3 md:absolute md:inset-x-0 md:bottom-10 md:gap-2">
         {slides.map((s, i) => (
           <button
             key={s.text}
@@ -116,7 +117,8 @@ function WelcomeCarousel() {
             aria-current={i === index}
             onClick={() => goTo(i)}
             className={cn(
-              'h-2 w-2 rounded-full transition-colors',
+              // O ponto é de 8px, mas a área de toque vai a ~32px (o after:).
+              'relative h-2 w-2 rounded-full transition-colors after:absolute after:-inset-3 after:content-[""]',
               i === index ? 'bg-primary-foreground' : 'bg-primary-foreground/40',
             )}
           />
@@ -142,7 +144,8 @@ function VoltarButton({ onClick }: { onClick: () => void }) {
 function EscolhaView({ onIrPara }: { onIrPara: (modo: Modo) => void }) {
   return (
     <div className="text-center">
-      <img src={logoAlgorise} alt="Algorise" className="mx-auto mb-6 h-48" />
+      {/* No celular o carrossel logo acima já mostra a marca: a logo repetida empurrava os botões. */}
+      <img src={logoAlgorise} alt="Algorise" className="mx-auto mb-6 hidden h-48 md:block" />
 
       <p className="text-lg text-foreground">
         <span className="font-bold">Descubra</span> um jeito mais{' '}
@@ -279,13 +282,6 @@ function EntrarView({
           {isSubmitting ? 'Entrando…' : 'Entrar'}
         </Button>
       </form>
-
-      {loginTesteHabilitado && (
-        <p className="mt-4 rounded-lg border border-dashed border-border bg-muted/50 p-3 text-center text-xs text-muted-foreground">
-          Login de teste (sem API): <span className="font-mono">{LOGIN_TESTE.email}</span> /{' '}
-          <span className="font-mono">{LOGIN_TESTE.senha}</span>
-        </p>
-      )}
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Não tem uma conta?{' '}
@@ -431,14 +427,9 @@ function CadastroView({
             />
             <Label htmlFor="cadastro-termos" className="font-normal">
               Aceito os{' '}
-              <a
-                href="/privacidade"
-                target="_blank"
-                rel="noreferrer"
-                className="font-semibold text-primary hover:underline"
-              >
+              <Link to="/privacidade" className="font-semibold text-primary hover:underline">
                 termos de uso e a política de privacidade
-              </a>
+              </Link>
               .
             </Label>
           </div>
@@ -562,11 +553,53 @@ function EsqueciSenhaView({
   )
 }
 
+const MODOS: readonly Modo[] = ['escolha', 'entrar', 'cadastro', 'esqueci-senha', 'onboarding']
+
+/**
+ * O rascunho de um formulário, guardado na aba (`sessionStorage`).
+ *
+ * Abrir a política de privacidade no meio do cadastro desmonta esta página; ao
+ * voltar, o aluno encontra o que já tinha digitado. Senha nunca é guardada.
+ */
+function useRascunho<T extends object>(chave: string) {
+  const chaveCompleta = `algorise:rascunho:${chave}`
+  const [rascunho, setRascunhoEmMemoria] = useState<Partial<T>>(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem(chaveCompleta) ?? '{}') as Partial<T>
+    } catch {
+      return {}
+    }
+  })
+  const setRascunho = useCallback(
+    (valores: Partial<T>) => {
+      setRascunhoEmMemoria(valores)
+      const semSenha = Object.fromEntries(
+        Object.entries(valores).filter(([campo]) => !/senha/i.test(campo)),
+      )
+      try {
+        sessionStorage.setItem(chaveCompleta, JSON.stringify(semSenha))
+      } catch {
+        // Sem storage (aba anônima restrita): o rascunho fica só na memória.
+      }
+    },
+    [chaveCompleta],
+  )
+  return [rascunho, setRascunho] as const
+}
+
 export function BoasVindasPage() {
-  const [modo, setModo] = useState<Modo>('escolha')
-  const [rascunhoEntrar, setRascunhoEntrar] = useState<Partial<LoginFormValues>>({})
-  const [rascunhoCadastro, setRascunhoCadastro] = useState<Partial<CadastroFormValues>>({})
-  const [rascunhoEsqueci, setRascunhoEsqueci] = useState<Partial<EsqueciSenhaFormValues>>({})
+  // A tela aberta (entrar, cadastro...) vai na URL: voltar da política de
+  // privacidade, ou recarregar, devolve o aluno à mesma tela.
+  const [parametros, setParametros] = useSearchParams()
+  const tela = parametros.get('tela') as Modo | null
+  const modo: Modo = tela && MODOS.includes(tela) ? tela : 'escolha'
+  const setModo = useCallback(
+    (novo: Modo) => setParametros(novo === 'escolha' ? {} : { tela: novo }, { replace: true }),
+    [setParametros],
+  )
+  const [rascunhoEntrar, setRascunhoEntrar] = useRascunho<LoginFormValues>('entrar')
+  const [rascunhoCadastro, setRascunhoCadastro] = useRascunho<CadastroFormValues>('cadastro')
+  const [rascunhoEsqueci, setRascunhoEsqueci] = useRascunho<EsqueciSenhaFormValues>('esqueci')
   const usuarioId = useAuthStore((estado) => estado.usuario?.id)
 
   // Recarregou no meio do onboarding: assim que a sessão volta, volta também
@@ -574,15 +607,21 @@ export function BoasVindasPage() {
   useEffect(() => {
     const { usuarioId: dono, rascunho } = useOnboardingStore.getState()
     if (usuarioId && usuarioId === dono && temProgresso(rascunho)) setModo('onboarding')
-  }, [usuarioId])
+  }, [usuarioId, setModo])
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
-      <div className="relative flex w-full flex-col items-center justify-center bg-primary px-8 py-12 text-primary-foreground md:w-1/2">
+    <div className="flex min-h-dvh flex-col md:flex-row">
+      {/* No celular, o carrossel só na tela de escolha: nos formulários, o formulário vem primeiro. */}
+      <div
+        className={cn(
+          'relative w-full flex-col items-center justify-center bg-primary px-6 py-8 text-primary-foreground md:flex md:w-1/2 md:px-8 md:py-12',
+          modo === 'escolha' ? 'flex' : 'hidden',
+        )}
+      >
         <WelcomeCarousel />
       </div>
 
-      <div className="flex w-full flex-col items-center justify-center px-8 py-12 md:w-1/2">
+      <div className="flex w-full flex-1 flex-col items-center justify-center px-6 py-8 md:w-1/2 md:flex-none md:px-8 md:py-12">
         <div className="w-full max-w-sm">
           <AnimatePresence mode="wait">
             <motion.div

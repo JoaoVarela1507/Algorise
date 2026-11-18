@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Flame, Star, Trophy } from 'lucide-react'
 import { FotoPerfil } from '@/components/perfil/FotoPerfil'
 import { useContagem } from '@/hooks/useContagem'
+import { usePainel } from '@/hooks/useGamificacao'
 import { calcularNivel } from '@/lib/nivel'
 import type { Usuario } from '@/types/usuario'
 
@@ -34,16 +35,28 @@ function Estatistica({
 }
 
 export function CabecalhoPerfil({ usuario }: { usuario: Usuario }) {
-  const { nivel, xpNoNivel, xpParaProximo, progresso } = calcularNivel(usuario.xp)
+  // O nível é do backend (`/gamificacao/me`), o mesmo da Home e do ranking. A
+  // conta local (100 XP por nível) só vale até a resposta chegar: com ela, o
+  // perfil dizia "nível 5" para quem a Home mostrava no nível 3.
+  const painel = usePainel().data
+  const { nivel, xpNoNivel, xpParaProximo, progresso } = painel
+    ? {
+        nivel: painel.nivel,
+        xpNoNivel: painel.xp_no_nivel,
+        xpParaProximo: painel.xp_para_o_proximo,
+        progresso: painel.xp_no_nivel / Math.max(painel.xp_no_nivel + painel.xp_para_o_proximo, 1),
+      }
+    : calcularNivel(usuario.xp)
 
   return (
-    <div className="relative flex flex-wrap items-center gap-6 overflow-hidden rounded-lg border border-border bg-card p-6 shadow-sm">
+    <div className="relative flex flex-wrap items-center gap-4 overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm sm:gap-6 sm:p-6">
       <div
         aria-hidden
         className="pointer-events-none absolute -left-16 -top-24 size-64 rounded-full bg-accent/50 blur-3xl"
       />
 
-      <div className="relative flex min-w-0 flex-1 items-center gap-5">
+      {/* No celular a foto vai em cima e o nome ganha a largura toda, em vez de virar "Lucas Andr…". */}
+      <div className="relative flex min-w-0 flex-1 flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-5">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -56,8 +69,8 @@ export function CabecalhoPerfil({ usuario }: { usuario: Usuario }) {
           </span>
         </motion.div>
 
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate font-display text-3xl font-bold text-foreground">
+        <div className="w-full min-w-0 flex-1">
+          <h1 className="break-words font-display text-2xl font-bold leading-tight text-foreground sm:truncate sm:text-3xl">
             {usuario.nome}
           </h1>
           <p className="truncate text-sm text-muted-foreground">

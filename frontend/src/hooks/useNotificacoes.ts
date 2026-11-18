@@ -83,7 +83,8 @@ export function tratarNotificacao(queryClient: QueryClient, evento: Evento) {
           }
         : painel,
     )
-    toast(`+${Number(payload.valor)} XP`)
+    // Sem toast: o "+XP" aparece na própria atividade (MolduraAtividade), e o
+    // nível novo ganha a comemoração dele (Comemoracoes). O toast repetia os dois.
     return
   }
   if ((TIPOS_DE_NOTIFICACAO as readonly string[]).includes(evento.evento)) {

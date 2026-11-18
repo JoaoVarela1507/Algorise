@@ -50,7 +50,7 @@ export function ValidarCertificadoPage() {
           <BadgeCheck className="size-6" aria-hidden />
           Certificado válido
         </p>
-        <dl className="grid gap-2 text-sm sm:grid-cols-[auto_1fr] sm:gap-x-6">
+        <dl className="grid grid-cols-[minmax(0,1fr)] gap-2 text-sm sm:grid-cols-[auto_1fr] sm:gap-x-6">
           <dt className="font-semibold text-muted-foreground">Aluno</dt>
           <dd className="text-foreground">{dados.nome_aluno}</dd>
           <dt className="font-semibold text-muted-foreground">Trilha</dt>

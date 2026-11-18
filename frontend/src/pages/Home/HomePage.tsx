@@ -6,7 +6,13 @@ import { RankingCard } from '@/components/home/RankingCard'
 import { SaudacaoCard } from '@/components/home/SaudacaoCard'
 import { StreakCard } from '@/components/home/StreakCard'
 import { TrilhaAtualCard } from '@/components/home/TrilhaAtualCard'
-import { Carregando, ErroAoCarregar } from '@/components/ui/estados'
+import {
+  EsqueletoConquistas,
+  EsqueletoMetaDiaria,
+  EsqueletoRanking,
+  EsqueletoTrilhaAtual,
+} from '@/components/home/EsqueletosHome'
+import { ErroAoCarregar } from '@/components/ui/estados'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useCheckin, useConquistas, useMetaDiaria, usePainel } from '@/hooks/useGamificacao'
 import { useRanking } from '@/hooks/useRanking'
@@ -27,8 +33,11 @@ export function HomePage() {
   // `usuario_id` para a API devolver a posição do aluno mesmo quando ela cai
   // fora da primeira página.
   const ranking = useRanking({ limite: 8, usuarioId: Number(usuario?.id) || undefined })
-  const painel = usePainel()
   const checkin = useCheckin()
+  // O check-in já devolve o painel (e o grava no cache). Buscar os dois juntos
+  // era uma ida a mais e uma corrida: se o GET chegasse depois, trocava o streak
+  // de hoje pelo de ontem. O GET só sai se o check-in falhar.
+  const painel = usePainel(checkin.isError)
   const trilhaAtual = useTrilhaAtual()
   const conquistas = useConquistas()
   const metaDiaria = useMetaDiaria()
@@ -61,10 +70,10 @@ export function HomePage() {
           esticam com h-full e distribuem o conteúdo por dentro. Em telas
           menores tudo empilha e a página rola normalmente.
         */}
-        <div className="grid flex-1 gap-6 md:grid-cols-2 xl:grid-cols-12">
+        <div className="grid grid-cols-[minmax(0,1fr)] flex-1 gap-6 md:grid-cols-2 xl:grid-cols-12">
           <motion.section variants={secao} className="md:col-span-2 xl:col-span-5">
             {ranking.isPending ? (
-              <Carregando rotulo="Carregando ranking…" />
+              <EsqueletoRanking className="h-full" />
             ) : ranking.isError ? (
               <ErroAoCarregar erro={ranking.error} aoTentarDeNovo={() => void ranking.refetch()} />
             ) : (
@@ -79,7 +88,7 @@ export function HomePage() {
           <div className="flex flex-col gap-6 xl:col-span-4">
             <motion.section variants={secao}>
               {trilhaAtual.isPending ? (
-                <Carregando rotulo="Carregando trilha…" />
+                <EsqueletoTrilhaAtual />
               ) : trilhaAtual.isError ? (
                 <ErroAoCarregar
                   erro={trilhaAtual.error}
@@ -91,7 +100,7 @@ export function HomePage() {
             </motion.section>
             <motion.section variants={secao} className="flex-1">
               {conquistas.isPending ? (
-                <Carregando rotulo="Carregando conquistas…" />
+                <EsqueletoConquistas className="h-full" />
               ) : conquistas.isError ? (
                 <ErroAoCarregar
                   erro={conquistas.error}
@@ -109,7 +118,7 @@ export function HomePage() {
             </motion.section>
             <motion.section variants={secao} className="flex-1">
               {metaDiaria.isPending ? (
-                <Carregando rotulo="Carregando meta do dia…" />
+                <EsqueletoMetaDiaria className="h-full" />
               ) : metaDiaria.isError ? (
                 <ErroAoCarregar
                   erro={metaDiaria.error}

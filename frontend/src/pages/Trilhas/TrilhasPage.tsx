@@ -227,7 +227,7 @@ export function TrilhasPage() {
             variants={grade}
             initial="oculto"
             animate="visivel"
-            className="grid auto-rows-fr gap-5 md:grid-cols-2 xl:grid-cols-3"
+            className="grid grid-cols-[minmax(0,1fr)] auto-rows-fr gap-5 md:grid-cols-2 xl:grid-cols-3"
           >
             <AnimatePresence mode="popLayout">
               {visiveis.map((trilha) => (

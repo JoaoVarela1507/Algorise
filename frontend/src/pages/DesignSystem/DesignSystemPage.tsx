@@ -16,6 +16,13 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { LogoLoader } from '@/components/ui/logo-loader'
+import {
+  EsqueletoConquistas,
+  EsqueletoMetaDiaria,
+  EsqueletoRanking,
+  EsqueletoTrilhaAtual,
+} from '@/components/home/EsqueletosHome'
 import { Progress } from '@/components/ui/progress'
 import {
   Select,
@@ -91,6 +98,25 @@ export function DesignSystemPage() {
       </section>
 
       <section className="flex flex-col gap-3">
+        <h2 className="font-display text-xl font-bold">Carregando</h2>
+        <div className="flex flex-wrap items-end gap-8">
+          <LogoLoader tamanho="sm" />
+          <LogoLoader />
+          <LogoLoader tamanho="lg" />
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="font-display text-xl font-bold">Esqueletos da Home</h2>
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <EsqueletoRanking />
+          <EsqueletoTrilhaAtual />
+          <EsqueletoConquistas />
+          <EsqueletoMetaDiaria />
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
         <h2 className="font-display text-xl font-bold">Períodos letivos</h2>
         <div className="flex flex-wrap gap-2">
           {periodos.map((p) => (
@@ -106,7 +132,7 @@ export function DesignSystemPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
+      <section className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Introdução Python</CardTitle>

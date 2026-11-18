@@ -58,7 +58,8 @@ describe('eventos ao vivo', () => {
       nivel: 2,
       streak_dias: 2,
     })
-    expect(toast).toHaveBeenCalledWith('+20 XP')
+    // O "+XP" agora é da atividade e da comemoração de nível, não um toast.
+    expect(toast).not.toHaveBeenCalled()
   })
 
   it('conquista mostra o toast e recarrega o sino', () => {
