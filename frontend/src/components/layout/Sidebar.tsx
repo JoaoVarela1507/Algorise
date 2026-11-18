@@ -1,19 +1,12 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { LogOut, Moon, Sun } from 'lucide-react'
+import { links } from '@/components/layout/links'
 import { CentroNotificacoes } from '@/components/layout/CentroNotificacoes'
 import { versaoCurta } from '@/lib/version'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { temaEmUso, useThemeStore } from '@/stores/useThemeStore'
 import logoAlgorise from '@/assets/images/logo-algorise.png'
-
-const links = [
-  { to: '/', label: 'Home', end: true },
-  { to: '/trilhas', label: 'Trilhas' },
-  { to: '/chat', label: 'Chat' },
-  { to: '/perfil', label: 'Perfil' },
-  { to: '/configuracoes', label: 'Configurações' },
-]
 
 export function Sidebar() {
   const logout = useAuthStore((estado) => estado.logout)
@@ -27,7 +20,8 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex h-screen w-56 flex-col gap-2 bg-accent/40 p-4">
+    // No celular a navegação é a `BarraTopo` + `BarraAbas` (NavegacaoMobile).
+    <aside className="hidden h-screen w-56 shrink-0 flex-col gap-2 bg-accent/40 p-4 md:flex">
       <img src={logoAlgorise} alt="Algorise" className="mx-auto mb-6 h-28" />
       <nav className="flex flex-col gap-1">
         {links.map((link) => (

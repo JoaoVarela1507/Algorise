@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label'
 import { BotoesLoginSocial } from '@/components/auth/BotoesLoginSocial'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { mensagemDeErro } from '@/lib/erros'
-import { LOGIN_TESTE, loginTesteHabilitado } from '@/lib/loginTeste'
 import { loginSchema, type LoginFormValues } from '@/lib/validation/auth'
 
 export function LoginPage() {
@@ -113,13 +112,6 @@ export function LoginPage() {
           {isSubmitting ? 'Entrando…' : 'Entrar'}
         </Button>
       </form>
-
-      {loginTesteHabilitado && (
-        <p className="mt-4 rounded-lg border border-dashed border-border bg-muted/50 p-3 text-center text-xs text-muted-foreground">
-          Login de teste (sem API): <span className="font-mono">{LOGIN_TESTE.email}</span> /{' '}
-          <span className="font-mono">{LOGIN_TESTE.senha}</span>
-        </p>
-      )}
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Não tem uma conta?{' '}

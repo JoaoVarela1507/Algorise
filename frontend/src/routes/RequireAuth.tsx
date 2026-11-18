@@ -1,4 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom'
+import { CarregandoTela } from '@/components/ui/logo-loader'
 import { useAuthStore } from '@/stores/useAuthStore'
 
 export function RequireAuth() {
@@ -8,7 +9,7 @@ export function RequireAuth() {
   // Ao recarregar, a sessão guardada ainda está sendo restaurada: mandar para
   // o login agora expulsaria um aluno que está logado.
   if (carregando) {
-    return null
+    return <CarregandoTela />
   }
 
   if (!usuario) {

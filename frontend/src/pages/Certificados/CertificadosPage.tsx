@@ -127,7 +127,7 @@ export function CertificadosPage() {
         </div>
       </header>
 
-      <div className="grid flex-1 gap-6 xl:grid-cols-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] flex-1 gap-6 xl:grid-cols-3">
         <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}

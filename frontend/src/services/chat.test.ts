@@ -97,6 +97,7 @@ describe('perguntarAoTutor', () => {
     const [url, init] = fetchFalso.mock.calls[0] as [string, RequestInit]
     expect(url).toContain('/api/v1/chat/mensagens')
     expect(JSON.parse(init.body as string)).toEqual({
+      anexo_ids: [],
       conversa_id: null,
       conteudo: 'O que é um laço?',
       modo: 'rapido',

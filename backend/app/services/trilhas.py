@@ -184,28 +184,21 @@ def trilha_atual(db: Session, usuario: "Usuario") -> tuple[Trilha, int, Modulo |
     É a última que o aluno mexeu e ainda não terminou. Quem não começou nenhuma
     (ou terminou todas) recebe a primeira sugestão, para o card ter para onde
     mandar. Sem nada publicado, `None`.
-    """
-    mexidas = db.scalars(
-        select(ProgressoUsuario.trilha_id)
-        .where(ProgressoUsuario.usuario_id == usuario.id)
-        .group_by(ProgressoUsuario.trilha_id)
-        .order_by(func.max(ProgressoUsuario.atualizado_em).desc())
-    ).all()
 
-    for trilha_id in mexidas:
+    "Ainda não terminou" sai de uma consulta agregada (passos concluídos contra
+    total de passos), e não de calcular os estados de cada trilha que o aluno já
+    mexeu: quem fechou dez trilhas pagava dez cálculos de estado por abertura da
+    home. Os estados ficam só para a trilha escolhida, para achar o próximo passo.
+    """
+    mexida = _ultima_mexida_incompleta(db, usuario.id)
+    if mexida is not None:
         trilha = db.execute(
-            select(Trilha)
-            .where(Trilha.id == trilha_id, Trilha.publicada.is_(True))
-            .options(selectinload(Trilha.modulos))
-        ).scalar_one_or_none()
-        if trilha is None:
-            continue
-        proximo = _proximo_passo(db, usuario, trilha)
-        if proximo is not None:
-            feitos = progresso.concluidos_por_trilha(
-                db, usuario_id=usuario.id, trilha_ids=[trilha.id]
-            ).get(trilha.id, 0)
-            return trilha, feitos, proximo
+            select(Trilha).where(Trilha.id == mexida).options(selectinload(Trilha.modulos))
+        ).scalar_one()
+        feitos = progresso.concluidos_por_trilha(
+            db, usuario_id=usuario.id, trilha_ids=[trilha.id]
+        ).get(trilha.id, 0)
+        return trilha, feitos, _proximo_passo(db, usuario, trilha)
 
     sugestoes = recomendar_trilhas(db, usuario, limite=1)
     if not sugestoes:
@@ -216,6 +209,46 @@ def trilha_atual(db: Session, usuario: "Usuario") -> tuple[Trilha, int, Modulo |
         return None
     feitos = progresso.concluidos_por_trilha(db, usuario_id=usuario.id, trilha_ids=[trilha.id])
     return trilha, feitos.get(trilha.id, 0), _proximo_passo(db, usuario, trilha)
+
+
+def _ultima_mexida_incompleta(db: Session, usuario_id: int) -> int | None:
+    """Id da trilha publicada que o aluno mexeu por último e tem passo em aberto.
+
+    Os concluídos contam pelo `Modulo` (não só pelo `progresso_usuario`): é a
+    mesma régua de `estados_dos_passos`, que só olha os módulos que a trilha tem
+    hoje.
+    """
+    concluidos = func.count(func.distinct(Modulo.id))
+    mexidas = (
+        select(
+            ProgressoUsuario.trilha_id.label("trilha_id"),
+            func.max(ProgressoUsuario.atualizado_em).label("quando"),
+            concluidos.label("feitos"),
+        )
+        .outerjoin(
+            Modulo,
+            (Modulo.id == ProgressoUsuario.modulo_id)
+            & (Modulo.trilha_id == ProgressoUsuario.trilha_id)
+            & (ProgressoUsuario.status == StatusProgresso.concluido),
+        )
+        .where(ProgressoUsuario.usuario_id == usuario_id)
+        .group_by(ProgressoUsuario.trilha_id)
+        .subquery()
+    )
+    totais = (
+        select(Modulo.trilha_id.label("trilha_id"), func.count(Modulo.id).label("total"))
+        .group_by(Modulo.trilha_id)
+        .subquery()
+    )
+    return db.scalar(
+        select(mexidas.c.trilha_id)
+        .join(Trilha, Trilha.id == mexidas.c.trilha_id)
+        .join(totais, totais.c.trilha_id == mexidas.c.trilha_id)
+        .where(Trilha.publicada.is_(True), mexidas.c.feitos < totais.c.total)
+        # O id desempata dois toques no mesmo instante, para a home não alternar.
+        .order_by(mexidas.c.quando.desc(), mexidas.c.trilha_id.desc())
+        .limit(1)
+    )
 
 
 def _proximo_passo(db: Session, usuario: "Usuario", trilha: Trilha) -> Modulo | None:

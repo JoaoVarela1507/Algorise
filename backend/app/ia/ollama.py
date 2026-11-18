@@ -36,12 +36,14 @@ class Ollama:
         timeout_leitura: float,
         tentativas: int,
         modelo_embedding: str = "bge-m3",
+        manter_carregado: str = "",
         espera_entre_tentativas: float = 0.5,
         transport: httpx2.AsyncBaseTransport | None = None,
     ) -> None:
         self.url = url
         self.modelo = modelo
         self.modelo_embedding = modelo_embedding
+        self.manter_carregado = manter_carregado
         self.timeout = httpx2.Timeout(timeout_leitura, connect=timeout_conexao)
         self.tentativas = max(tentativas, 1)
         self.espera_entre_tentativas = espera_entre_tentativas
@@ -65,10 +67,26 @@ class Ollama:
         }
         if formato is not None:
             corpo["format"] = formato
+        if self.manter_carregado:
+            corpo["keep_alive"] = self.manter_carregado
 
         with medir_ia("gerar"):
             async for pedaco in self._gerar(corpo):
                 yield pedaco
+
+    async def aquecer(self) -> None:
+        """Carrega o modelo na memória sem gerar nada (`/api/generate` sem prompt)."""
+        corpo: dict[str, Any] = {"model": self.modelo}
+        if self.manter_carregado:
+            corpo["keep_alive"] = self.manter_carregado
+        # A carga leva mais de um minuto na primeira vez: sem teto de leitura.
+        async with httpx2.AsyncClient(
+            base_url=self.url,
+            timeout=httpx2.Timeout(None, connect=self.timeout.connect),
+            transport=self.transport,
+        ) as cliente:
+            resposta = await cliente.post("/api/generate", json=corpo)
+            resposta.raise_for_status()
 
     async def _gerar(self, corpo: dict[str, Any]) -> AsyncGenerator[str]:
 

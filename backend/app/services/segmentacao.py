@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.ia import ProvedorIA
+from app.ia import ProvedorIA, para
 from app.ia.skills import segmentar_video
 from app.ia.vault.trechos import Trecho
 from app.models import DocumentoVault, ParteVideo, VideoYoutube
@@ -65,7 +65,7 @@ async def _pela_ia(
 ) -> list[segmentar_video.Parte]:
     pedacos = [
         pedaco
-        async for pedaco in provedor.gerar(
+        async for pedaco in para(provedor, "segmentacao").gerar(
             segmentar_video.mensagens(
                 video.titulo,
                 trechos,

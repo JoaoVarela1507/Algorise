@@ -122,7 +122,7 @@ export function PerfilPage() {
         <CabecalhoPerfil usuario={usuario} />
       </motion.section>
 
-      <div className="grid flex-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid flex-1 grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-3">
         <motion.section variants={secao}>
           <DadosAcademicosCard usuario={usuario} />
         </motion.section>

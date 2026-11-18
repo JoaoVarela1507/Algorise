@@ -32,6 +32,18 @@ export interface Correcao {
   tentativas: number
   /** O que o servidor disse da última resposta ("2 de 3 lacunas certas"…). */
   feedback: string | null
+  /** XP que a última resposta rendeu (só o primeiro acerto paga). */
+  xpGanho: number
+  /** Resposta aberta corrigida pela IA e errada: a pista do que faltou (#22). */
+  sugestao: string | null
+  /** A última correção veio da IA (resposta aberta), e não do gabarito. */
+  corrigidaPorIa: boolean
+  /**
+   * Quantas respostas o servidor já corrigiu nesta visita. Muda a cada uma,
+   * mesmo quando o estado se repete (errar duas vezes seguidas): é o que
+   * dispara de novo a animação de acerto ou de erro na moldura.
+   */
+  rodada: number
   enviando: boolean
   enviar: (conteudo: string) => Promise<void>
 }
@@ -45,6 +57,10 @@ export function useCorrecao(atividadeId: number, concluida = false): Correcao {
   const [estado, setEstado] = useState<EstadoCorrecao>(concluida ? 'certa' : 'aguardando')
   const [tentativas, setTentativas] = useState(0)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [xpGanho, setXpGanho] = useState(0)
+  const [sugestao, setSugestao] = useState<string | null>(null)
+  const [corrigidaPorIa, setCorrigidaPorIa] = useState(false)
+  const [rodada, setRodada] = useState(0)
   // Tempo desde a última tentativa, não desde a abertura: a meta do dia soma
   // as tentativas, e medir do início contaria o mesmo minuto várias vezes.
   const desde = useRef(Date.now())
@@ -55,6 +71,10 @@ export function useCorrecao(atividadeId: number, concluida = false): Correcao {
       const correcao = await submissao.mutateAsync({ conteudo, tempoGastoSegundos })
       desde.current = Date.now()
       setFeedback(correcao.feedback)
+      setXpGanho(correcao.xp_ganho ?? 0)
+      setSugestao(correcao.sugestao ?? null)
+      setCorrigidaPorIa(Boolean(correcao.corrigida_por_ia))
+      setRodada((n) => n + 1)
       if (correcao.correta) setEstado('certa')
       else if (correcao.em_analise) setEstado('em-analise')
       else {
@@ -67,7 +87,17 @@ export function useCorrecao(atividadeId: number, concluida = false): Correcao {
     }
   }
 
-  return { estado, tentativas, feedback, enviando: submissao.isPending, enviar }
+  return {
+    estado,
+    tentativas,
+    feedback,
+    xpGanho,
+    sugestao,
+    corrigidaPorIa,
+    rodada,
+    enviando: submissao.isPending,
+    enviar,
+  }
 }
 
 export function useSubmeterResposta(atividadeId: number) {

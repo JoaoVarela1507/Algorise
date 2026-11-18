@@ -11,11 +11,14 @@ import {
   buscarPasso,
   buscarRecomendadas,
   buscarTrilha,
+  buscarTranscricao,
   buscarTrilhaAtual,
   iniciarTrilha,
+  marcarVideoAssistido,
   paraCard,
   paraTrilhaAtual,
   type FiltrosCatalogo,
+  type PassoApi,
 } from '@/services/trilhas'
 import type { TrilhaResumo } from '@/types/trilha'
 
@@ -74,6 +77,27 @@ export function usePasso(slug: string | undefined, ordem: number | undefined) {
     queryKey: chaves.trilhas.passo(slug ?? '', ordem ?? 0),
     queryFn: () => buscarPasso(slug as string, ordem as number),
     enabled: Boolean(slug) && Number.isInteger(ordem),
+  })
+}
+
+/** A transcrição só é buscada quando o aluno abre o painel dela. */
+export function useTranscricao(slug: string | undefined, ordem: number, aberta: boolean) {
+  return useQuery({
+    queryKey: chaves.trilhas.transcricao(slug ?? '', ordem),
+    queryFn: () => buscarTranscricao(slug as string, ordem),
+    enabled: aberta && Boolean(slug),
+    staleTime: Infinity,
+  })
+}
+
+export function useMarcarVideoAssistido(slug: string | undefined, ordem: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => marcarVideoAssistido(slug as string, ordem),
+    onSuccess: () =>
+      queryClient.setQueryData<PassoApi>(chaves.trilhas.passo(slug ?? '', ordem), (passo) =>
+        passo ? { ...passo, video_assistido: true } : passo,
+      ),
   })
 }
 

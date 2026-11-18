@@ -6,16 +6,27 @@ Rode da pasta `backend/`:
 """
 
 from app.core.database import SessionLocal
-from app.seeds import academico, introducao_python
+from app.seeds import (
+    academico,
+    introducao_python,
+    trilhas_extras,
+    trilhas_mais,
+    trilhas_novas,
+)
 
 
 def main() -> None:
     with SessionLocal() as db:
-        trilha = introducao_python.aplicar(db)
-        # A coleção pode ter sido carregada vazia antes da inserção; recarrega
-        # para o total impresso ser o que está no banco.
-        db.refresh(trilha)
-        print(f"seed aplicado: {trilha.nome} ({len(trilha.modulos)} módulos)")
+        for trilha in [
+            introducao_python.aplicar(db),
+            *trilhas_extras.aplicar(db),
+            *trilhas_novas.aplicar(db),
+            *trilhas_mais.aplicar(db),
+        ]:
+            # A coleção pode ter sido carregada vazia antes da inserção; recarrega
+            # para o total impresso ser o que está no banco.
+            db.refresh(trilha)
+            print(f"seed aplicado: {trilha.nome} ({len(trilha.modulos)} módulos)")
         print(f"seed aplicado: catálogo acadêmico ({academico.aplicar(db)} instituições)")
 
 

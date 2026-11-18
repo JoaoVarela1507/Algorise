@@ -24,7 +24,7 @@ filtrada nas consultas ao banco.
 
 from datetime import datetime
 
-from redis import Redis
+from redis import Redis, WatchError
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -85,16 +85,49 @@ def score_de(xp: int, alcancado_em: datetime | None) -> float:
     return float(xp) + (1 - minutos / 1e8)
 
 
+# Quantas vezes `atualizar` tenta de novo quando outro aluno mexeu no ranking no
+# meio da transação. Esgotou, descarta a chave: o próximo leitor reconstrói do
+# banco, que é sempre o certo.
+_TENTATIVAS_DE_ATUALIZAR = 3
+
+
 def atualizar(usuario_id: int, xp: int, alcancado_em: datetime) -> None:
     """Põe o saldo novo do aluno no sorted set — a invalidação ao ganhar XP.
 
     Se a chave não existe, nada é gravado de propósito: criá-la aqui daria um
     ranking de uma linha só. O próximo `obter_ranking` reconstrói.
+
+    A checagem e a escrita precisam ser atômicas. Com `EXISTS` e `ZADD`
+    soltos, a chave podia vencer entre um e outro: o `ZADD` criava um ranking
+    de um aluno só e **sem TTL**, e `_fatia`, que só olha se a chave existe,
+    servia esse ranking para sempre. O `WATCH` aborta a transação se a chave
+    mudar (ou vencer) depois da checagem; aí tenta de novo, e na nova volta a
+    chave ausente faz o `atualizar` não gravar nada.
+
+    Renova o TTL junto: com a invalidação explícita, quem está ganhando XP mantém
+    o ranking vivo, e o `aquecer` (que relê todos os alunos) só roda quando o
+    ranking fica parado o TTL inteiro. Não é Lua (`EVAL`) porque o `fakeredis`
+    da suíte só roda script com o `lupa` instalado.
     """
+    membro = {str(usuario_id): score_de(xp, alcancado_em)}
 
     def gravar(r: Redis) -> None:
-        if r.exists(CHAVE_RANKING):
-            r.zadd(CHAVE_RANKING, {str(usuario_id): score_de(xp, alcancado_em)})
+        for _ in range(_TENTATIVAS_DE_ATUALIZAR):
+            with r.pipeline() as pipe:
+                try:
+                    pipe.watch(CHAVE_RANKING)
+                    if not pipe.exists(CHAVE_RANKING):
+                        return
+                    pipe.multi()
+                    pipe.zadd(CHAVE_RANKING, membro)
+                    pipe.expire(CHAVE_RANKING, settings.cache_ttl_ranking)
+                    pipe.execute()
+                    return
+                except WatchError:
+                    continue
+        # Disputa demais pela chave: perder o XP novo deixaria o ranking errado
+        # até o TTL; sem a chave, a próxima leitura reconstrói certo.
+        r.delete(CHAVE_RANKING)
 
     executar(gravar)
 

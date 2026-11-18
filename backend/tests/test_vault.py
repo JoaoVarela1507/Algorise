@@ -198,6 +198,29 @@ def test_reingerir_o_mesmo_conteudo_nao_refaz_nada(db: Session, provedor: Proved
     assert len(provedor.pedidos) == 1
 
 
+class ProvedorMarcado(ProvedorContado):
+    """Um provedor que marca o próprio embedding, como o Gemini."""
+
+    marca_embedding = "gemini:gemini-embedding-001:1024"
+
+
+def test_trocar_o_provedor_de_embedding_reingere_o_mesmo_conteudo(
+    db: Session, provedor: ProvedorContado
+):
+    lacos, _, _ = criar_modulos(db)
+    ingerir(db, provedor, lacos, LACOS)
+    gemini = ProvedorMarcado()
+
+    ingestao = ingerir(db, gemini, lacos, LACOS)
+
+    # Vetores de outro modelo não se comparam com os antigos: refaz tudo.
+    assert ingestao.alterado
+    assert ingestao.documento.versao == 2
+    assert len(gemini.pedidos) == 1
+    # E com o mesmo provedor, nada muda de novo.
+    assert not ingerir(db, gemini, lacos, LACOS).alterado
+
+
 def test_conteudo_novo_substitui_os_trechos_sem_duplicar(db: Session, provedor: ProvedorContado):
     lacos, _, _ = criar_modulos(db)
     ingerir(db, provedor, lacos, LACOS)
@@ -483,3 +506,76 @@ def test_busca_no_pgvector_ordena_pela_distancia(db_postgres: Session) -> None:
         vetor_de_palavras("como funciona o laço while?"), vetor_de_palavras(LACOS)
     )
     assert resultados[0].distancia == pytest.approx(esperado, abs=1e-5)
+
+
+def test_reembeddar_refaz_os_vetores_de_todo_o_vault(db: Session) -> None:
+    """Trocar o provedor de embedding não exige voltar às transcrições."""
+    from app.ia.vault.ingestao import reembeddar
+
+    asyncio.run(registrar_prompts(db, Eco()))
+    trechos = list(db.scalars(select(TrechoVault)))
+    assert trechos
+
+    class Constante:
+        async def embeddings(self, textos):
+            return [[1.0] + [0.0] * (DIMENSOES_EMBEDDING - 1) for _ in textos]
+
+    assert asyncio.run(reembeddar(db, Constante())) == len(trechos)
+    db.expire_all()
+    assert all(next(iter(t.embedding)) == 1.0 for t in db.scalars(select(TrechoVault)))
+
+
+def test_linha_de_comando_transcreve_o_video_do_modulo(
+    db: Session,
+    sessao_factory,
+    provedor: ProvedorContado,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Sem rede: as falas vêm de um `falas_do_video` falso, como se fosse o Whisper."""
+    from app.services import transcricao
+
+    lacos, condicionais, _ = criar_modulos(db)
+    lacos.video_url = "https://www.youtube.com/watch?v=abcdefghijk"
+    condicionais.video_url = "https://vimeo.com/123"
+    db.commit()
+    pedidos: list[str] = []
+
+    def falas_do_video(youtube_id: str, pasta: Path) -> tuple[list[Fala], str]:
+        pedidos.append(youtube_id)
+        return [
+            Fala("O laço for repete.", 0.0, 2.0),
+            Fala("E o while também.", 2.0, 4.0),
+        ], "whisper"
+
+    monkeypatch.setattr(transcricao, "falas_do_video", falas_do_video)
+    monkeypatch.setattr(linha_de_comando, "SessionLocal", sessao_factory)
+    monkeypatch.setattr(linha_de_comando, "get_provedor_ia_tarefas", lambda: provedor)
+
+    assert linha_de_comando.main(["transcrever"]) == 0
+    # De novo: o módulo já transcrito fica de fora.
+    assert linha_de_comando.main(["transcrever"]) == 0
+
+    assert pedidos == ["abcdefghijk"]
+    saida = capsys.readouterr().out
+    assert f"modulo:{lacos.id}: versão 1" in saida
+    assert "pela whisper" in saida
+    assert "não é do YouTube" in saida
+    documento = db.scalar(select(DocumentoVault).where(DocumentoVault.modulo_id == lacos.id))
+    assert documento.origem is OrigemVault.transcricao
+
+
+@pytest.mark.parametrize(
+    ("url", "esperado"),
+    [
+        ("https://www.youtube.com/watch?v=S9uPNppGsGo", "S9uPNppGsGo"),
+        ("https://youtu.be/S9uPNppGsGo", "S9uPNppGsGo"),
+        ("https://www.youtube-nocookie.com/embed/S9uPNppGsGo?start=3", "S9uPNppGsGo"),
+        ("https://vimeo.com/123", None),
+        (None, None),
+    ],
+)
+def test_id_do_video(url: str | None, esperado: str | None) -> None:
+    from app.services.transcricao import id_do_video
+
+    assert id_do_video(url) == esperado

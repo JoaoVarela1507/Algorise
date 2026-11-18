@@ -14,6 +14,7 @@ usa, e é isso que deixa a skill testável sem fixture nenhuma.
 
 from app.ia.base import IAIndisponivel, MensagemIA, Papel, ProvedorIA
 from app.ia.provedor import get_provedor_ia, get_provedor_ia_tarefas
+from app.ia.reserva import para
 
 __all__ = [
     "IAIndisponivel",
@@ -22,4 +23,5 @@ __all__ = [
     "ProvedorIA",
     "get_provedor_ia",
     "get_provedor_ia_tarefas",
+    "para",
 ]

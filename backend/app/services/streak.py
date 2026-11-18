@@ -10,12 +10,19 @@ calendário, então o que interessa é a virada do dia, não o intervalo desde o
 
 Sem Redis a conta é a mesma, só passa no banco toda vez — e o `UPDATE` continua
 idempotente dentro do dia, porque a decisão vem de `ultimo_acesso`.
+
+Só `registrar_acesso` escreve. A leitura (`obter_streak`) não cria a linha nem
+grava o zero da sequência quebrada: a Home dispara `GET /gamificacao/me` e
+`POST /gamificacao/checkin` juntos, e um GET que escreve disputava o mesmo
+`INSERT` com o check-in no primeiro acesso do aluno.
 """
 
+from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import Insert, select
+from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.orm import Session
 
 from app.core.cache import chave
@@ -41,20 +48,35 @@ def registrar_acesso(db: Session, usuario_id: int, *, hoje: date | None = None) 
     return streak
 
 
-def obter_streak(db: Session, usuario_id: int, *, hoje: date | None = None) -> Streak:
-    """Streak para exibir, sem contar acesso.
+@dataclass(frozen=True)
+class Sequencia:
+    """O streak como a tela mostra. Não é objeto do ORM: não tem como ir ao banco."""
 
-    Zera na leitura quando o último acesso não foi hoje nem ontem: a sequência
-    quebrou de fato, e mostrar o número velho seria mentir para o aluno.
+    dias_consecutivos: int
+    maior_sequencia: int
+    ultimo_acesso: date | None
+
+
+def obter_streak(db: Session, usuario_id: int, *, hoje: date | None = None) -> Sequencia:
+    """Streak para exibir, sem contar acesso e sem escrever nada.
+
+    Mostra zero quando o último acesso não foi hoje nem ontem: a sequência
+    quebrou de fato, e mostrar o número velho seria mentir para o aluno. O zero
+    fica só na resposta — o próximo `registrar_acesso` recomeça a conta em 1 do
+    mesmo jeito, porque decide por `ultimo_acesso`, e não pelo número gravado.
     """
     hoje = hoje or hoje_no_fuso()
-    streak = _obter_ou_criar(db, usuario_id, hoje)
+    streak = db.execute(select(Streak).where(Streak.usuario_id == usuario_id)).scalar_one_or_none()
+    if streak is None:
+        # Aluno que nunca fez check-in: a linha nasce no primeiro acesso, não aqui.
+        return Sequencia(dias_consecutivos=0, maior_sequencia=0, ultimo_acesso=None)
 
-    if streak.ultimo_acesso is not None and streak.ultimo_acesso < hoje - timedelta(days=1):
-        streak.dias_consecutivos = 0
-        db.commit()
-
-    return streak
+    quebrou = streak.ultimo_acesso is not None and streak.ultimo_acesso < hoje - timedelta(days=1)
+    return Sequencia(
+        dias_consecutivos=0 if quebrou else streak.dias_consecutivos,
+        maior_sequencia=streak.maior_sequencia,
+        ultimo_acesso=streak.ultimo_acesso,
+    )
 
 
 def _atualizar(db: Session, usuario_id: int, hoje: date) -> Streak:
@@ -78,14 +100,33 @@ def _atualizar(db: Session, usuario_id: int, hoje: date) -> Streak:
 
 
 def _obter_ou_criar(db: Session, usuario_id: int, hoje: date) -> Streak:
-    streak = db.execute(select(Streak).where(Streak.usuario_id == usuario_id)).scalar_one_or_none()
+    consulta = select(Streak).where(Streak.usuario_id == usuario_id)
+    streak = db.execute(consulta).scalar_one_or_none()
     if streak is not None:
         return streak
 
-    streak = Streak(usuario_id=usuario_id, dias_consecutivos=0, maior_sequencia=0)
-    db.add(streak)
+    # Dois requests do mesmo aluno podem chegar aqui juntos (a Home chama o
+    # check-in e outras rotas ao mesmo tempo). Um `db.add` + commit faria o
+    # segundo estourar `IntegrityError` no `usuario_id` único; o upsert deixa o
+    # perdedor da corrida passar sem erro, e o select de novo pega a linha de
+    # quem ganhou.
+    db.execute(insercao_idempotente(db.get_bind().dialect.name, usuario_id))
     db.commit()
-    return streak
+    return db.execute(consulta).scalar_one()
+
+
+def insercao_idempotente(dialeto: str, usuario_id: int) -> Insert:
+    """`INSERT ... ON CONFLICT (usuario_id) DO NOTHING` no dialeto do banco.
+
+    O PostgreSQL é o de produção; o SQLite é o da suíte e do E2E. Os dois têm o
+    `ON CONFLICT`, mas cada um pela sua construção no SQLAlchemy.
+    """
+    insert = postgresql.insert if dialeto == "postgresql" else sqlite.insert
+    return (
+        insert(Streak)
+        .values(usuario_id=usuario_id, dias_consecutivos=0, maior_sequencia=0)
+        .on_conflict_do_nothing(index_elements=[Streak.usuario_id])
+    )
 
 
 def hoje_no_fuso() -> date:

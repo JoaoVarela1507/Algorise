@@ -7,3 +7,6 @@ yt-dlp==2026.10.21
 # O Whisper em CTranslate2: roda na CPU, com o modelo quantizado em int8. Lê o
 # áudio pelo PyAV, que já traz as bibliotecas do ffmpeg.
 faster-whisper==1.2.1
+# O faster-whisper 1.2.1 abre o áudio com `metadata_errors`, que o PyAV 16 tirou:
+# sem fixar, o pip traz o mais novo e a transcrição quebra ao abrir o arquivo.
+av==15.1.0

@@ -80,6 +80,18 @@ export function buscarPasso(slug: string, ordem: number): Promise<PassoApi> {
   return apiGet<PassoApi>(`/trilhas/${slug}/passos/${ordem}`)
 }
 
+export type TranscricaoApi = components['schemas']['TranscricaoDoPasso']
+
+/** As falas do vídeo do passo (#21). Vazia quando o vídeo ainda não foi transcrito. */
+export function buscarTranscricao(slug: string, ordem: number): Promise<TranscricaoApi> {
+  return apiGet<TranscricaoApi>(`/trilhas/${slug}/passos/${ordem}/transcricao`)
+}
+
+/** Grava que o aluno assistiu o vídeo do passo até o fim (#21). Idempotente. */
+export function marcarVideoAssistido(slug: string, ordem: number): Promise<unknown> {
+  return apiPost(`/trilhas/${slug}/passos/${ordem}/video-assistido`, {})
+}
+
 export function iniciarTrilha(slug: string): Promise<TrilhaDetalheApi> {
   return apiPost<TrilhaDetalheApi>(`/trilhas/${slug}/iniciar`, {})
 }

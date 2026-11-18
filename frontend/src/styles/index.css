@@ -144,6 +144,8 @@
   body {
     @apply bg-background font-sans text-foreground antialiased;
     font-size: calc(1rem * var(--font-scale));
+    /* O retângulo cinza do toque no celular: os botões já respondem com o "afundar". */
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* O foco precisa aparecer também no alto contraste. */
@@ -168,5 +170,29 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+@layer components {
+  /*
+   * Esqueleto de carregamento: o formato do conteúdo, com um brilho passando.
+   * O brilho é um pseudo-elemento que anda por `transform` (barato para a GPU),
+   * e não pela posição do fundo. Com "reduzir animações", fica parado.
+   */
+  .esqueleto {
+    @apply relative overflow-hidden rounded-md bg-muted;
+  }
+  .esqueleto::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, hsl(var(--card) / 0.55), transparent);
+    animation: esqueleto-brilho 1.4s ease-in-out infinite;
+  }
+  @keyframes esqueleto-brilho {
+    to {
+      transform: translateX(100%);
+    }
   }
 }

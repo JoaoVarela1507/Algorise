@@ -148,7 +148,13 @@ async def _ingerir(
     skill: str | None = None,
     video_id: int | None = None,
 ) -> Ingestao:
-    hash_conteudo = hashlib.sha256(conteudo.encode()).hexdigest()
+    # Vetores de modelos diferentes não se comparam: um provedor que marca o seu
+    # embedding (o Gemini) entra no hash, e trocar de provedor reingere o
+    # documento na próxima vez em vez de misturar vetores no vault. O Ollama
+    # não marca, para não reingerir o vault de quem já o tem.
+    marca = getattr(provedor, "marca_embedding", None)
+    marcado = f"{marca}\n{conteudo}" if marca else conteudo
+    hash_conteudo = hashlib.sha256(marcado.encode()).hexdigest()
     documento = sessao.scalar(select(DocumentoVault).where(DocumentoVault.chave == chave))
     if documento is not None and documento.hash_conteudo == hash_conteudo:
         return Ingestao(documento, alterado=False)
@@ -182,3 +188,50 @@ async def _ingerir(
     ]
     sessao.commit()
     return Ingestao(documento, alterado=True)
+
+
+async def reembeddar(sessao: Session, provedor: ProvedorIA) -> int:
+    """Refaz os vetores de todo o vault com o provedor atual. Devolve quantos trechos.
+
+    Para trocar o provedor de embedding (do Gemini para o `bge-m3` do Ollama, por
+    exemplo) sem voltar às fontes: o texto de cada trecho já está gravado, então
+    nem as transcrições do YouTube precisam ser baixadas de novo. Cada documento
+    é gravado inteiro ou nada, como na ingestão. O hash não muda; a próxima
+    ingestão de um documento com o provedor novo o refaz uma vez, e só.
+    """
+    total = 0
+    for documento in sessao.scalars(select(DocumentoVault).order_by(DocumentoVault.id)).all():
+        trechos = list(documento.trechos)
+        vetores: list[list[float]] = []
+        for inicio in range(0, len(trechos), LOTE_DE_EMBEDDING):
+            lote = trechos[inicio : inicio + LOTE_DE_EMBEDDING]
+            vetores.extend(await provedor.embeddings([t.texto for t in lote]))
+        for trecho, vetor in zip(trechos, vetores, strict=True):
+            trecho.embedding = vetor
+        sessao.commit()
+        total += len(trechos)
+    return total
+
+
+async def ingerir_falas_do_modulo(
+    sessao: Session, provedor: ProvedorIA, modulo: Modulo, falas: list[Fala]
+) -> Ingestao:
+    """Grava a transcrição do vídeo do módulo a partir das falas (com o tempo de cada uma).
+
+    O mesmo documento que `ingerir_transcricao` grava a partir de um arquivo: a
+    chave é o módulo, e o passo mostra a transcrição ao lado do vídeo (#21).
+    """
+    conteudo = "\n".join(
+        f"{fala.inicio}-{fala.fim} {fala.texto}" if fala.inicio is not None else fala.texto
+        for fala in falas
+    )
+    return await _ingerir(
+        sessao,
+        provedor,
+        chave=f"modulo:{modulo.id}",
+        origem=OrigemVault.transcricao,
+        titulo=modulo.titulo,
+        conteudo=conteudo,
+        trechos=dividir(falas),
+        modulo_id=modulo.id,
+    )

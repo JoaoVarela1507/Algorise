@@ -110,6 +110,17 @@ autenticação. No rate limit é o contrário, falha **aberta**: liberar a requi
 Quem concede XP deve chamar `app/services/xp.py`, não escrever em `xp_eventos` na
 mão — é ele que corrige o ranking em seguida.
 
+O TTL do ranking (`CACHE_TTL_RANKING`) é de **1 hora**, não mais 60 s: cada XP
+ganho grava o score e renova o TTL numa transação (`WATCH`/`MULTI`), então o
+`aquecer`, que relê todos os alunos do banco, só roda quando o ranking fica uma
+hora parado. A contrapartida: se o Redis cair na hora de um XP, aquele score fica
+velho até o TTL vencer. Correção em massa direto no banco (seed, script) precisa
+chamar `ranking.invalidar()`.
+
+A migração `a4e8c2f6d9b1` cria o índice `ix_xp_eventos_origem_referencia`, usado
+pelo ranking por trilha. Em tabela grande, o `CREATE INDEX` trava escrita em
+`xp_eventos` enquanto roda; aplique fora do horário de pico.
+
 ## Observabilidade
 
 - **Logs estruturados** (`app/core/logs.py`): com `LOG_FORMATO=json` (o padrão em
@@ -580,8 +591,11 @@ O desafio da tela 40 roda o código do aluno contra casos de teste (#34):
 - **Variáveis:** `SANDBOX_MEMORIA_MB`, `SANDBOX_CPUS`, `SANDBOX_PROCESSOS`,
   `SANDBOX_TEMPO_SEGUNDOS` e `SANDBOX_SAIDA_MAXIMA`.
 - **Rate limit:** `RATE_LIMIT_EXECUCOES_*` por aluno.
-- **Sem Docker na máquina:** use `SANDBOX_MODO=desligada`, e a execução vira
-  `falhou`, sem rodar nada.
+- **Sem Docker na máquina:** `SANDBOX_MODO=processo` roda cada caso num processo
+  Python à parte, numa pasta temporária, sem as variáveis de ambiente da API, com
+  tempo e saída limitados (e memória, CPU e arquivos no Linux pelo `setrlimit`).
+  Não isola rede nem disco, por isso a configuração o recusa em produção.
+  `SANDBOX_MODO=desligada` recusa a execução: ela vira `falhou`, sem rodar nada.
 
 **Riscos e deploy:**
 - O worker fala com o Docker do host pelo socket montado no compose. Quem tem
@@ -689,8 +703,9 @@ A IA mora em `app/ia/`, separada de quem a usa:
 | ------------- | ----------------------------------------------------------------------------------------------------------- |
 | `base.py`     | o contrato: `ProvedorIA.gerar(mensagens, max_tokens, formato)` devolve os pedaços, e `embeddings(textos)` os vetores |
 | `ollama.py`   | o cliente do Ollama (`httpx2`), com timeout e nova tentativa só antes do primeiro pedaço                    |
+| `gemini.py`   | o cliente da API do Gemini, a segunda opção: mais leve, o modelo roda no Google                             |
 | `eco.py`      | provedor de teste: devolve a pergunta, sem rede, e um embedding falso de palavras                           |
-| `provedor.py` | qual dos dois atende, conforme `IA_PROVEDOR`                                                                |
+| `provedor.py` | qual deles atende, conforme `IA_PROVEDOR` (`ollama`, `gemini` ou `eco`)                                     |
 | `skills/`     | cada uso da IA com o seu prompt e os seus limites: o tutor do chat e a leitura da ementa                    |
 | `vault/`      | a base de conhecimento das skills, consultada como um RAG (ver abaixo)                                      |
 
@@ -709,6 +724,69 @@ vídeos e exercícios. Em branco, vale o do chat, que é o padrão do compose
 também. Dá para testar um modelo menor ali sem mexer no chat, mas o `llama3.2:1b`
 não serve: na leitura do PPC, ele levou 8 minutos numa parte e devolveu JSON
 quebrado. O worker só sobe depois do `ollama-modelo` baixar os modelos.
+
+**Gemini, a segunda opção:** com `IA_PROVEDOR=gemini`, a IA vem da API do
+Google (`app/ia/gemini.py`) e o Ollama nem sobe. É o caminho leve para
+desenvolver numa máquina sem GPU:
+
+1. Crie uma chave grátis em <https://aistudio.google.com/apikey>.
+2. No `.env` da raiz: `IA_PROVEDOR=gemini`, `GEMINI_API_KEY=<a chave>` e, para
+   não precisar repetir os `-f`, `COMPOSE_FILE=docker-compose.yml;docker-compose.override.yml;docker-compose.gemini.yml`
+   (no Linux/macOS o separador é `:`).
+3. `docker compose up`.
+
+Os papéis dos modelos são os mesmos do Ollama: `GEMINI_MODELO` no chat,
+`GEMINI_MODELO_TAREFAS` no worker (vazio, o do chat) e `GEMINI_MODELO_EMBEDDING`
+no vault (`gemini-embedding-001`, pedido com 1024 dimensões, as da coluna). O
+padrão é `gemini-flash-lite-latest`, um apelido que o Google aponta para o
+flash-lite atual: o `gemini-2.5-flash` já não aceita chave nova, e os flash
+"cheios" respondem 503 ("alta demanda") com frequência na camada gratuita.
+Para ver os modelos da sua chave: `GET /v1beta/models`. Dois cuidados:
+
+- **Limite da camada gratuita:** pedidos por minuto e por dia, que o Google muda
+  de tempos em tempos (veja os do seu projeto no AI Studio). Um `429` passageiro
+  é tentado de novo; persistente, vira `IAIndisponivel` como o Ollama fora.
+- **Vault:** vetores do `bge-m3` e do Gemini não se comparam. O hash do
+  documento leva a marca do embedding do Gemini, então os módulos são
+  reingeridos sozinhos na próxima ementa; os prompts e as transcrições pedem
+  `python -m app.ia.vault registrar-prompts` e `ingerir` de novo.
+
+`GEMINI_RACIOCINIO` (padrão `minimal`) segura o "thinking", que conta no teto de
+tokens das skills e atrasa o primeiro pedaço da resposta. Nos modelos 3.x é um
+nível (`minimal`, `low`, `medium`, `high`); nos 2.5, um número de tokens (`0`
+desliga). Se o modelo recusar o valor, o pedido é refeito sem ele; vazio deixa o
+modelo decidir. Medido no `gemini-3.5-flash-lite`, com o prompt do tutor:
+
+| `GEMINI_RACIOCINIO` | primeiro pedaço (mediana) | pior caso |
+| ------------------- | ------------------------- | --------- |
+| `minimal`           | 1,5 s                     | 2,2 s     |
+| `low`               | 9,2 s                     | 22,8 s    |
+
+O cliente também mantém a conexão HTTPS com o Google aberta entre os pedidos:
+abrir uma nova custa uns 500 ms a cada pergunta.
+
+**Um modelo por uso, embeddings e reserva no Ollama** (`app/ia/reserva.py`).
+Com tanta coisa usando IA, uma cota só do Gemini não dá conta. Por isso:
+
+- **Modelo por uso:** cada uso (`chat`, `resumo`, `correcao`, `exercicios`,
+  `ementa`, `categorizacao`, `segmentacao`) tem o seu modelo, e cada modelo a sua
+  cota. O padrão está em `GEMINI_MODELOS_PADRAO` (`app/core/config.py`); o chat
+  usa o `GEMINI_MODELO`; `GEMINI_MODELOS` (JSON) troca o de qualquer uso. Quem
+  usa a IA pede o seu com `para(provedor, "correcao")`.
+- **Embeddings no Ollama** (`IA_PROVEDOR_EMBEDDINGS=ollama`): o vault fica no
+  `bge-m3` da máquina, que não tem cota. Depois de trocar, refaça os vetores com
+  `python -m app.ia.vault reembeddar` (usa o texto já gravado, sem voltar às
+  transcrições).
+- **Ollama de reserva** (`IA_RESERVA=ollama`): se o Gemini falhar antes de mandar
+  o primeiro pedaço (cota, sobrecarga, fora do ar), depois de tentar o
+  `GEMINI_MODELO_RESERVA`, o pedido vai ao Ollama (`OLLAMA_MODELO` no chat,
+  `OLLAMA_MODELO_TAREFAS` no resto). O modelo que falhou fica pausado por
+  `IA_PAUSA_APOS_FALHA` segundos e os pedidos vão direto à reserva; se ela também
+  falhar, o Gemini é tentado assim mesmo. Uma falha no meio da resposta não troca
+  de modelo: a resposta pela metade não é emendada com outra.
+- **Reserva pronta:** a primeira carga do `llama3.2` passa de um minuto nesta
+  máquina. Com `OLLAMA_MANTER_CARREGADO` (ex.: `30m`), a API carrega o modelo ao
+  subir e pede ao Ollama que o mantenha na memória, e a troca leva menos de 1 s.
 
 **GPU:** o Ollama no Docker roda na CPU. Com GPU NVIDIA e o NVIDIA Container
 Toolkit, acrescente ao serviço `ollama` um

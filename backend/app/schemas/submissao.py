@@ -39,9 +39,13 @@ class Correcao(BaseModel):
     """A resposta da submissão."""
 
     correta: bool
-    # A resposta ficou guardada esperando a correção por IA (#11).
+    # A IA não conseguiu corrigir a resposta aberta agora: ficou guardada, sem
+    # XP, e o aluno pode seguir ou mandar de novo.
     em_analise: bool
     feedback: str
+    # Resposta aberta corrigida pela IA e errada: a pista do que faltou.
+    sugestao: str | None = None
+    corrigida_por_ia: bool = False
     tentativa: int
     # XP ganho **nesta** submissão: zero quando o aluno já tinha acertado antes.
     xp_ganho: int

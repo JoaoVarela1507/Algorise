@@ -4,7 +4,9 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-display font-bold transition-colors disabled:pointer-events-none disabled:opacity-60 [&_svg]:size-5 [&_svg]:shrink-0',
+  // `active:scale`: o botão "afunda" um pouco no toque, o retorno de um app
+  // gamificado. Só transform, que não mexe no layout; o link fica de fora.
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-display font-bold transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-60 [&_svg]:size-5 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -14,10 +16,10 @@ const buttonVariants = cva(
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         outline: 'border-2 border-primary bg-transparent text-primary hover:bg-primary/10',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
+        link: 'text-primary underline-offset-4 hover:underline active:scale-100',
         destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
         /** Trilha ou passo ainda bloqueado (cadeado). */
-        locked: 'cursor-not-allowed bg-locked/30 text-locked',
+        locked: 'cursor-not-allowed bg-locked/30 text-locked active:scale-100',
       },
       size: {
         default: 'h-11 px-6 text-base',

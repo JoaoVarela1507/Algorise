@@ -1,7 +1,16 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { motion, type Variants } from 'framer-motion'
-import { ArrowLeft, ArrowRight, Award, Compass, PartyPopper, Star } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Award,
+  CheckCircle2,
+  Code2,
+  Compass,
+  PartyPopper,
+  Star,
+} from 'lucide-react'
 import { CenarioOceano } from '@/components/trilha/CenarioOceano'
 import { DetalheModulo } from '@/components/trilha/DetalheModulo'
 import { MapaTrilha } from '@/components/trilha/MapaTrilha'
@@ -44,14 +53,17 @@ function Cabecalho({ trilha }: { trilha: TrilhaComModulos }) {
       </Button>
 
       <span
-        className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-secondary font-display text-xl font-extrabold text-foreground"
+        className="hidden size-12 shrink-0 items-center justify-center rounded-lg bg-secondary font-display text-xl font-extrabold text-foreground sm:flex"
         aria-hidden
       >
         {doisDigitos(trilha.periodo)}
       </span>
 
       <div className="min-w-0 flex-1">
-        <h1 className="truncate font-display text-2xl font-bold text-foreground">{trilha.nome}</h1>
+        {/* Duas linhas no celular: "Estruturas de Dados" virava "Estruturas de...". */}
+        <h1 className="line-clamp-2 font-display text-xl font-bold leading-tight text-foreground sm:truncate sm:text-2xl">
+          {trilha.nome}
+        </h1>
         <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
           <span className="rounded-full bg-secondary px-2.5 py-0.5 text-muted-foreground">
             {trilha.categoria}
@@ -93,6 +105,10 @@ function Cabecalho({ trilha }: { trilha: TrilhaComModulos }) {
 }
 
 function Parabens({ trilha }: { trilha: TrilhaComModulos }) {
+  const desafio = trilha.modulos
+    .flatMap((modulo) => modulo.atividades)
+    .find((atividade) => atividade.tipo === 'desafio-codigo')
+
   return (
     <div className="relative flex h-full flex-col gap-4 overflow-hidden">
       {/* Confete: pontinhos caindo, como os "✦" do protótipo. */}
@@ -125,7 +141,33 @@ function Parabens({ trilha }: { trilha: TrilhaComModulos }) {
         </p>
       </div>
 
-      <Button asChild size="lg" full className="group relative">
+      {/* O desafio proposto fecha a trilha (telas 39 e 40, #25). Feito, ele vira
+          um selo e a próxima trilha passa a ser a ação principal. */}
+      {desafio && desafio.status !== 'feita' && (
+        <Button asChild size="lg" full className="relative">
+          <Link to={`/trilhas/${trilha.id}/desafio`}>
+            <Code2 />
+            Fazer desafio proposto
+          </Link>
+        </Button>
+      )}
+      {desafio?.status === 'feita' && (
+        <Link
+          to={`/trilhas/${trilha.id}/desafio`}
+          className="relative flex items-center justify-center gap-2 text-sm font-bold text-success hover:underline"
+        >
+          <CheckCircle2 className="size-4" aria-hidden />
+          Desafio proposto concluído
+        </Link>
+      )}
+
+      <Button
+        asChild
+        size="lg"
+        full
+        variant={desafio && desafio.status !== 'feita' ? 'outline' : 'default'}
+        className="group relative"
+      >
         <Link to="/trilhas">
           <Compass />
           Escolher a próxima trilha
@@ -237,20 +279,23 @@ export function TrilhaPage() {
       variants={container}
       initial="oculto"
       animate="visivel"
-      className="flex h-full flex-col gap-6"
+      className="flex flex-col gap-4 md:gap-6 lg:h-full"
     >
       <motion.section variants={secao}>
         <Cabecalho trilha={trilha} />
       </motion.section>
 
       {/*
-        Mapa à esquerda, com scroll só por dentro (a trilha pode ter muitos
-        módulos); detalhe e resumo fixos à direita. A página não rola.
+        No desktop: mapa à esquerda, com scroll só por dentro (a trilha pode ter
+        muitos módulos); detalhe e resumo fixos à direita, e a página não rola.
+        No celular, um embaixo do outro, e a página rola. A coluna única é
+        `minmax(0,1fr)`: com `auto`, o grid crescia até a largura inicial do mapa
+        (720px) e ele nunca encolhia para a tela.
       */}
-      <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_26rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_26rem]">
         <motion.section
           variants={secao}
-          className="relative h-[32rem] overflow-hidden rounded-lg border border-border bg-card shadow-sm lg:h-auto lg:min-h-0"
+          className="relative h-[26rem] overflow-hidden rounded-lg border border-border bg-card shadow-sm sm:h-[32rem] lg:h-auto lg:min-h-0"
           aria-label="Mapa de módulos"
         >
           <CenarioOceano />
@@ -262,10 +307,10 @@ export function TrilhaPage() {
           />
         </motion.section>
 
-        <div className="flex min-h-0 flex-col gap-6">
+        <div className="flex min-h-0 flex-col gap-4 md:gap-6">
           <motion.section
             variants={secao}
-            className="flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-card p-6 shadow-sm"
+            className="flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-card p-4 shadow-sm sm:p-6"
           >
             {moduloSelecionado ? (
               <DetalheModulo trilhaId={trilha.id} modulo={moduloSelecionado} />
@@ -276,7 +321,7 @@ export function TrilhaPage() {
           <motion.section
             variants={secao}
             className={cn(
-              'rounded-lg border p-6 shadow-sm',
+              'rounded-lg border p-4 shadow-sm sm:p-6',
               terminou ? 'border-xp/50 bg-xp/10' : 'border-border bg-card',
             )}
           >

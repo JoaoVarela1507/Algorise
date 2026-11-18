@@ -1,5 +1,8 @@
-from pydantic import model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import json
+from typing import Annotated, Any
+
+from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from app import __version__
 
@@ -7,8 +10,34 @@ from app import __version__
 # a subir com ele (ver `_conferir_segredo`).
 SEGREDO_DE_DESENVOLVIMENTO = "inseguro-so-para-desenvolvimento"
 
-PROVEDORES_DE_IA = ("ollama", "eco")
+PROVEDORES_DE_IA = ("ollama", "gemini", "eco")
+# Cada uso da IA, para escolher um modelo por uso (`GEMINI_MODELOS`).
+USOS_DA_IA = (
+    "chat",
+    "resumo",
+    "correcao",
+    "exercicios",
+    "ementa",
+    "categorizacao",
+    "segmentacao",
+)
+# Um modelo do Gemini por uso: cada modelo tem a sua cota na camada gratuita
+# (pedidos por minuto e por dia) e a sua fila de capacidade, então espalhar os
+# usos evita que a leitura de uma ementa, por exemplo, gaste a cota do chat.
+# Medido em 17/11/2026 com a chave do projeto: estes respondem JSON em 1 s
+# (o gemma em 6 s, por isso só no segundo plano); os "flash" maiores davam 503
+# de sobrecarga. O chat usa o `GEMINI_MODELO`; um uso fora do dicionário, o
+# `GEMINI_MODELO_TAREFAS` (ou o do chat).
+GEMINI_MODELOS_PADRAO = {
+    "correcao": "gemini-3.1-flash-lite",
+    "resumo": "gemini-flash-lite-latest",
+    "exercicios": "gemini-3-flash-preview",
+    "ementa": "gemini-3.1-flash-lite-preview",
+    "categorizacao": "gemma-4-31b-it",
+    "segmentacao": "gemma-4-31b-it",
+}
 MODOS_DA_FILA = ("local", "redis")
+MODOS_DA_SANDBOX = ("docker", "processo", "desligada")
 FORMATOS_DE_LOG = ("json", "texto")
 
 
@@ -40,9 +69,12 @@ class Settings(BaseSettings):
 
     # Segundos de validade do cache. O catálogo de trilhas muda raramente; o
     # ranking, a cada XP ganho — e nele o TTL é só a rede de segurança, porque
-    # a invalidação é explícita.
+    # a invalidação é explícita (`ranking.atualizar` grava o saldo novo e
+    # renova o TTL). Com 60 s, o `aquecer` relia todos os alunos a cada minuto
+    # parado; uma hora basta para o que escapa da invalidação (Redis fora na
+    # hora do XP, ajuste direto no banco sem `ranking.invalidar()`).
     cache_ttl_trilhas: int = 300
-    cache_ttl_ranking: int = 60
+    cache_ttl_ranking: int = 3600
 
     # Teto de XP por janela, contra farm (#31). Generoso de propósito: o aluno
     # dedicado passa longe disso, e um script varrendo o catálogo esbarra.
@@ -58,6 +90,9 @@ class Settings(BaseSettings):
 
     # Sandbox do desafio de código (#34). `docker` roda cada caso de teste num
     # container efêmero; `desligada` recusa a execução (máquina sem Docker).
+    # `processo` roda o Python direto na máquina, com tempo e saída limitados
+    # (e memória no Linux), mas sem isolar rede nem disco: só para rodar local
+    # e apresentar sem Docker. Em produção é recusado.
     # `SANDBOX_RUNTIME=runsc` usa o gVisor, que isola o kernel também: é o que
     # se quer em produção.
     sandbox_modo: str = "docker"
@@ -100,10 +135,74 @@ class Settings(BaseSettings):
     # português; a dimensão dele (1024) está fixa na tabela `vault_trechos`.
     ollama_modelo_embedding: str = "bge-m3"
     # Distância de cosseno até o módulo mais próximo no vault abaixo da qual um
-    # assunto da ementa conta como coberto (#38). Acima, vira lacuna. Ponto de
-    # partida a calibrar com ementas reais: a distância de cada assunto fica
-    # gravada em `ementa_assuntos.distancia`.
+    # assunto da ementa conta como coberto (#38). Acima, vira lacuna. A distância
+    # de cada assunto fica gravada em `ementa_assuntos.distancia`.
+    #
+    # Calibrado em 17/11/2026 com o `bge-m3` e o PPC de Ciência da Computação da
+    # UFRPE: 40 assuntos com a resposta certa marcada à mão (24 com módulo no
+    # catálogo de 9 trilhas, 16 que deviam virar lacuna). Em 0,35: 12 certos, 4
+    # errados, 12 perdidos. Em 0,38: 16 certos, mas 12 errados; em 0,40, 19
+    # errados. Até 0,35 a maior parte acerta; acima, o erro cresce mais rápido
+    # que o acerto. Também foi testado embutir só o assunto, sem a disciplina, e
+    # o assunto antes da disciplina: os dois ordenam pior que "disciplina: assunto".
     ementa_distancia_maxima: float = 0.35
+    # Tamanho de cada parte da ementa mandada à IA, em caracteres, e quantas
+    # partes são lidas ao mesmo tempo. 0 escolhe pelo provedor: o Ollama lê 4 mil
+    # caracteres, uma parte por vez (contexto pequeno, CPU da máquina); o Gemini,
+    # 12 mil, três de cada vez (ver `services/assuntos_ementa.py`).
+    ementa_tamanho_da_parte: int = 0
+    ementa_leituras_simultaneas: int = 0
+
+    # Segunda opção de IA: a API do Gemini (`IA_PROVEDOR=gemini`). Mais leve que
+    # o Ollama, porque o modelo roda no Google; a chave é criada de graça no
+    # Google AI Studio e a camada gratuita tem limite de pedidos por minuto e
+    # por dia. Os modelos são os mesmos papéis dos do Ollama: o do chat, o das
+    # tarefas (em branco, o do chat) e o de embedding do vault.
+    gemini_api_key: str = ""
+    # `gemini-flash-lite-latest` é um apelido que o Google aponta sempre para o
+    # flash-lite atual: não quebra quando uma versão é aposentada (o 2.5 já não
+    # aceita chave nova). O lite é o que responde na camada gratuita sem 503.
+    # As tarefas usam o do chat quando `GEMINI_MODELO_TAREFAS` está vazio.
+    gemini_modelo: str = "gemini-flash-lite-latest"
+    gemini_modelo_tarefas: str = ""
+    # Gera vetores de 1024 posições quando pedido, a dimensão do vault. Trocar
+    # de provedor de embedding pede reingerir o vault (os vetores não se
+    # comparam entre modelos).
+    gemini_modelo_embedding: str = "gemini-embedding-001"
+    # "Raciocínio" (thinking) do modelo, que conta no teto de tokens da resposta,
+    # e as skills usam tetos curtos. Nos 3.x é um nível (`minimal`, `low`,
+    # `medium`, `high`); nos 2.5, um número de tokens (`0` desliga). Vazio não
+    # manda nada, e o modelo decide sozinho. `minimal` é o mais rápido: medido no
+    # gemini-3.5-flash-lite, o primeiro pedaço do chat sai em 1,5 s de mediana,
+    # contra 9 s (e picos de 20 s) com `low`.
+    gemini_raciocinio: str = "minimal"
+    # Para onde o pedido vai quando o modelo segue sobrecarregado ("high demand")
+    # depois das tentativas, desde que nada da resposta tenha saído ainda. Cada
+    # modelo tem a sua fila de capacidade no Google. Vazio desliga.
+    gemini_modelo_reserva: str = "gemini-3.1-flash-lite"
+    # Modelo por uso da IA (JSON no `.env`, como `{"chat": "gemini-3.5-flash-lite"}`).
+    # O que faltar vem de `GEMINI_MODELOS_PADRAO`.
+    gemini_modelos: Annotated[dict[str, str], NoDecode] = {}
+
+    # Quem gera os embeddings do vault, separado de quem conversa. Vazio usa o
+    # `IA_PROVEDOR`. Com `ollama`, o vault fica no `bge-m3` da máquina, sem cota
+    # nenhuma, e o Gemini fica só para gerar texto. Trocar pede reingerir o vault:
+    # vetores de modelos diferentes não se comparam.
+    ia_provedor_embeddings: str = ""
+    # Reserva da geração de texto: quando o provedor principal falha (cota
+    # esgotada, sobrecarga, fora do ar) antes de mandar qualquer pedaço, o pedido
+    # vai para este. Vazio desliga. Hoje só o `ollama` faz sentido aqui.
+    ia_reserva: str = ""
+    # Depois de uma falha do principal, os pedidos daquele modelo vão direto
+    # para a reserva por estes segundos, em vez de esperar o erro de novo a cada
+    # pedido (a cota do dia, quando acaba, não volta em segundos).
+    ia_pausa_apos_falha: float = 60
+    # Quanto tempo o Ollama mantém o modelo carregado depois de um pedido (o
+    # `keep_alive` dele, como `30m`; vazio é o padrão do Ollama, 5 minutos). Com
+    # valor e `IA_RESERVA=ollama`, a API também carrega o modelo de reserva ao
+    # subir: a primeira carga leva mais de um minuto nesta máquina, e a reserva
+    # que demora isso na primeira falha do Gemini parece travada.
+    ollama_manter_carregado: str = ""
 
     # Segundos. A leitura é o intervalo máximo entre dois pedaços da resposta, e
     # não o tempo total: o primeiro pedaço demora quando o Ollama ainda está
@@ -240,6 +339,26 @@ class Settings(BaseSettings):
     # novo nesse prazo cancela a exclusão.
     prazo_exclusao_dias: int = 30
 
+    @field_validator("gemini_modelos", mode="before")
+    @classmethod
+    def _ler_gemini_modelos(cls, valor: Any) -> Any:
+        """JSON no `.env`; vazio (o compose passa assim quando não há) é nenhum."""
+        if isinstance(valor, str):
+            return json.loads(valor) if valor.strip() else {}
+        return valor
+
+    def modelo_gemini(self, uso: str) -> str:
+        """O modelo do Gemini para este uso da IA.
+
+        Na ordem: o do uso em `GEMINI_MODELOS`; no chat, o `GEMINI_MODELO`; o
+        padrão do uso; e, para um uso sem padrão, o das tarefas ou o do chat.
+        """
+        if modelo := self.gemini_modelos.get(uso):
+            return modelo
+        if uso == "chat":
+            return self.gemini_modelo
+        return GEMINI_MODELOS_PADRAO.get(uso) or self.gemini_modelo_tarefas or self.gemini_modelo
+
     @property
     def formato_de_log(self) -> str:
         return self.log_formato or ("json" if self.environment == "production" else "texto")
@@ -275,10 +394,33 @@ class Settings(BaseSettings):
 
         if self.ia_provedor not in PROVEDORES_DE_IA:
             raise ValueError(f"IA_PROVEDOR precisa ser um de: {', '.join(PROVEDORES_DE_IA)}")
+        for nome, valor in (
+            ("IA_PROVEDOR_EMBEDDINGS", self.ia_provedor_embeddings),
+            ("IA_RESERVA", self.ia_reserva),
+        ):
+            if valor and valor not in PROVEDORES_DE_IA:
+                raise ValueError(
+                    f"{nome} precisa ser vazio ou um de: {', '.join(PROVEDORES_DE_IA)}"
+                )
+        if desconhecidos := set(self.gemini_modelos) - set(USOS_DA_IA):
+            raise ValueError(
+                f"GEMINI_MODELOS tem usos desconhecidos: {', '.join(sorted(desconhecidos))}"
+            )
         # O `eco` devolve a pergunta do aluno: em produção, seria um chat que
         # finge responder.
-        if self.environment == "production" and self.ia_provedor != "ollama":
-            raise ValueError("Em produção, IA_PROVEDOR precisa ser 'ollama'")
+        if self.environment == "production" and self.ia_provedor == "eco":
+            raise ValueError("Em produção, IA_PROVEDOR precisa ser 'ollama' ou 'gemini'")
+        # Sem a chave, todo pedido ao Gemini falharia; em produção, melhor não
+        # subir. Em desenvolvimento sobe, e o chat responde "IA indisponível".
+        if (
+            self.environment == "production"
+            and self.ia_provedor == "gemini"
+            and not self.gemini_api_key.strip()
+        ):
+            raise ValueError(
+                "IA_PROVEDOR=gemini pede GEMINI_API_KEY: crie uma chave em "
+                "https://aistudio.google.com/apikey"
+            )
 
         if self.log_formato and self.log_formato not in FORMATOS_DE_LOG:
             raise ValueError(f"LOG_FORMATO precisa ser um de: {', '.join(FORMATOS_DE_LOG)}")
@@ -289,6 +431,12 @@ class Settings(BaseSettings):
         # um deploy no meio a perde sem deixar rastro.
         if self.environment == "production" and self.fila != "redis":
             raise ValueError("Em produção, FILA precisa ser 'redis'")
+
+        if self.sandbox_modo not in MODOS_DA_SANDBOX:
+            raise ValueError(f"SANDBOX_MODO precisa ser um de: {', '.join(MODOS_DA_SANDBOX)}")
+        # O modo `processo` roda código de qualquer aluno sem isolamento.
+        if self.environment == "production" and self.sandbox_modo == "processo":
+            raise ValueError("Em produção, SANDBOX_MODO não pode ser 'processo'")
         return self
 
 

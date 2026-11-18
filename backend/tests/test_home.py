@@ -6,6 +6,8 @@ from zoneinfo import ZoneInfo
 import fakeredis
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import update
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -13,12 +15,14 @@ from app.models import (
     Atividade,
     Modulo,
     OrigemXP,
+    ProgressoUsuario,
     RespostaUsuario,
     Streak,
     TipoAtividade,
     Trilha,
     Usuario,
 )
+from app.services import conquistas as servico_conquistas
 from app.services import gamificacao, progresso, xp
 
 
@@ -320,3 +324,98 @@ def test_trilha_terminada_deixa_de_ser_a_atual(
 
     assert corpo["slug"] == "so"
     assert corpo["proximo_modulo"] == "Processos"
+
+
+def test_trilha_terminada_mais_recente_nao_esconde_a_que_esta_em_andamento(
+    cliente: TestClient,
+    db: Session,
+    usuario: Usuario,
+    autenticado: dict[str, str],
+    trilha_com_passos: Trilha,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A terminada sai na consulta agregada, sem calcular estado trilha por trilha."""
+    outra = Trilha(slug="so", nome="Sistemas Operacionais", disciplina="SO", periodo=3)
+    outra.publicada = True
+    outra.modulos.append(Modulo(ordem=1, titulo="Processos"))
+    db.add(outra)
+    db.commit()
+    progresso.concluir_passo(
+        db, usuario_id=usuario.id, trilha=trilha_com_passos, modulo=trilha_com_passos.modulos[0]
+    )
+    progresso.concluir_passo(db, usuario_id=usuario.id, trilha=outra, modulo=outra.modulos[0])
+    # A terminada foi mexida por último (o `now()` do SQLite é por segundo).
+    antes = datetime.now(UTC) - timedelta(hours=1)
+    db.execute(
+        update(ProgressoUsuario)
+        .where(ProgressoUsuario.trilha_id == trilha_com_passos.id)
+        .values(atualizado_em=antes)
+    )
+    db.commit()
+    calculos: list[int] = []
+    estados_originais = progresso.estados_dos_passos
+
+    def contar(*args, **kwargs):
+        calculos.append(kwargs["trilha"].id)
+        return estados_originais(*args, **kwargs)
+
+    monkeypatch.setattr(progresso, "estados_dos_passos", contar)
+
+    corpo = cliente.get("/api/v1/trilhas/atual", headers=autenticado).json()
+
+    assert (corpo["slug"], corpo["progresso"], corpo["proximo_modulo"]) == ("redes", 1, "TCP/IP")
+    assert calculos == [trilha_com_passos.id]
+
+
+def test_conquistas_no_postgres_agregam_no_fuso_do_aluno() -> None:
+    """No PostgreSQL a conta sai do banco, com o horário convertido pelo `timezone()`."""
+    dialeto = postgresql.dialect()
+    madrugada = str(servico_conquistas.consulta_de_madrugada(1).compile(dialect=dialeto))
+    maior_dia = str(servico_conquistas.consulta_do_maior_dia(1).compile(dialect=dialeto))
+
+    assert "EXISTS" in madrugada
+    assert "timezone(" in madrugada
+    assert "EXTRACT(hour FROM timezone(" in madrugada
+    assert "GROUP BY CAST(timezone(" in maior_dia
+    assert "max(" in maior_dia
+
+
+@pytest.mark.postgres
+def test_coruja_e_maratonista_no_postgres(db_postgres: Session) -> None:
+    fuso = ZoneInfo(settings.fuso_horario)
+    trilha = Trilha(slug="conquistas-pg", nome="Conquistas", disciplina="PG", periodo=1)
+    modulo = Modulo(ordem=1, titulo="Um")
+    modulo.atividades.append(
+        Atividade(ordem=1, tipo=TipoAtividade.terminal, enunciado="Rode", xp=10)
+    )
+    trilha.modulos.append(modulo)
+    aluno = Usuario(email="conquistas-pg@ufrpe.br", username="conquistas_pg", nome_exibicao="PG")
+    db_postgres.add_all([trilha, aluno])
+    db_postgres.commit()
+    atividade = modulo.atividades[0]
+
+    def resultado() -> dict[str, bool]:
+        return {c.id: c.desbloqueada for c in servico_conquistas.conquistas(db_postgres, aluno)}
+
+    # 22h e 10h do mesmo dia local; 40 + 20 min passam de 60 só somados no dia local.
+    _responder(
+        db_postgres,
+        aluno,
+        atividade,
+        segundos=40 * 60,
+        quando=datetime(2026, 3, 10, 22, tzinfo=fuso),
+    )
+    assert not resultado()["coruja"]
+    assert not resultado()["maratonista"]
+
+    _responder(
+        db_postgres,
+        aluno,
+        atividade,
+        segundos=20 * 60,
+        quando=datetime(2026, 3, 10, 10, tzinfo=fuso),
+    )
+    _responder(db_postgres, aluno, atividade, quando=datetime(2026, 3, 11, 1, 30, tzinfo=fuso))
+    assert resultado()["coruja"]
+    assert resultado()["maratonista"]
+    assert resultado()["primeiro-passo"]

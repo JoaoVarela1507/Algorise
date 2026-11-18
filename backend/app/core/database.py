@@ -21,7 +21,13 @@ NAMING_CONVENTION = {
 metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 # `pool_pre_ping` descarta conexões mortas — o container do banco pode reiniciar
-# sem a API perceber.
+# sem a API perceber. Custa um `SELECT 1` por checkout, e fica mesmo assim: o
+# pooler de sessão do Supabase derruba conexão ociosa, e sem o ping o primeiro
+# request depois disso estoura 500 em vez de reconectar.
+#
+# `pool_recycle` troca a conexão antes de o pooler matá-la por ociosidade: o
+# ping passa a quase sempre encontrar conexão viva (um ida e volta, sem o custo
+# de reconectar no meio do request).
 #
 # `connect_timeout` existe para o /ready: sem ele, com o banco fora, a tentativa
 # de conexão fica pendurada no timeout de TCP do sistema e o endpoint nunca
@@ -38,6 +44,7 @@ _argumentos_de_conexao = (
 engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
+    pool_recycle=300,
     connect_args=_argumentos_de_conexao,
 )
 

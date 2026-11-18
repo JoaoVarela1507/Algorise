@@ -42,8 +42,11 @@ function App() {
           <Toaster />
         </ConfiguracaoAnimacoes>
       </BrowserRouter>
-      {/* Só no `npm run dev`: o Vite remove isto do build de produção. */}
-      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+      {/* Só no `npm run dev`: o Vite remove isto do build de produção. Em tela
+          estreita fica de fora: o botão cobria a aba "Ajustes" da barra de baixo. */}
+      {import.meta.env.DEV && window.matchMedia('(min-width: 768px)').matches && (
+        <ReactQueryDevtools initialIsOpen={false} />
+      )}
     </QueryClientProvider>
   )
 }

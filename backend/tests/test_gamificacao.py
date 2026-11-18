@@ -5,10 +5,12 @@ from datetime import timedelta
 import fakeredis
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
-from app.models import OrigemXP, Usuario
+from app.models import OrigemXP, Streak, Usuario
 from app.services import gamificacao, niveis, streak, xp
 
 # --------------------------------------------------------------------------
@@ -196,3 +198,92 @@ def test_a_janela_tem_prazo(redis_falso: fakeredis.FakeRedis) -> None:
 
     chave = next(iter(redis_falso.keys("*xp:janela*")))
     assert 0 < redis_falso.ttl(chave) <= settings.xp_janela_segundos
+
+
+# --------------------------------------------------------------------------
+# Leitura sem efeito e primeiro acesso concorrente
+# --------------------------------------------------------------------------
+
+
+def test_painel_nao_cria_a_linha_do_streak(
+    cliente: TestClient, db: Session, usuario: Usuario, autenticado: dict[str, str]
+) -> None:
+    """GET não escreve: a linha nasce no check-in, não na leitura."""
+    corpo = cliente.get("/api/v1/gamificacao/me", headers=autenticado).json()
+
+    assert (corpo["streak_dias"], corpo["maior_streak"]) == (0, 0)
+    assert db.scalar(select(func.count()).select_from(Streak)) == 0
+
+
+def test_leitura_mostra_zero_sem_gravar_o_zero(
+    cliente: TestClient, db: Session, usuario: Usuario, autenticado: dict[str, str]
+) -> None:
+    db.add(
+        Streak(
+            usuario_id=usuario.id,
+            dias_consecutivos=5,
+            maior_sequencia=5,
+            ultimo_acesso=streak.hoje_no_fuso() - timedelta(days=10),
+        )
+    )
+    db.commit()
+
+    corpo = cliente.get("/api/v1/gamificacao/me", headers=autenticado).json()
+
+    assert (corpo["streak_dias"], corpo["maior_streak"]) == (0, 5)
+    db.expire_all()
+    assert db.scalar(select(Streak.dias_consecutivos)) == 5
+
+
+def test_checkin_depois_da_leitura_de_sequencia_quebrada_recomeca_em_um(
+    cliente: TestClient, db: Session, usuario: Usuario, autenticado: dict[str, str]
+) -> None:
+    """O zero não gravado não muda a conta: ela decide por `ultimo_acesso`."""
+    db.add(
+        Streak(
+            usuario_id=usuario.id,
+            dias_consecutivos=5,
+            maior_sequencia=5,
+            ultimo_acesso=streak.hoje_no_fuso() - timedelta(days=10),
+        )
+    )
+    db.commit()
+    cliente.get("/api/v1/gamificacao/me", headers=autenticado)
+
+    corpo = cliente.post("/api/v1/gamificacao/checkin", headers=autenticado).json()
+
+    assert (corpo["streak_dias"], corpo["maior_streak"]) == (1, 5)
+
+
+def test_primeiro_acesso_concorrente_nao_estoura(
+    db: Session,
+    usuario: Usuario,
+    sessao_factory: sessionmaker[Session],
+    redis_falso: fakeredis.FakeRedis,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GET /me e POST /checkin chegam juntos no primeiro acesso.
+
+    Simula o request concorrente gravando a linha entre o select (que não achou
+    nada) e o insert deste: antes do upsert, isso era `IntegrityError` e 500.
+    """
+    insercao_original = streak.insercao_idempotente
+
+    def outro_request_ganha_a_corrida(dialeto: str, usuario_id: int):
+        with sessao_factory() as outra:
+            outra.add(Streak(usuario_id=usuario_id, dias_consecutivos=0, maior_sequencia=0))
+            outra.commit()
+        return insercao_original(dialeto, usuario_id)
+
+    monkeypatch.setattr(streak, "insercao_idempotente", outro_request_ganha_a_corrida)
+
+    resultado = streak.registrar_acesso(db, usuario.id)
+
+    assert resultado.dias_consecutivos == 1
+    assert db.scalar(select(func.count()).select_from(Streak)) == 1
+
+
+def test_insercao_do_streak_no_postgres_ignora_o_conflito() -> None:
+    sql = str(streak.insercao_idempotente("postgresql", 1).compile(dialect=postgresql.dialect()))
+
+    assert "ON CONFLICT (usuario_id) DO NOTHING" in sql

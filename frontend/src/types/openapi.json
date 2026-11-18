@@ -1046,6 +1046,11 @@
             "title": "Correta",
             "type": "boolean"
           },
+          "corrigida_por_ia": {
+            "default": false,
+            "title": "Corrigida Por Ia",
+            "type": "boolean"
+          },
           "em_analise": {
             "title": "Em Analise",
             "type": "boolean"
@@ -1053,6 +1058,17 @@
           "feedback": {
             "title": "Feedback",
             "type": "string"
+          },
+          "sugestao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sugestao"
           },
           "tentativa": {
             "title": "Tentativa",
@@ -1880,6 +1896,42 @@
           "exercicios"
         ],
         "title": "ExerciciosDoPasso",
+        "type": "object"
+      },
+      "FalaDaTranscricao": {
+        "description": "Um trecho da transcrição, com o segundo do vídeo em que começa.",
+        "properties": {
+          "fim": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fim"
+          },
+          "inicio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inicio"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "texto"
+        ],
+        "title": "FalaDaTranscricao",
         "type": "object"
       },
       "Grupo": {
@@ -3478,6 +3530,11 @@
             "title": "Trilha Slug",
             "type": "string"
           },
+          "video_assistido": {
+            "default": false,
+            "title": "Video Assistido",
+            "type": "boolean"
+          },
           "video_url": {
             "anyOf": [
               {
@@ -4451,6 +4508,21 @@
         "title": "TipoTrilha",
         "type": "string"
       },
+      "TranscricaoDoPasso": {
+        "description": "A transcrição do vídeo do passo. Vazia quando o vídeo ainda não foi transcrito.",
+        "properties": {
+          "falas": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FalaDaTranscricao"
+            },
+            "title": "Falas",
+            "type": "array"
+          }
+        },
+        "title": "TranscricaoDoPasso",
+        "type": "object"
+      },
       "Trilha": {
         "properties": {
           "categoria": {
@@ -5343,6 +5415,20 @@
         ],
         "title": "Versao",
         "type": "object"
+      },
+      "VideoAssistido": {
+        "properties": {
+          "video_assistido_em": {
+            "format": "date-time",
+            "title": "Video Assistido Em",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video_assistido_em"
+        ],
+        "title": "VideoAssistido",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -5356,7 +5442,7 @@
   "info": {
     "description": "API do Algorise. As rotas de negócio vivem sob `/api/v1`; `/health`, `/ready` e `/version` ficam fora do prefixo por serem de operação.",
     "title": "Algorise API",
-    "version": "nao-versionado"
+    "version": "0.24.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -10448,6 +10534,140 @@
           }
         ],
         "summary": "Reporta o vídeo de um módulo gerado automaticamente",
+        "tags": [
+          "trilhas"
+        ]
+      }
+    },
+    "/api/v1/trilhas/{slug}/passos/{ordem}/transcricao": {
+      "get": {
+        "description": "As falas do vídeo, com o segundo em que cada uma começa (acessibilidade, #21). Lista vazia quando o vídeo ainda não foi transcrito.",
+        "operationId": "obterTranscricao",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ordem",
+            "required": true,
+            "schema": {
+              "title": "Ordem",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscricaoDoPasso"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Transcrição do vídeo do passo",
+        "tags": [
+          "trilhas"
+        ]
+      }
+    },
+    "/api/v1/trilhas/{slug}/passos/{ordem}/video-assistido": {
+      "post": {
+        "description": "Chamado quando o player chega ao fim do vídeo (ou do trecho do módulo). Idempotente: repetir mantém a data da primeira vez.",
+        "operationId": "marcarVideoAssistido",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ordem",
+            "required": true,
+            "schema": {
+              "title": "Ordem",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoAssistido"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaDeErro"
+                }
+              }
+            },
+            "description": "Erro inesperado"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Marca o vídeo do passo como assistido",
         "tags": [
           "trilhas"
         ]

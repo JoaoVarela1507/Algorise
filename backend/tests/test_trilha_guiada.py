@@ -24,6 +24,7 @@ from app.models import (
     Usuario,
 )
 from app.services import assuntos_ementa
+from app.services import trilha_guiada as servico_guiada
 from tests.test_ementa_assuntos import (
     DISCIPLINA,
     TEXTO_DA_EMENTA,
@@ -508,3 +509,70 @@ def test_aluno_escolhe_na_revisao_as_disciplinas_da_trilha(
     }
     # Só a disciplina que entrou agora foi ao catálogo.
     assert provedor.embedados == ["Cálculo I: Derivadas"]
+
+
+# --- trilha guiada lembrada na sessão -----------------------------------------------------
+
+
+def contar_montagens(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Quantas vezes a trilha guiada foi montada da ementa (a consulta pesada)."""
+    montagens: list[int] = []
+    original = servico_guiada.ementa_confirmada
+
+    def contar(db: Session, usuario_id: int):
+        montagens.append(usuario_id)
+        return original(db, usuario_id)
+
+    monkeypatch.setattr(servico_guiada, "ementa_confirmada", contar)
+    return montagens
+
+
+def test_um_request_monta_a_trilha_guiada_uma_vez_so(
+    cliente: TestClient,
+    autenticado: dict[str, str],
+    provedor: ProvedorDeEmenta,
+    python: Trilha,
+    midia: Path,
+    db: Session,
+    usuario: Usuario,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A tela da trilha guiada e o conteúdo do passo calculavam os estados mais de uma vez,
+    e cada cálculo remontava a trilha a partir da ementa."""
+    com_nivel(db, usuario, NivelExperiencia.medio)
+    confirmada(cliente, autenticado, provedor)
+    montagens = contar_montagens(monkeypatch)
+
+    guiada(cliente, autenticado)
+    assert len(montagens) == 1
+
+    assert cliente.get("/api/v1/trilhas/python/passos/4", headers=autenticado).status_code == 200
+    assert len(montagens) == 2
+
+
+def test_trilha_guiada_lembrada_e_esquecida_no_commit(
+    cliente: TestClient,
+    autenticado: dict[str, str],
+    provedor: ProvedorDeEmenta,
+    python: Trilha,
+    midia: Path,
+    db: Session,
+    usuario: Usuario,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Depois de um commit a ementa, o nível ou os módulos podem ter mudado."""
+    com_nivel(db, usuario, NivelExperiencia.medio)
+    confirmada(cliente, autenticado, provedor)
+    aluno = db.merge(usuario)
+    montagens = contar_montagens(monkeypatch)
+
+    primeira = servico_guiada.montar(db, aluno)
+    assert servico_guiada.montar(db, aluno) is primeira
+    assert len(montagens) == 1
+
+    aluno.nivel_experiencia = NivelExperiencia.baixo
+    db.commit()
+
+    _, itens = servico_guiada.montar(db, aluno)
+    assert len(montagens) == 2
+    assert any(item.base for item in itens)

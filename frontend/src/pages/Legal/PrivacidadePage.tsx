@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 // Mesma versão do backend (`VERSAO_TERMOS`): o aceite registrado no cadastro
 // aponta para ela. Mudou o texto de forma relevante, muda as duas.
@@ -11,11 +11,31 @@ const VERSAO = '2026-09-29'
  * `backend/app/models`). Precisa de revisão antes de o app ir a público.
  */
 export function PrivacidadePage() {
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // Volta para onde o aluno estava (o cadastro, as configurações), e não para o
+  // início. Aberta numa aba nova (o link do cadastro), fecha a aba: o formulário
+  // continua na de trás. Sem nenhuma das duas, vai para o início.
+  const voltar = () => {
+    if (location.key !== 'default') {
+      navigate(-1)
+      return
+    }
+    if (window.history.length <= 1) window.close()
+    // O navegador pode recusar fechar; aí a aba continua aqui e segue para o início.
+    navigate('/boas-vindas')
+  }
+
   return (
     <main className="mx-auto max-w-2xl px-6 py-12 text-foreground">
-      <Link to="/boas-vindas" className="text-sm font-semibold text-primary hover:underline">
+      <button
+        type="button"
+        onClick={voltar}
+        className="text-sm font-semibold text-primary hover:underline"
+      >
         ← Voltar
-      </Link>
+      </button>
 
       <h1 className="mt-6 font-display text-3xl font-bold">
         Termos de uso e política de privacidade

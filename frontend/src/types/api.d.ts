@@ -1334,6 +1334,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/trilhas/{slug}/passos/{ordem}/transcricao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Transcrição do vídeo do passo
+         * @description As falas do vídeo, com o segundo em que cada uma começa (acessibilidade, #21). Lista vazia quando o vídeo ainda não foi transcrito.
+         */
+        get: operations["obterTranscricao"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trilhas/{slug}/passos/{ordem}/video-assistido": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Marca o vídeo do passo como assistido
+         * @description Chamado quando o player chega ao fim do vídeo (ou do trecho do módulo). Idempotente: repetir mantém a data da primeira vez.
+         */
+        post: operations["marcarVideoAssistido"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/usuarios/me": {
         parameters: {
             query?: never;
@@ -1883,10 +1923,17 @@ export interface components {
         Correcao: {
             /** Correta */
             correta: boolean;
+            /**
+             * Corrigida Por Ia
+             * @default false
+             */
+            corrigida_por_ia: boolean;
             /** Em Analise */
             em_analise: boolean;
             /** Feedback */
             feedback: string;
+            /** Sugestao */
+            sugestao?: string | null;
             /** Tentativa */
             tentativa: number;
             /** Xp Ganho */
@@ -2213,6 +2260,18 @@ export interface components {
             /** Exercicios */
             exercicios: components["schemas"]["ExercicioDePratica"][];
             status: components["schemas"]["StatusGeracao"];
+        };
+        /**
+         * FalaDaTranscricao
+         * @description Um trecho da transcrição, com o segundo do vídeo em que começa.
+         */
+        FalaDaTranscricao: {
+            /** Fim */
+            fim?: number | null;
+            /** Inicio */
+            inicio?: number | null;
+            /** Texto */
+            texto: string;
         };
         /** Grupo */
         Grupo: {
@@ -2834,6 +2893,11 @@ export interface components {
             trilha_nome: string;
             /** Trilha Slug */
             trilha_slug: string;
+            /**
+             * Video Assistido
+             * @default false
+             */
+            video_assistido: boolean;
             /** Video Url */
             video_url?: string | null;
             /**
@@ -3231,6 +3295,17 @@ export interface components {
          * @enum {string}
          */
         TipoTrilha: "guiada" | "livre" | "mista";
+        /**
+         * TranscricaoDoPasso
+         * @description A transcrição do vídeo do passo. Vazia quando o vídeo ainda não foi transcrito.
+         */
+        TranscricaoDoPasso: {
+            /**
+             * Falas
+             * @default []
+             */
+            falas: components["schemas"]["FalaDaTranscricao"][];
+        };
         /** Trilha */
         Trilha: {
             /** Categoria */
@@ -3525,6 +3600,14 @@ export interface components {
             nome: string;
             /** Versao */
             versao: string;
+        };
+        /** VideoAssistido */
+        VideoAssistido: {
+            /**
+             * Video Assistido Em
+             * Format: date-time
+             */
+            video_assistido_em: string;
         };
     };
     responses: never;
@@ -6981,6 +7064,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReporteDoModulo"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    obterTranscricao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                ordem: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranscricaoDoPasso"];
+                };
+            };
+            /** @description Dados inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+            /** @description Erro inesperado */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaDeErro"];
+                };
+            };
+        };
+    };
+    marcarVideoAssistido: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                ordem: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VideoAssistido"];
                 };
             };
             /** @description Dados inválidos */

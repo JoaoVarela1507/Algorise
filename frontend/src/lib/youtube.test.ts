@@ -15,12 +15,23 @@ describe('idDoVideo', () => {
 
 describe('urlDoPlayer', () => {
   it('toca só o trecho do módulo, em segundos inteiros', () => {
-    expect(urlDoPlayer('abc', 60.4, 599.2)).toBe(
-      'https://www.youtube-nocookie.com/embed/abc?rel=0&start=60&end=600',
-    )
+    const url = new URL(urlDoPlayer('abc', 60.4, 599.2))
+    expect(url.origin + url.pathname).toBe('https://www.youtube-nocookie.com/embed/abc')
+    expect(url.searchParams.get('start')).toBe('60')
+    expect(url.searchParams.get('end')).toBe('600')
   })
 
   it('sem intervalo, o vídeo inteiro', () => {
-    expect(urlDoPlayer('abc')).toBe('https://www.youtube-nocookie.com/embed/abc?rel=0')
+    const url = new URL(urlDoPlayer('abc'))
+    expect(url.searchParams.has('start')).toBe(false)
+    expect(url.searchParams.has('end')).toBe(false)
+  })
+
+  it('liga as legendas em português e os eventos do player (#21)', () => {
+    const url = new URL(urlDoPlayer('abc'))
+    expect(url.searchParams.get('cc_load_policy')).toBe('1')
+    expect(url.searchParams.get('cc_lang_pref')).toBe('pt')
+    expect(url.searchParams.get('enablejsapi')).toBe('1')
+    expect(url.searchParams.get('origin')).toBe(window.location.origin)
   })
 })

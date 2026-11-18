@@ -23,9 +23,11 @@ export function OpcoesAcessibilidade() {
     tamanhoFonte,
     altoContraste,
     reduzirAnimacoes,
+    mostrarCronometro,
     setTamanhoFonte,
     setAltoContraste,
     setReduzirAnimacoes,
+    setMostrarCronometro,
   } = useAccessibilityStore(useShallow((estado) => estado))
   const usuario = useAuthStore((estado) => estado.usuario)
   const salvarPreferencias = useAuthStore((estado) => estado.salvarPreferencias)
@@ -73,6 +75,17 @@ export function OpcoesAcessibilidade() {
             setReduzirAnimacoes(valor === 'sim')
             levarParaConta({ reduzirAnimacoes: valor === 'sim' })
           }}
+        />
+      </Opcao>
+      <Opcao
+        titulo="Cronômetro nas atividades"
+        descricao="Mostra o tempo sugerido de cada atividade. Vale neste aparelho."
+      >
+        <Segmentado
+          rotulo="Cronômetro nas atividades"
+          opcoes={[...simNao]}
+          valor={mostrarCronometro ? 'sim' : 'nao'}
+          onChange={(valor) => setMostrarCronometro(valor === 'sim')}
         />
       </Opcao>
     </>

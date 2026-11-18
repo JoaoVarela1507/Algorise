@@ -21,7 +21,7 @@ export interface AtividadeTerminalProps {
   tempoSugeridoSegundos?: number | null
   /** Começa já concluída quando o aluno volta a uma atividade que já fez. */
   concluida?: boolean
-  aoAvancar: () => void
+  aoAvancar: (errosAntesDeAcertar?: number) => void
 }
 
 export function AtividadeTerminal({

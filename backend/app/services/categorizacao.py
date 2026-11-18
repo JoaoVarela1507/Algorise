@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.ia import ProvedorIA
+from app.ia import ProvedorIA, para
 from app.ia.skills import categorizar_videos
 from app.ia.skills.ler_ementa import normalizar
 from app.models import DocumentoVault, Lacuna, StatusLacuna, Trilha, VideoLacuna, VideoYoutube
@@ -89,7 +89,7 @@ async def _perguntar(
 ) -> categorizar_videos.Categoria:
     pedacos = [
         pedaco
-        async for pedaco in provedor.gerar(
+        async for pedaco in para(provedor, "categorizacao").gerar(
             categorizar_videos.mensagens(texto, materias, assuntos),
             max_tokens=categorizar_videos.MAXIMO_DE_TOKENS,
             formato=categorizar_videos.FORMATO,

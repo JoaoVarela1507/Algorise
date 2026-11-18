@@ -13,10 +13,27 @@ export function idDoVideo(url: string): string | null {
   }
 }
 
-/** A URL do player, com o intervalo quando houver. */
+/**
+ * A URL do player, com o intervalo quando houver.
+ *
+ * - `cc_load_policy` e `cc_lang_pref`: legendas ligadas, em português quando o
+ *   vídeo tem (#21, acessibilidade). O aluno desliga no próprio player.
+ * - `enablejsapi` e `origin`: o player avisa a página dos eventos (o fim do
+ *   vídeo marca o passo como assistido), por `postMessage`.
+ */
 export function urlDoPlayer(id: string, inicio?: number | null, fim?: number | null): string {
-  const parametros = new URLSearchParams({ rel: '0' })
+  const parametros = new URLSearchParams({
+    rel: '0',
+    cc_load_policy: '1',
+    cc_lang_pref: 'pt',
+    hl: 'pt-BR',
+    enablejsapi: '1',
+  })
+  if (typeof window !== 'undefined') parametros.set('origin', window.location.origin)
   if (inicio != null) parametros.set('start', String(Math.floor(inicio)))
   if (fim != null) parametros.set('end', String(Math.ceil(fim)))
   return `https://www.youtube-nocookie.com/embed/${id}?${parametros}`
 }
+
+/** Estado "terminou" do player do YouTube (`YT.PlayerState.ENDED`). */
+export const VIDEO_TERMINOU = 0

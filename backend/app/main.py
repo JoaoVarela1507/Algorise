@@ -1,3 +1,7 @@
+import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -10,6 +14,7 @@ from app.core.erros import registrar_handlers
 from app.core.openapi import RESPOSTAS_PADRAO, TAGS, gerar_operation_id, incluir_esquemas
 from app.core.protecao_http import ProtecaoHTTP
 from app.core.rastreio import Rastreio
+from app.ia.provedor import aquecer_reserva
 from app.schemas.tempo_real import MensagemDoCliente, MensagemDoServidor
 from app.services import avatar
 
@@ -30,7 +35,17 @@ if settings.sentry_dsn:
         max_request_body_size="never",
     )
 
+
+@asynccontextmanager
+async def ciclo_de_vida(_: FastAPI) -> AsyncIterator[None]:
+    # O modelo de reserva carrega em segundo plano: a API sobe na hora.
+    aquecimento = asyncio.create_task(aquecer_reserva())
+    yield
+    aquecimento.cancel()
+
+
 app = FastAPI(
+    lifespan=ciclo_de_vida,
     title=settings.app_name,
     version=settings.app_version,
     description=(

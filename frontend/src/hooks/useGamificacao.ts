@@ -22,8 +22,12 @@ export function useCheckin() {
 
   return useMutation({
     mutationFn: registrarCheckin,
-    // A resposta já é o painel atualizado: usar direto evita uma ida a mais.
-    onSuccess: (painel) => queryClient.setQueryData(chaves.gamificacao.painel(), painel),
+    onSuccess: (painel) => {
+      // A resposta já é o painel atualizado: usar direto evita uma ida a mais.
+      queryClient.setQueryData(chaves.gamificacao.painel(), painel)
+      // "Em chamas" e outras conquistas dependem do streak que acabou de mudar.
+      void queryClient.invalidateQueries({ queryKey: chaves.gamificacao.conquistas() })
+    },
   })
 }
 

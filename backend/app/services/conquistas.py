@@ -6,6 +6,12 @@ inteiro, sem migração nem rotina para "desbloquear o que já devia estar".
 
 O `id` é o contrato com o frontend, que escolhe o ícone por ele; título e
 descrição vêm daqui para o texto morar num lugar só.
+
+As perguntas sobre o histórico de respostas (primeiro acerto, coruja,
+maratonista) são agregadas no banco: trazer todas as respostas do aluno para o
+Python crescia com o uso, e quem mais usa é quem mais abre a home. O horário
+local sai do `timezone()` do PostgreSQL. O SQLite (suíte e E2E) não tem fuso,
+então lá a conta continua no Python, com o mesmo resultado.
 """
 
 from collections import defaultdict
@@ -13,7 +19,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import Date, Select, cast, exists, extract, func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -37,7 +43,7 @@ class Conquista:
 
 def conquistas(db: Session, usuario: Usuario) -> list[Conquista]:
     """Todas as conquistas, na ordem do card, cada uma dizendo se já saiu."""
-    acertos = _horarios_dos_acertos(db, usuario.id)
+    no_postgres = db.get_bind().dialect.name == "postgresql"
     sequencia = streak.obter_streak(db, usuario.id)
 
     return [
@@ -45,7 +51,7 @@ def conquistas(db: Session, usuario: Usuario) -> list[Conquista]:
             id="primeiro-passo",
             titulo="Primeiro passo",
             descricao="Resolveu o primeiro desafio.",
-            desbloqueada=bool(acertos),
+            desbloqueada=_resolveu_algum(db, usuario.id),
         ),
         Conquista(
             id="em-chamas",
@@ -63,13 +69,15 @@ def conquistas(db: Session, usuario: Usuario) -> list[Conquista]:
             id="coruja",
             titulo="Coruja",
             descricao="Resolveu um desafio depois da meia-noite.",
-            desbloqueada=any(quando.hour < HORA_FIM_DA_MADRUGADA for quando in acertos),
+            desbloqueada=_resolveu_de_madrugada(db, usuario.id, no_postgres=no_postgres),
         ),
         Conquista(
             id="maratonista",
             titulo="Maratonista",
             descricao=f"Estudou {MINUTOS_MARATONA} minutos em um único dia.",
-            desbloqueada=_maior_dia_em_minutos(db, usuario.id) >= MINUTOS_MARATONA,
+            desbloqueada=(
+                _maior_dia_em_minutos(db, usuario.id, no_postgres=no_postgres) >= MINUTOS_MARATONA
+            ),
         ),
         Conquista(
             id="trilha-completa",
@@ -87,17 +95,55 @@ def _no_local(quando: datetime) -> datetime:
     return quando.astimezone(ZoneInfo(settings.fuso_horario))
 
 
-def _horarios_dos_acertos(db: Session, usuario_id: int) -> list[datetime]:
-    linhas = db.scalars(
-        select(RespostaUsuario.criado_em).where(
-            RespostaUsuario.usuario_id == usuario_id, RespostaUsuario.correta.is_(True)
+def _acertos(usuario_id: int) -> tuple:
+    return (RespostaUsuario.usuario_id == usuario_id, RespostaUsuario.correta.is_(True))
+
+
+def _resolveu_algum(db: Session, usuario_id: int) -> bool:
+    return bool(db.scalar(select(exists().where(*_acertos(usuario_id)))))
+
+
+def _horario_local():
+    """`criado_em` no fuso do aluno, como horário sem fuso (só no PostgreSQL)."""
+    return func.timezone(settings.fuso_horario, RespostaUsuario.criado_em)
+
+
+def consulta_de_madrugada(usuario_id: int) -> Select:
+    """Algum acerto entre meia-noite e `HORA_FIM_DA_MADRUGADA`, no fuso do aluno."""
+    return select(
+        exists().where(
+            *_acertos(usuario_id), extract("hour", _horario_local()) < HORA_FIM_DA_MADRUGADA
         )
     )
-    return [_no_local(quando) for quando in linhas]
 
 
-def _maior_dia_em_minutos(db: Session, usuario_id: int) -> int:
-    """O dia (no fuso do aluno) com mais tempo gasto nas atividades."""
+def consulta_do_maior_dia(usuario_id: int) -> Select:
+    """Os segundos do dia (no fuso do aluno) com mais tempo gasto nas atividades."""
+    por_dia = (
+        select(func.sum(RespostaUsuario.tempo_gasto_segundos).label("segundos"))
+        .where(
+            RespostaUsuario.usuario_id == usuario_id,
+            RespostaUsuario.tempo_gasto_segundos.is_not(None),
+        )
+        .group_by(cast(_horario_local(), Date))
+        .subquery()
+    )
+    return select(func.coalesce(func.max(por_dia.c.segundos), 0))
+
+
+def _resolveu_de_madrugada(db: Session, usuario_id: int, *, no_postgres: bool) -> bool:
+    if no_postgres:
+        return bool(db.scalar(consulta_de_madrugada(usuario_id)))
+
+    horarios = db.scalars(select(RespostaUsuario.criado_em).where(*_acertos(usuario_id)))
+    return any(_no_local(quando).hour < HORA_FIM_DA_MADRUGADA for quando in horarios)
+
+
+def _maior_dia_em_minutos(db: Session, usuario_id: int, *, no_postgres: bool) -> int:
+    """O dia (no fuso do aluno) com mais tempo gasto nas atividades, em minutos."""
+    if no_postgres:
+        return int(db.scalar(consulta_do_maior_dia(usuario_id)) or 0) // 60
+
     linhas = db.execute(
         select(RespostaUsuario.criado_em, RespostaUsuario.tempo_gasto_segundos).where(
             RespostaUsuario.usuario_id == usuario_id,

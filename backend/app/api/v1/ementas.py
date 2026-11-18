@@ -5,7 +5,8 @@ import logging
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Response, UploadFile, status
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import UsuarioAtual
 from app.core.config import settings
@@ -14,7 +15,7 @@ from app.core.erros import ErroDeNegocio
 from app.core.fila import Fila, get_fila
 from app.ia import IAIndisponivel, ProvedorIA, get_provedor_ia
 from app.ia.skills import ler_ementa
-from app.models import AssuntoEmenta, Ementa, StatusAssuntos, Usuario
+from app.models import AssuntoEmenta, DisciplinaEmenta, Ementa, StatusAssuntos, Usuario
 from app.schemas.academico import (
     AssuntoLido,
     AssuntosDaEmenta,
@@ -118,7 +119,7 @@ def obter_ementa(
 def obter_assuntos(
     ementa_id: int, usuario: UsuarioAtual, db: Session = Depends(get_db)
 ) -> AssuntosDaEmenta:
-    return _assuntos(_do_aluno(db, usuario, ementa_id))
+    return _assuntos(db, _do_aluno(db, usuario, ementa_id))
 
 
 @router.put(
@@ -156,7 +157,7 @@ def revisar_assuntos(
             code="ia_indisponivel",
             message=assuntos_ementa.ERRO_IA_FORA,
         ) from erro
-    return _assuntos(ementa)
+    return _assuntos(db, ementa)
 
 
 @router.post(
@@ -177,8 +178,22 @@ def confirmar_ementa(
     return EmentaStatus.model_validate(ementa)
 
 
-def _assuntos(ementa: Ementa) -> AssuntosDaEmenta:
+def _assuntos(db: Session, ementa: Ementa) -> AssuntosDaEmenta:
     prontos = ementa.status_assuntos is StatusAssuntos.prontos
+    if prontos:
+        # Disciplinas, assuntos, módulos e lacunas em quatro consultas, e não
+        # uma por assunto: um PPC inteiro tem centenas de assuntos, e com o banco
+        # na rede (Supabase) a revisão levava mais de um minuto para abrir.
+        db.execute(
+            select(Ementa)
+            .where(Ementa.id == ementa.id)
+            .options(
+                selectinload(Ementa.disciplinas)
+                .selectinload(DisciplinaEmenta.assuntos)
+                .options(selectinload(AssuntoEmenta.modulo), selectinload(AssuntoEmenta.lacuna))
+            )
+            .execution_options(populate_existing=True)
+        ).scalar_one()
     return AssuntosDaEmenta(
         status_assuntos=ementa.status_assuntos,
         erro_assuntos=ementa.erro_assuntos,

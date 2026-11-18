@@ -6,6 +6,7 @@ from datetime import UTC, date, datetime, timedelta
 import fakeredis
 import pytest
 from fastapi.testclient import TestClient
+from redis import Redis
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -203,3 +204,50 @@ def test_virada_do_dia_vem_do_fuso(monkeypatch: pytest.MonkeyPatch) -> None:
     segundos = streak._segundos_ate_amanha(hoje)
 
     assert 1 <= segundos <= 24 * 60 * 60
+
+
+# --------------------------------------------------------------------------
+# Atualização atômica do sorted set
+# --------------------------------------------------------------------------
+
+
+def test_atualizar_sem_ranking_nao_cria_a_chave(redis_falso: fakeredis.FakeRedis) -> None:
+    ranking.atualizar(1, 10, datetime.now(UTC))
+
+    assert not redis_falso.exists(ranking.CHAVE_RANKING)
+
+
+def test_atualizar_renova_o_ttl(db: Session, redis_falso: fakeredis.FakeRedis) -> None:
+    """Quem ganha XP mantém o ranking vivo; o `aquecer` só volta se ele parar."""
+    ana = aluno(db, "ana", 10)
+    ranking.aquecer(db)
+    redis_falso.expire(ranking.CHAVE_RANKING, 5)
+
+    ranking.atualizar(ana.id, 20, datetime.now(UTC))
+
+    assert 5 < redis_falso.ttl(ranking.CHAVE_RANKING) <= settings.cache_ttl_ranking
+
+
+def test_chave_que_vence_no_meio_da_atualizacao_nao_vira_ranking_de_um_so(
+    db: Session, redis_falso: fakeredis.FakeRedis, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A chave vence entre a checagem e a escrita.
+
+    Com `EXISTS` e `ZADD` soltos, o `ZADD` recriava a chave com um aluno só e sem
+    TTL — e esse ranking de uma linha ficava no ar para sempre.
+    """
+    ana = aluno(db, "ana", 10)
+    aluno(db, "bia", 30)
+    ranking.aquecer(db)
+    checagem_original = Redis.exists
+
+    def checa_e_a_chave_vence(self: Redis, *nomes: str) -> int:
+        resposta = checagem_original(self, *nomes)
+        redis_falso.delete(ranking.CHAVE_RANKING)
+        return resposta
+
+    monkeypatch.setattr(Redis, "exists", checa_e_a_chave_vence)
+
+    ranking.atualizar(ana.id, 50, datetime.now(UTC))
+
+    assert not redis_falso.exists(ranking.CHAVE_RANKING)

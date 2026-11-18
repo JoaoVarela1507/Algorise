@@ -14,7 +14,7 @@ import {
  * O sino da sidebar (#37): quantas faltam ler e a lista do que chegou, inclusive
  * com o aluno offline. Ao vivo, o número sobe pelo WebSocket.
  */
-export function CentroNotificacoes() {
+export function CentroNotificacoes({ compacto = false }: { compacto?: boolean }) {
   const [aberto, setAberto] = useState(false)
   const caixaRef = useRef<HTMLDivElement>(null)
   const naoLidas = useNaoLidas().data ?? 0
@@ -39,18 +39,29 @@ export function CentroNotificacoes() {
   }, [aberto])
 
   return (
-    <div ref={caixaRef} className="relative">
+    // Compacto (barra do topo do celular), a lista se ancora na barra inteira, e
+    // não no sino: ancorada nele, passava da borda esquerda da tela.
+    <div ref={caixaRef} className={compacto ? undefined : 'relative'}>
       <button
         type="button"
         onClick={() => setAberto((atual) => !atual)}
         aria-expanded={aberto}
         aria-label={naoLidas ? `Notificações, ${naoLidas} não lidas` : 'Notificações'}
-        className="flex w-full items-center gap-2 rounded-lg px-4 py-2 font-bold text-foreground transition-colors hover:bg-accent/60"
+        className={cn(
+          'flex items-center gap-2 rounded-lg font-bold text-foreground transition-colors hover:bg-accent/60',
+          // No celular (barra do topo), só o sino, com o número por cima.
+          compacto ? 'relative size-11 justify-center' : 'w-full px-4 py-2',
+        )}
       >
         <Bell className="size-5" />
-        Notificações
+        {!compacto && 'Notificações'}
         {naoLidas > 0 && (
-          <span className="ml-auto rounded-full bg-primary px-2 text-xs text-primary-foreground">
+          <span
+            className={cn(
+              'rounded-full bg-primary text-xs text-primary-foreground',
+              compacto ? 'absolute right-0.5 top-0.5 min-w-5 px-1 text-center' : 'ml-auto px-2',
+            )}
+          >
             {naoLidas > 99 ? '99+' : naoLidas}
           </span>
         )}
@@ -59,13 +70,18 @@ export function CentroNotificacoes() {
       <AnimatePresence>
         {aberto && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: compacto ? -8 : 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
+            exit={{ opacity: 0, y: compacto ? -8 : 8 }}
             transition={{ duration: 0.15 }}
             role="dialog"
             aria-label="Notificações"
-            className="absolute bottom-full left-0 z-50 mb-2 w-80 rounded-xl border border-border bg-card p-3 shadow-lg"
+            className={cn(
+              'absolute z-50 rounded-xl border border-border bg-card p-3 shadow-lg',
+              // Na sidebar abre para cima; no topo do celular, para baixo, sem
+              // passar da largura da tela.
+              compacto ? 'inset-x-2 top-full mt-2' : 'bottom-full left-0 mb-2 w-80',
+            )}
           >
             <div className="mb-2 flex items-center justify-between">
               <h2 className="font-display font-bold text-card-foreground">Notificações</h2>

@@ -1,29 +1,16 @@
+import type { AnexoDoChat } from '@/services/chat'
+
 export type AutorMensagem = 'usuario' | 'assistente'
 
+/** Uma mensagem na tela: vinda da API ou ainda local (pergunta enviada, erro). */
 export interface Mensagem {
   id: string
   autor: AutorMensagem
   conteudo: string
-  /** Timestamp em ms (serializa direto no localStorage). */
+  /** Timestamp em ms. */
   criadaEm: number
-  /** Nome do arquivo anexado, se houver. */
-  anexo?: string
+  anexos?: AnexoDoChat[]
   erro?: boolean
-}
-
-export interface Conversa {
-  id: string
-  titulo: string
-  mensagens: Mensagem[]
-  atualizadaEm: number
-  grupoId?: string
-  /** Id da conversa na API: é com ele que o tutor lembra do que já foi dito. */
-  servidorId?: number
-}
-
-export interface GrupoConversas {
-  id: string
-  nome: string
 }
 
 /** Quanto o assistente deve se aprofundar na resposta. */
