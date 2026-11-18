@@ -1,6 +1,6 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowUp, Mic, Paperclip, Plus, X } from 'lucide-react'
+import { ArrowUp, Mic, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -11,10 +11,34 @@ import {
 } from '@/components/ui/select'
 import { useDitado } from '@/hooks/useDitado'
 import { cn } from '@/lib/utils'
-import { modosResposta } from '@/services/chat'
+import { mensagemDeErro } from '@/components/chat/erros'
+import {
+  ACCEPT_ANEXOS,
+  ANEXOS_POR_MENSAGEM,
+  apagarAnexo,
+  enviarAnexo,
+  modosResposta,
+  validarAnexo,
+  type AnexoDoChat,
+} from '@/services/chat'
 import type { ModoResposta } from '@/types/chat'
+import { ChipAnexo } from './ChipAnexo'
 
 const ALTURA_MAXIMA = 200
+
+/** Um anexo no compositor: sobe assim que é escolhido, e o id vai com a mensagem. */
+interface AnexoNoCompositor {
+  chave: string
+  nome: string
+  /** Só existe depois do upload. */
+  enviado?: AnexoDoChat
+}
+
+function tipoPelaExtensao(nome: string): string {
+  if (/\.pdf$/i.test(nome)) return 'pdf'
+  if (/\.(png|jpe?g|webp)$/i.test(nome)) return 'imagem'
+  return 'texto'
+}
 
 export function Composer({
   onEnviar,
@@ -24,7 +48,7 @@ export function Composer({
   autoFocus,
   className,
 }: {
-  onEnviar: (texto: string, anexo?: string) => void
+  onEnviar: (texto: string, anexos: AnexoDoChat[]) => void
   ocupado: boolean
   modo: ModoResposta
   onModoChange: (modo: ModoResposta) => void
@@ -32,7 +56,8 @@ export function Composer({
   className?: string
 }) {
   const [texto, setTexto] = useState('')
-  const [anexo, setAnexo] = useState<File | null>(null)
+  const [anexos, setAnexos] = useState<AnexoNoCompositor[]>([])
+  const [erroAnexo, setErroAnexo] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const arquivoId = useId()
   const { ouvindo, suportado, alternar } = useDitado((falado) =>
@@ -47,14 +72,52 @@ export function Composer({
     campo.style.height = `${Math.min(campo.scrollHeight, ALTURA_MAXIMA)}px`
   }, [texto])
 
-  const podeEnviar = texto.trim().length > 0 && !ocupado
+  const subindo = anexos.some((item) => !item.enviado)
+  const podeEnviar = texto.trim().length > 0 && !ocupado && !subindo
 
   function enviar() {
     if (!podeEnviar) return
-    onEnviar(texto.trim(), anexo?.name)
+    onEnviar(
+      texto.trim(),
+      anexos.flatMap((item) => (item.enviado ? [item.enviado] : [])),
+    )
     setTexto('')
-    setAnexo(null)
+    setAnexos([])
+    setErroAnexo(null)
     textareaRef.current?.focus()
+  }
+
+  async function anexar(arquivos: FileList | null) {
+    setErroAnexo(null)
+    const escolhidos = Array.from(arquivos ?? [])
+    const vagas = ANEXOS_POR_MENSAGEM - anexos.length
+    if (escolhidos.length > vagas) {
+      setErroAnexo(`Cada mensagem aceita até ${ANEXOS_POR_MENSAGEM} anexos.`)
+    }
+    for (const arquivo of escolhidos.slice(0, Math.max(vagas, 0))) {
+      const invalido = validarAnexo(arquivo)
+      if (invalido) {
+        setErroAnexo(invalido)
+        continue
+      }
+      const chave = crypto.randomUUID()
+      setAnexos((atuais) => [...atuais, { chave, nome: arquivo.name }])
+      try {
+        const enviado = await enviarAnexo(arquivo)
+        setAnexos((atuais) =>
+          atuais.map((item) => (item.chave === chave ? { ...item, enviado } : item)),
+        )
+      } catch (erro) {
+        setAnexos((atuais) => atuais.filter((item) => item.chave !== chave))
+        setErroAnexo(mensagemDeErro(erro))
+      }
+    }
+  }
+
+  function removerAnexo(item: AnexoNoCompositor) {
+    setAnexos((atuais) => atuais.filter((outro) => outro.chave !== item.chave))
+    // Desistir apaga o arquivo no servidor; se falhar, ele fica solto e some sozinho.
+    if (item.enviado) void apagarAnexo(item.enviado.id).catch(() => undefined)
   }
 
   return (
@@ -69,25 +132,23 @@ export function Composer({
       )}
     >
       <AnimatePresence>
-        {anexo && (
+        {anexos.length > 0 && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden px-1"
           >
-            <span className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">
-              <Paperclip className="size-3.5" aria-hidden />
-              {anexo.name}
-              <button
-                type="button"
-                onClick={() => setAnexo(null)}
-                aria-label="Remover anexo"
-                className="rounded-full hover:text-destructive"
-              >
-                <X className="size-3.5" />
-              </button>
-            </span>
+            <div className="mb-2 flex flex-wrap gap-2">
+              {anexos.map((item) => (
+                <ChipAnexo
+                  key={item.chave}
+                  anexo={item.enviado ?? { nome: item.nome, tipo: tipoPelaExtensao(item.nome) }}
+                  enviando={!item.enviado}
+                  aoRemover={() => removerAnexo(item)}
+                />
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -121,13 +182,20 @@ export function Composer({
           <input
             id={arquivoId}
             type="file"
+            multiple
+            accept={ACCEPT_ANEXOS}
             className="sr-only"
             onChange={(event) => {
-              setAnexo(event.target.files?.[0] ?? null)
+              void anexar(event.target.files)
               event.target.value = ''
             }}
           />
         </label>
+        {erroAnexo && (
+          <p role="alert" className="min-w-0 flex-1 text-xs font-semibold text-destructive">
+            {erroAnexo}
+          </p>
+        )}
 
         <div className="ml-auto flex items-center gap-1">
           <Select value={modo} onValueChange={(valor) => onModoChange(valor as ModoResposta)}>

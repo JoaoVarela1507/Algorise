@@ -1,62 +1,13 @@
-import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, useReducedMotionConfig } from 'framer-motion'
-import { AlertCircle, Paperclip } from 'lucide-react'
+import { AlertCircle, RotateCcw, Scissors } from 'lucide-react'
+import { toast } from '@/components/ui/toaster'
 import { cn } from '@/lib/utils'
+import { baixarAnexo } from '@/services/chat'
 import type { Mensagem } from '@/types/chat'
+import { ChipAnexo } from './ChipAnexo'
+import { Markdown } from './Markdown'
 import mascotePolvo from '@/assets/images/mascote-polvo.png'
-
-/** Negrito, itálico e `código` dentro de uma linha. */
-function formatarLinha(texto: string): ReactNode[] {
-  return texto.split(/(\*\*[^*]+\*\*|`[^`]+`|_[^_]+_)/g).map((parte, i) => {
-    if (parte.startsWith('**') && parte.endsWith('**') && parte.length > 4) {
-      return <strong key={i}>{parte.slice(2, -2)}</strong>
-    }
-    if (parte.startsWith('`') && parte.endsWith('`') && parte.length > 2) {
-      return (
-        <code key={i} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.9em]">
-          {parte.slice(1, -1)}
-        </code>
-      )
-    }
-    if (parte.startsWith('_') && parte.endsWith('_') && parte.length > 2) {
-      return <em key={i}>{parte.slice(1, -1)}</em>
-    }
-    return <Fragment key={i}>{parte}</Fragment>
-  })
-}
-
-/**
- * Renderização mínima de markdown (blocos de código e ênfase). Quando o
- * chatbot real entrar, dá pra trocar por uma lib como react-markdown.
- */
-function ConteudoMensagem({ texto }: { texto: string }) {
-  const blocos = texto.split(/```(\w*)\n?([\s\S]*?)(?:```|$)/g)
-  const elementos: ReactNode[] = []
-
-  for (let i = 0; i < blocos.length; i += 3) {
-    const trecho = blocos[i]
-    if (trecho?.trim()) {
-      elementos.push(
-        <p key={`t${i}`} className="whitespace-pre-wrap">
-          {formatarLinha(trecho.trim())}
-        </p>,
-      )
-    }
-    const codigo = blocos[i + 2]
-    if (codigo !== undefined) {
-      elementos.push(
-        <pre
-          key={`c${i}`}
-          className="overflow-x-auto rounded-md bg-foreground/90 p-3 font-mono text-sm text-background"
-        >
-          <code>{codigo.replace(/\n$/, '')}</code>
-        </pre>,
-      )
-    }
-  }
-
-  return <div className="flex flex-col gap-3">{elementos}</div>
-}
 
 /** Revela o texto aos poucos, imitando o streaming de um chatbot. */
 function useRevelar(texto: string, ativo: boolean) {
@@ -94,12 +45,25 @@ export function AvatarAssistente({ className }: { className?: string }) {
   )
 }
 
+/**
+ * `incompleta`: a IA parou no meio (queda, limite, "Parar resposta"). Fica só
+ * na tela (a API grava `incompleta`, mas a tela também a usa para a resposta em curso).
+ */
+export type MensagemDoChat = Mensagem & {
+  incompleta?: boolean
+  /** Repetir a pergunta não adianta (ex.: a conversa sumiu do servidor). */
+  semRetentativa?: boolean
+}
+
 export function MensagemChat({
   mensagem,
   animarDigitacao = false,
+  aoTentarDeNovo,
 }: {
-  mensagem: Mensagem
+  mensagem: MensagemDoChat
   animarDigitacao?: boolean
+  /** Quando existe, mostra "Tentar de novo" (só na última resposta com problema). */
+  aoTentarDeNovo?: () => void
 }) {
   const texto = useRevelar(mensagem.conteudo, animarDigitacao)
 
@@ -110,14 +74,17 @@ export function MensagemChat({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         className="flex flex-col items-end gap-1"
       >
-        {mensagem.anexo && (
-          <span className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">
-            <Paperclip className="size-3.5" aria-hidden />
-            {mensagem.anexo}
-          </span>
-        )}
-        <div className="max-w-[75%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-primary-foreground shadow-sm">
-          <ConteudoMensagem texto={mensagem.conteudo} />
+        {mensagem.anexos?.map((anexo) => (
+          <ChipAnexo
+            key={anexo.id}
+            anexo={anexo}
+            aoBaixar={() =>
+              baixarAnexo(anexo).catch(() => toast.error('Não foi possível baixar o anexo.'))
+            }
+          />
+        ))}
+        <div className="min-w-0 max-w-[75%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-primary-foreground shadow-sm">
+          <Markdown texto={mensagem.conteudo} />
         </div>
       </motion.div>
     )
@@ -132,7 +99,7 @@ export function MensagemChat({
       <AvatarAssistente />
       <div
         className={cn(
-          'max-w-[80%] rounded-2xl rounded-tl-md border bg-card px-4 py-3 text-foreground shadow-sm',
+          'min-w-0 max-w-[80%] rounded-2xl rounded-tl-md border bg-card px-4 py-3 text-foreground shadow-sm',
           mensagem.erro ? 'border-destructive/50' : 'border-border',
         )}
       >
@@ -142,7 +109,23 @@ export function MensagemChat({
             Erro
           </span>
         )}
-        <ConteudoMensagem texto={texto} />
+        <Markdown texto={texto} />
+        {mensagem.incompleta && !mensagem.erro && (
+          <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+            <Scissors className="size-3.5" aria-hidden />
+            Resposta interrompida: pode estar cortada.
+          </p>
+        )}
+        {aoTentarDeNovo && (
+          <button
+            type="button"
+            onClick={aoTentarDeNovo}
+            className="mt-2 flex min-h-8 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-semibold text-primary transition-colors hover:bg-accent/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          >
+            <RotateCcw className="size-3.5" aria-hidden />
+            Tentar de novo
+          </button>
+        )}
       </div>
     </motion.div>
   )

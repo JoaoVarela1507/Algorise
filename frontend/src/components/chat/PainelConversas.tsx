@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
+  Check,
   ChevronRight,
   Layers,
   MessagesSquare,
@@ -13,30 +14,73 @@ import {
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { toast } from '@/components/ui/toaster'
+import { useDebounce } from '@/hooks/useDebounce'
+import {
+  useApagarConversa,
+  useApagarGrupo,
+  useConversas,
+  useCriarGrupo,
+  useEditarGrupo,
+  useGrupos,
+  useRenomearConversa,
+} from '@/hooks/useChat'
 import { tempoRelativo } from '@/lib/tempo'
 import { cn } from '@/lib/utils'
-import type { Conversa, GrupoConversas } from '@/types/chat'
+import type { ConversaResumo, GrupoDeConversas } from '@/services/chat'
 
 type ModoPainel = 'conversas' | 'agrupar'
 
-function normalizar(texto: string) {
-  return texto
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
+// Em tela de toque não existe hover: os botões de ação ficam sempre visíveis.
+const ACAO_NO_HOVER =
+  'opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100'
+
+function erroDaAcao(erro: unknown, padrao: string) {
+  return erro instanceof Error && erro.message ? erro.message : padrao
 }
 
 function ItemConversa({
   conversa,
   ativa,
   onSelecionar,
-  onExcluir,
+  onExcluida,
 }: {
-  conversa: Conversa
+  conversa: ConversaResumo
   ativa: boolean
   onSelecionar: () => void
-  onExcluir: () => void
+  onExcluida: () => void
 }) {
+  const renomear = useRenomearConversa()
+  const apagar = useApagarConversa()
+  const [editando, setEditando] = useState(false)
+  const [titulo, setTitulo] = useState(conversa.titulo)
+  const [confirmando, setConfirmando] = useState(false)
+
+  function salvar() {
+    const novo = titulo.trim()
+    if (!novo || novo === conversa.titulo) {
+      setEditando(false)
+      return
+    }
+    renomear.mutate(
+      { id: conversa.id, titulo: novo },
+      {
+        onSuccess: () => setEditando(false),
+        onError: (erro) => toast.error(erroDaAcao(erro, 'Não foi possível renomear.')),
+      },
+    )
+  }
+
+  function excluir() {
+    apagar.mutate(conversa.id, {
+      onSuccess: onExcluida,
+      onError: (erro) => {
+        setConfirmando(false)
+        toast.error(erroDaAcao(erro, 'Não foi possível apagar a conversa.'))
+      },
+    })
+  }
+
   return (
     <motion.li
       layout
@@ -45,75 +89,157 @@ function ItemConversa({
       exit={{ opacity: 0, x: -8 }}
       className="group relative"
     >
-      <button
-        type="button"
-        onClick={onSelecionar}
-        aria-current={ativa || undefined}
-        className={cn(
-          'flex w-full flex-col rounded-md px-3 py-2 pr-9 text-left transition-colors',
-          ativa ? 'bg-primary/15' : 'hover:bg-muted',
-        )}
-      >
-        <span
-          className={cn(
-            'truncate text-sm font-semibold',
-            ativa ? 'text-primary' : 'text-foreground',
-          )}
+      {editando ? (
+        <form
+          className="flex items-center gap-1 px-1 py-1"
+          onSubmit={(event) => {
+            event.preventDefault()
+            salvar()
+          }}
         >
-          {conversa.titulo}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {tempoRelativo(conversa.atualizadaEm)}
-        </span>
-      </button>
-      <button
-        type="button"
-        onClick={onExcluir}
-        aria-label={`Excluir conversa "${conversa.titulo}"`}
-        className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
-      >
-        <Trash2 className="size-4" />
-      </button>
+          <Input
+            value={titulo}
+            onChange={(event) => setTitulo(event.target.value)}
+            maxLength={120}
+            autoFocus
+            aria-label="Novo título da conversa"
+            className="h-9 min-w-0 flex-1 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={renomear.isPending}
+            aria-label="Salvar título"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-primary hover:bg-muted"
+          >
+            <Check className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTitulo(conversa.titulo)
+              setEditando(false)
+            }}
+            aria-label="Cancelar"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+          >
+            <X className="size-4" />
+          </button>
+        </form>
+      ) : confirmando ? (
+        <div className="flex items-center gap-1 rounded-md bg-destructive/10 px-3 py-2">
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-destructive">
+            Apagar esta conversa?
+          </span>
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={apagar.isPending}
+            onClick={excluir}
+            aria-label={`Confirmar exclusão de "${conversa.titulo}"`}
+          >
+            Apagar
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setConfirmando(false)}>
+            Não
+          </Button>
+        </div>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={onSelecionar}
+            aria-current={ativa || undefined}
+            className={cn(
+              'flex w-full flex-col rounded-md px-3 py-2 pr-16 text-left transition-colors',
+              ativa ? 'bg-primary/15' : 'hover:bg-muted',
+            )}
+          >
+            <span
+              className={cn(
+                'truncate text-sm font-semibold',
+                ativa ? 'text-primary' : 'text-foreground',
+              )}
+            >
+              {conversa.titulo}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {tempoRelativo(Date.parse(conversa.atualizado_em))}
+            </span>
+          </button>
+          <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center">
+            <button
+              type="button"
+              onClick={() => {
+                setTitulo(conversa.titulo)
+                setEditando(true)
+              }}
+              aria-label={`Renomear conversa "${conversa.titulo}"`}
+              className={cn(
+                'flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground',
+                ACAO_NO_HOVER,
+              )}
+            >
+              <Pencil className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmando(true)}
+              aria-label={`Excluir conversa "${conversa.titulo}"`}
+              className={cn(
+                'flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive',
+                ACAO_NO_HOVER,
+              )}
+            >
+              <Trash2 className="size-4" />
+            </button>
+          </div>
+        </>
+      )}
     </motion.li>
   )
 }
 
 export function PainelConversas({
-  conversas,
-  grupos,
   ativaId,
   onSelecionar,
   onNova,
-  onExcluir,
-  onCriarGrupo,
-  onDesfazerGrupo,
+  onExcluida,
 }: {
-  conversas: Conversa[]
-  grupos: GrupoConversas[]
-  ativaId: string | null
-  onSelecionar: (id: string) => void
+  ativaId: number | null
+  onSelecionar: (conversa: ConversaResumo) => void
   onNova: () => void
-  onExcluir: (id: string) => void
-  onCriarGrupo: (nome: string, conversaIds: string[]) => void
-  onDesfazerGrupo: (grupoId: string) => void
+  /** Uma conversa foi apagada: quem a mostra precisa sair dela. */
+  onExcluida: (id: number) => void
 }) {
   const [modo, setModo] = useState<ModoPainel>('conversas')
   const [busca, setBusca] = useState('')
   const [nomeGrupo, setNomeGrupo] = useState('')
-  const [selecionadas, setSelecionadas] = useState<string[]>([])
-  const [gruposFechados, setGruposFechados] = useState<string[]>([])
+  const [selecionadas, setSelecionadas] = useState<number[]>([])
+  // Grupo que está sendo editado na aba "Agrupar"; `null` cria um novo.
+  const [grupoEditando, setGrupoEditando] = useState<GrupoDeConversas | null>(null)
+  const [gruposFechados, setGruposFechados] = useState<number[]>([])
 
-  const ordenadas = useMemo(
-    () => [...conversas].sort((a, b) => b.atualizadaEm - a.atualizadaEm),
-    [conversas],
-  )
-  const termo = normalizar(busca.trim())
-  const resultadosBusca = termo
-    ? ordenadas.filter((c) => normalizar(c.titulo).includes(termo))
-    : null
-  const semGrupo = ordenadas.filter((c) => !c.grupoId || !grupos.some((g) => g.id === c.grupoId))
+  // A busca roda no servidor (título e conteúdo das mensagens): espera o aluno
+  // parar de digitar para não disparar uma requisição por letra.
+  const termo = useDebounce(busca.trim())
+  const conversasQuery = useConversas(termo)
+  const gruposQuery = useGrupos()
+  const criarGrupo = useCriarGrupo()
+  const editarGrupo = useEditarGrupo()
+  const apagarGrupo = useApagarGrupo()
 
-  function alternarSelecao(id: string) {
+  const conversas = conversasQuery.data?.pages.flatMap((pagina) => pagina.itens) ?? []
+  const grupos = gruposQuery.data ?? []
+  const buscando = termo !== ''
+  const semGrupo = conversas.filter((c) => c.grupo_id === null)
+  // Na aba "Agrupar" entram também as conversas do grupo que ainda não vieram
+  // na lista paginada, para dar para desmarcá-las.
+  const candidatas = [
+    ...conversas,
+    ...(grupoEditando?.conversas.filter((g) => !conversas.some((c) => c.id === g.id)) ?? []),
+  ]
+
+  function alternarSelecao(id: number) {
     setSelecionadas((atuais) =>
       atuais.includes(id) ? atuais.filter((s) => s !== id) : [...atuais, id],
     )
@@ -123,24 +249,56 @@ export function PainelConversas({
     setModo('conversas')
     setNomeGrupo('')
     setSelecionadas([])
+    setGrupoEditando(null)
   }
 
-  function criarGrupo() {
-    onCriarGrupo(nomeGrupo.trim(), selecionadas)
-    sairDoAgrupar()
+  function editarMembros(grupo: GrupoDeConversas) {
+    setGrupoEditando(grupo)
+    setNomeGrupo(grupo.nome)
+    setSelecionadas(grupo.conversas.map((c) => c.id))
+    setModo('agrupar')
   }
 
-  function renderItem(conversa: Conversa) {
+  function salvarGrupo() {
+    const nome = nomeGrupo.trim()
+    const aoErrar = (erro: unknown) =>
+      toast.error(erroDaAcao(erro, 'Não foi possível salvar o grupo.'))
+    if (grupoEditando) {
+      editarGrupo.mutate(
+        { id: grupoEditando.id, nome, conversaIds: selecionadas },
+        { onSuccess: sairDoAgrupar, onError: aoErrar },
+      )
+    } else {
+      criarGrupo.mutate(
+        { nome, conversaIds: selecionadas },
+        { onSuccess: sairDoAgrupar, onError: aoErrar },
+      )
+    }
+  }
+
+  function renderItem(conversa: ConversaResumo) {
     return (
       <ItemConversa
         key={conversa.id}
         conversa={conversa}
         ativa={conversa.id === ativaId}
-        onSelecionar={() => onSelecionar(conversa.id)}
-        onExcluir={() => onExcluir(conversa.id)}
+        onSelecionar={() => onSelecionar(conversa)}
+        onExcluida={() => onExcluida(conversa.id)}
       />
     )
   }
+
+  const verMais = conversasQuery.hasNextPage && (
+    <Button
+      variant="ghost"
+      size="sm"
+      full
+      disabled={conversasQuery.isFetchingNextPage}
+      onClick={() => void conversasQuery.fetchNextPage()}
+    >
+      Ver mais
+    </Button>
+  )
 
   return (
     <aside className="flex w-80 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
@@ -209,13 +367,30 @@ export function PainelConversas({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
-              {resultadosBusca ? (
-                resultadosBusca.length > 0 ? (
-                  <ul className="flex flex-col gap-0.5">
-                    <AnimatePresence initial={false}>
-                      {resultadosBusca.map(renderItem)}
-                    </AnimatePresence>
-                  </ul>
+              {conversasQuery.isError || gruposQuery.isError ? (
+                <p role="alert" className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  Não foi possível carregar suas conversas.{' '}
+                  <button
+                    type="button"
+                    className="font-semibold text-primary underline"
+                    onClick={() => {
+                      void conversasQuery.refetch()
+                      void gruposQuery.refetch()
+                    }}
+                  >
+                    Tentar de novo
+                  </button>
+                </p>
+              ) : conversasQuery.isPending ? (
+                <p className="px-3 py-6 text-center text-sm text-muted-foreground">Carregando…</p>
+              ) : buscando ? (
+                conversas.length > 0 ? (
+                  <>
+                    <ul className="flex flex-col gap-0.5">
+                      <AnimatePresence initial={false}>{conversas.map(renderItem)}</AnimatePresence>
+                    </ul>
+                    {verMais}
+                  </>
                 ) : (
                   <p className="px-3 py-6 text-center text-sm text-muted-foreground">
                     Nenhuma conversa encontrada.
@@ -224,7 +399,6 @@ export function PainelConversas({
               ) : (
                 <>
                   {grupos.map((grupo) => {
-                    const doGrupo = ordenadas.filter((c) => c.grupoId === grupo.id)
                     const aberto = !gruposFechados.includes(grupo.id)
                     return (
                       <div key={grupo.id} className="mb-2">
@@ -239,25 +413,47 @@ export function PainelConversas({
                               )
                             }
                             aria-expanded={aberto}
-                            className="flex flex-1 items-center gap-2 px-2 py-2 text-left"
+                            className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-left"
                           >
                             <motion.span animate={{ rotate: aberto ? 90 : 0 }} className="flex">
                               <ChevronRight className="size-4 text-muted-foreground" />
                             </motion.span>
-                            <Layers className="size-4 text-primary" aria-hidden />
+                            <Layers className="size-4 shrink-0 text-primary" aria-hidden />
                             <span className="flex-1 truncate text-sm font-bold text-foreground">
                               {grupo.nome}
                             </span>
                             <span className="rounded-full bg-secondary px-2 text-xs font-bold text-muted-foreground">
-                              {doGrupo.length}
+                              {grupo.conversas.length}
                             </span>
                           </button>
                           <button
                             type="button"
-                            onClick={() => onDesfazerGrupo(grupo.id)}
+                            onClick={() => editarMembros(grupo)}
+                            aria-label={`Editar grupo "${grupo.nome}"`}
+                            title="Renomear ou trocar as conversas do grupo"
+                            className={cn(
+                              'flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground',
+                              ACAO_NO_HOVER,
+                            )}
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              apagarGrupo.mutate(grupo.id, {
+                                onError: (erro) =>
+                                  toast.error(
+                                    erroDaAcao(erro, 'Não foi possível desfazer o grupo.'),
+                                  ),
+                              })
+                            }
                             aria-label={`Desfazer grupo "${grupo.nome}"`}
-                            title="Desfazer grupo"
-                            className="mr-1 flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                            title="Desfazer grupo (as conversas ficam)"
+                            className={cn(
+                              'mr-1 flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive',
+                              ACAO_NO_HOVER,
+                            )}
                           >
                             <X className="size-4" />
                           </button>
@@ -271,7 +467,7 @@ export function PainelConversas({
                               className="ml-4 flex flex-col gap-0.5 overflow-hidden border-l-2 border-border pl-2"
                             >
                               <AnimatePresence initial={false}>
-                                {doGrupo.map(renderItem)}
+                                {grupo.conversas.map(renderItem)}
                               </AnimatePresence>
                             </motion.ul>
                           )}
@@ -292,6 +488,7 @@ export function PainelConversas({
                       Nenhuma conversa ainda.
                     </p>
                   )}
+                  {verMais}
                 </>
               )}
             </div>
@@ -315,6 +512,7 @@ export function PainelConversas({
                 onChange={(event) => setNomeGrupo(event.target.value)}
                 placeholder="Qual o nome do grupo..."
                 aria-label="Nome do grupo"
+                maxLength={80}
                 autoFocus
                 className="h-10 bg-background pl-9 pr-12 text-sm"
               />
@@ -327,13 +525,15 @@ export function PainelConversas({
             </div>
 
             <p className="px-5 pt-3 text-xs text-muted-foreground">
-              Selecione as conversas que farão parte do grupo.
+              {grupoEditando
+                ? 'Marque as conversas que ficam no grupo; as desmarcadas saem dele.'
+                : 'Selecione as conversas que farão parte do grupo.'}
             </p>
 
             <ul className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
-              {ordenadas.map((conversa) => {
+              {candidatas.map((conversa) => {
                 const marcada = selecionadas.includes(conversa.id)
-                const grupoAtual = grupos.find((g) => g.id === conversa.grupoId)
+                const grupoAtual = grupos.find((g) => g.id === conversa.grupo_id)
                 return (
                   <li key={conversa.id}>
                     <label
@@ -360,6 +560,7 @@ export function PainelConversas({
                   </li>
                 )
               })}
+              {verMais && <li>{verMais}</li>}
             </ul>
 
             <div className="flex gap-2 border-t border-border p-4">
@@ -368,10 +569,15 @@ export function PainelConversas({
               </Button>
               <Button
                 className="flex-1"
-                disabled={!nomeGrupo.trim() || selecionadas.length === 0}
-                onClick={criarGrupo}
+                disabled={
+                  !nomeGrupo.trim() ||
+                  (!grupoEditando && selecionadas.length === 0) ||
+                  criarGrupo.isPending ||
+                  editarGrupo.isPending
+                }
+                onClick={salvarGrupo}
               >
-                Criar grupo
+                {grupoEditando ? 'Salvar grupo' : 'Criar grupo'}
               </Button>
             </div>
           </motion.div>

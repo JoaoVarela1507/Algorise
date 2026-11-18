@@ -1,20 +1,136 @@
-import { apiResposta } from '@/services/api'
+import { apiFetch, apiGet, apiPatch, apiPost, apiResposta } from '@/services/api'
+import type { components } from '@/types/api'
 import type { ModoResposta } from '@/types/chat'
 
-/**
- * Onde a lista de conversas fica neste navegador. As mensagens também ficam
- * gravadas na API, que é de onde o tutor tira o contexto; listar, buscar e
- * agrupar pela API é a #33, e até lá a lista da tela continua aqui.
- */
-export const CHAVE_HISTORICO_CHAT = 'algorise:chat'
+export type ConversaResumo = components['schemas']['ConversaResumo']
+export type GrupoDeConversas = components['schemas']['Grupo']
+export type AnexoDoChat = components['schemas']['Anexo']
+export type MensagemApi = components['schemas']['Mensagem']
+type PaginaDeConversas = components['schemas']['Pagina_ConversaResumo_']
+type PaginaDeMensagens = components['schemas']['Pagina_Mensagem_']
 
-/** Apaga as conversas e os grupos. Grava vazio para os exemplos não voltarem. */
-export function limparHistoricoChat() {
-  try {
-    localStorage.setItem(CHAVE_HISTORICO_CHAT, JSON.stringify({ conversas: [], grupos: [] }))
-  } catch {
-    // Sem armazenamento não há histórico salvo para apagar.
+/** O teto de itens por página da API: o histórico vem em fatias desse tamanho. */
+export const TAMANHO_PAGINA_CONVERSAS = 50
+const TAMANHO_PAGINA_MENSAGENS = 100
+
+export function listarConversas({
+  busca,
+  pagina = 1,
+}: { busca?: string; pagina?: number } = {}): Promise<PaginaDeConversas> {
+  const parametros = new URLSearchParams({
+    pagina: String(pagina),
+    tamanho_pagina: String(TAMANHO_PAGINA_CONVERSAS),
+  })
+  if (busca) parametros.set('busca', busca)
+  return apiGet<PaginaDeConversas>(`/chat/conversas?${parametros}`)
+}
+
+/**
+ * Todas as mensagens da conversa, na ordem. O tutor lembra da conversa inteira,
+ * então a tela também precisa dela inteira, e não só da primeira página.
+ */
+export async function listarMensagens(conversaId: number): Promise<MensagemApi[]> {
+  const mensagens: MensagemApi[] = []
+  for (let pagina = 1; ; pagina++) {
+    const resposta = await apiGet<PaginaDeMensagens>(
+      `/chat/conversas/${conversaId}/mensagens?pagina=${pagina}&tamanho_pagina=${TAMANHO_PAGINA_MENSAGENS}`,
+    )
+    mensagens.push(...resposta.itens)
+    if (pagina >= resposta.total_paginas) return mensagens
   }
+}
+
+export function editarConversa(
+  id: number,
+  dados: { titulo?: string; arquivada?: boolean; grupo_id?: number | null },
+): Promise<ConversaResumo> {
+  return apiPatch<ConversaResumo>(`/chat/conversas/${id}`, dados)
+}
+
+export function apagarConversa(id: number): Promise<void> {
+  return apiFetch<void>(`/chat/conversas/${id}`, { method: 'DELETE' })
+}
+
+/** Apaga todas as conversas do aluno (os grupos ficam vazios). */
+export async function apagarHistoricoChat(): Promise<void> {
+  // Sempre a primeira página: ao apagar, a seguinte passa a ser a primeira.
+  for (;;) {
+    const { itens } = await listarConversas()
+    if (itens.length === 0) return
+    await Promise.all(itens.map((conversa) => apagarConversa(conversa.id)))
+  }
+}
+
+export function listarGrupos(): Promise<GrupoDeConversas[]> {
+  return apiGet<GrupoDeConversas[]>('/chat/grupos')
+}
+
+export function criarGrupo(nome: string, conversaIds: number[]): Promise<GrupoDeConversas> {
+  return apiPost<GrupoDeConversas>('/chat/grupos', { nome, conversa_ids: conversaIds })
+}
+
+/** `conversaIds` é a lista inteira do grupo: quem não está nela sai dele. */
+export function editarGrupo(
+  id: number,
+  dados: { nome?: string; conversa_ids?: number[] },
+): Promise<GrupoDeConversas> {
+  return apiPatch<GrupoDeConversas>(`/chat/grupos/${id}`, dados)
+}
+
+export function apagarGrupo(id: number): Promise<void> {
+  return apiFetch<void>(`/chat/grupos/${id}`, { method: 'DELETE' })
+}
+
+// --- anexos ---------------------------------------------------------------------------
+
+/** Igual ao backend (`chat_anexo_tamanho_maximo`): ele continua sendo quem decide. */
+export const TAMANHO_MAXIMO_ANEXO = 2 * 1024 * 1024
+/** Igual ao backend (`chat_anexos_por_mensagem`). */
+export const ANEXOS_POR_MENSAGEM = 3
+
+// O backend reconhece o tipo pelo conteúdo; a extensão aqui só evita subir à toa
+// um arquivo que ele recusaria.
+const EXTENSOES_ACEITAS = [
+  '.txt', '.md', '.csv', '.json', '.py', '.ipynb', '.c', '.h', '.cpp', '.java', '.js', '.ts',
+  '.html', '.css', '.sql', '.sh', '.yml', '.yaml', '.pdf', '.png', '.jpg', '.jpeg', '.webp',
+] // prettier-ignore
+
+/** Valor do `accept` do input de arquivo. */
+export const ACCEPT_ANEXOS = EXTENSOES_ACEITAS.join(',')
+
+/** A mensagem de erro (em português) se o arquivo não pode ser anexado; `null` se pode. */
+export function validarAnexo(arquivo: File): string | null {
+  const nome = arquivo.name.toLowerCase()
+  if (!EXTENSOES_ACEITAS.some((extensao) => nome.endsWith(extensao))) {
+    return 'Tipo de arquivo não aceito. Anexe texto, código, PDF ou imagem (PNG, JPEG ou WebP).'
+  }
+  if (arquivo.size > TAMANHO_MAXIMO_ANEXO) {
+    return `O anexo pode ter até ${TAMANHO_MAXIMO_ANEXO / (1024 * 1024)} MB.`
+  }
+  if (arquivo.size === 0) return 'O arquivo está vazio.'
+  return null
+}
+
+export function enviarAnexo(arquivo: File): Promise<AnexoDoChat> {
+  const formulario = new FormData()
+  formulario.append('arquivo', arquivo)
+  // Sem `Content-Type`: o navegador põe o multipart com o boundary certo.
+  return apiFetch<AnexoDoChat>('/chat/anexos', { method: 'POST', body: formulario })
+}
+
+export function apagarAnexo(id: number): Promise<void> {
+  return apiFetch<void>(`/chat/anexos/${id}`, { method: 'DELETE' })
+}
+
+/** A API só serve o anexo com token, então o download passa pelo `fetch`. */
+export async function baixarAnexo(anexo: AnexoDoChat): Promise<void> {
+  const resposta = await apiResposta(`/chat/anexos/${anexo.id}`)
+  const url = URL.createObjectURL(await resposta.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = anexo.nome
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 export const modosResposta: { valor: ModoResposta; rotulo: string }[] = [
@@ -28,6 +144,8 @@ export interface PedidoAoTutor {
   conversaId?: number
   conteudo: string
   modo: ModoResposta
+  /** Anexos já enviados em `POST /chat/anexos`. */
+  anexoIds?: number[]
 }
 
 export interface RespostaDoTutor {
@@ -51,7 +169,7 @@ export interface EventoDoChat {
  * mensagens, IA fora do ar) sobem como `ApiError`, com a mensagem da API.
  */
 export async function perguntarAoTutor(
-  { conversaId, conteudo, modo }: PedidoAoTutor,
+  { conversaId, conteudo, modo, anexoIds = [] }: PedidoAoTutor,
   aoReceber?: (parcial: string) => void,
   sinal?: AbortSignal,
 ): Promise<RespostaDoTutor> {
@@ -59,7 +177,7 @@ export async function perguntarAoTutor(
     method: 'POST',
     signal: sinal,
     headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-    body: JSON.stringify({ conversa_id: conversaId ?? null, conteudo, modo }),
+    body: JSON.stringify({ conversa_id: conversaId ?? null, conteudo, modo, anexo_ids: anexoIds }),
   })
 
   let conversa = { conversaId: conversaId ?? 0, titulo: '' }

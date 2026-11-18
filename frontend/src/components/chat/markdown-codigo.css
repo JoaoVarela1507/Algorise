@@ -1,0 +1,63 @@
+/*
+ * Cores do realce de sintaxe (classes do highlight.js). Ficam em variáveis
+ * ligadas ao `data-theme` do <html> para o bloco de código acompanhar o tema
+ * sem recarregar nada. Paletas escolhidas para contraste AA sobre `bg-muted`.
+ */
+.codigo-chat {
+  --hl-palavra: #a626a4;
+  --hl-texto: #2f7d32;
+  --hl-numero: #b45309;
+  --hl-comentario: #6b7280;
+  --hl-funcao: #1d4ed8;
+  --hl-tipo: #0e7490;
+}
+
+:root[data-theme='dark'] .codigo-chat {
+  --hl-palavra: #d8a0f0;
+  --hl-texto: #8fd694;
+  --hl-numero: #f5b971;
+  --hl-comentario: #9ca3af;
+  --hl-funcao: #8ab4ff;
+  --hl-tipo: #67d4e8;
+}
+
+.codigo-chat .hljs-keyword,
+.codigo-chat .hljs-literal,
+.codigo-chat .hljs-selector-tag,
+.codigo-chat .hljs-built_in {
+  color: var(--hl-palavra);
+}
+.codigo-chat .hljs-string,
+.codigo-chat .hljs-regexp,
+.codigo-chat .hljs-addition {
+  color: var(--hl-texto);
+}
+.codigo-chat .hljs-number,
+.codigo-chat .hljs-symbol,
+.codigo-chat .hljs-meta,
+.codigo-chat .hljs-variable,
+.codigo-chat .hljs-attr {
+  color: var(--hl-numero);
+}
+.codigo-chat .hljs-comment,
+.codigo-chat .hljs-quote,
+.codigo-chat .hljs-deletion {
+  color: var(--hl-comentario);
+  font-style: italic;
+}
+.codigo-chat .hljs-title,
+.codigo-chat .hljs-function,
+.codigo-chat .hljs-section {
+  color: var(--hl-funcao);
+}
+.codigo-chat .hljs-type,
+.codigo-chat .hljs-class .hljs-title,
+.codigo-chat .hljs-params {
+  color: var(--hl-tipo);
+}
+.codigo-chat .hljs-emphasis {
+  font-style: italic;
+}
+.codigo-chat .hljs-strong {
+  font-weight: 700;
+}

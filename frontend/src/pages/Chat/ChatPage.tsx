@@ -1,18 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Layers, Square, SquarePen } from 'lucide-react'
+import { Layers, MessagesSquare, Square, SquarePen } from 'lucide-react'
 import { Composer } from '@/components/chat/Composer'
-import { IndicadorDigitando, MensagemChat } from '@/components/chat/MensagemChat'
+import { mensagemDeErro, podeTentarDeNovo } from '@/components/chat/erros'
+import {
+  IndicadorDigitando,
+  MensagemChat,
+  type MensagemDoChat,
+} from '@/components/chat/MensagemChat'
 import { PainelConversas } from '@/components/chat/PainelConversas'
 import { Button } from '@/components/ui/button'
-import { useAuthStore } from '@/stores/useAuthStore'
+import { atualizarDepoisDaResposta, useConversas, useGrupos, useMensagens } from '@/hooks/useChat'
 import { saudacaoDoHorario } from '@/lib/tempo'
-import { conversasIniciais, gruposIniciais } from '@/mocks/chat'
-import { ApiError } from '@/services/api'
-import { CHAVE_HISTORICO_CHAT } from '@/services/chat'
+import { type AnexoDoChat, type ConversaResumo, type MensagemApi } from '@/services/chat'
 import { perguntar } from '@/services/chatAoVivo'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { tempoReal } from '@/stores/useTempoRealStore'
-import type { Conversa, GrupoConversas, Mensagem, ModoResposta } from '@/types/chat'
+import type { ModoResposta } from '@/types/chat'
 import mascotePolvo from '@/assets/images/mascote-polvo.png'
 
 const sugestoes = [
@@ -21,28 +26,44 @@ const sugestoes = [
   'Como funciona a minha ementa?',
 ]
 
-interface EstadoChat {
-  conversas: Conversa[]
-  grupos: GrupoConversas[]
+const SEM_RESPOSTA = 'O tutor não chegou a responder. Tente de novo.'
+
+/** Conversa aberta. O título vem junto porque a lista pode não ter a conversa (busca ativa). */
+interface ConversaAberta {
+  id: number
+  titulo: string
 }
 
-// A lista de conversas fica neste navegador até a #33 trazê-la da API.
-function carregarEstado(): EstadoChat {
-  try {
-    const salvo = localStorage.getItem(CHAVE_HISTORICO_CHAT)
-    if (salvo) return JSON.parse(salvo) as EstadoChat
-  } catch {
-    // Armazenamento indisponível (aba anônima, bloqueio): segue com o exemplo.
+/**
+ * O que está na tela mas ainda não é (ou não está só) na API: a pergunta
+ * enviada, antes de o servidor devolver o histórico, e o erro da resposta.
+ */
+interface Pendente {
+  /** A conversa em que a mensagem entra; `null` é uma conversa que ainda vai nascer. */
+  conversaId: number | null
+  pergunta?: MensagemDoChat
+  /** Quantas mensagens a API tinha ao enviar: com mais que isso, a pergunta já veio de lá. */
+  base: number
+  erro?: MensagemDoChat
+}
+
+function daApi(mensagem: MensagemApi): MensagemDoChat {
+  // Resposta cortada sem texto nenhum (a IA caiu antes do primeiro pedaço) vira
+  // erro, com "Tentar de novo", em vez de uma bolha vazia.
+  const vazia = mensagem.papel === 'assistente' && mensagem.incompleta && !mensagem.conteudo
+  return {
+    id: String(mensagem.id),
+    autor: mensagem.papel,
+    conteudo: vazia ? SEM_RESPOSTA : mensagem.conteudo,
+    criadaEm: Date.parse(mensagem.criado_em),
+    anexos: mensagem.anexos,
+    erro: vazia,
+    // A faixa "Resposta interrompida" aparece na mensagem, não no texto.
+    incompleta: mensagem.incompleta && !vazia,
   }
-  return { conversas: conversasIniciais(), grupos: gruposIniciais }
 }
 
-function tituloDe(texto: string) {
-  const linha = texto.split('\n')[0].trim()
-  return linha.length > 40 ? `${linha.slice(0, 40).trimEnd()}…` : linha
-}
-
-function novaMensagem(dados: Omit<Mensagem, 'id' | 'criadaEm'>): Mensagem {
+function mensagemLocal(dados: Omit<MensagemDoChat, 'id' | 'criadaEm'>): MensagemDoChat {
   return { id: crypto.randomUUID(), criadaEm: Date.now(), ...dados }
 }
 
@@ -55,18 +76,24 @@ function ListaMensagens({
   mensagens,
   aguardando,
   parcial,
-  digitandoMensagemId,
+  aoTentarDeNovo,
 }: {
-  mensagens: Mensagem[]
+  mensagens: MensagemDoChat[]
   aguardando: boolean
   /** A resposta chegando, pedaço a pedaço (#36). */
   parcial: string
-  digitandoMensagemId: string | null
+  aoTentarDeNovo: () => void
 }) {
   const rolagemRef = useRef<HTMLDivElement>(null)
   const conteudoRef = useRef<HTMLDivElement>(null)
   const grudadoNoFimRef = useRef(true)
   const ultima = mensagens[mensagens.length - 1]
+  // "Tentar de novo" só na última resposta, e só se ela falhou ou veio cortada.
+  const podeRepetir =
+    !aguardando &&
+    ultima?.autor === 'assistente' &&
+    (ultima.erro || ultima.incompleta) &&
+    !ultima.semRetentativa
 
   useEffect(() => {
     const rolagem = rolagemRef.current
@@ -98,7 +125,7 @@ function ListaMensagens({
           <MensagemChat
             key={mensagem.id}
             mensagem={mensagem}
-            animarDigitacao={mensagem.id === digitandoMensagemId}
+            aoTentarDeNovo={podeRepetir && mensagem === ultima ? aoTentarDeNovo : undefined}
           />
         ))}
         {aguardando && parcial && (
@@ -113,194 +140,275 @@ function ListaMensagens({
 }
 
 export function ChatPage() {
+  const queryClient = useQueryClient()
   const usuario = useAuthStore((estado) => estado.usuario)
-  const [estado, setEstado] = useState(carregarEstado)
-  const [ativaId, setAtivaId] = useState<string | null>(null)
+  const [ativa, setAtiva] = useState<ConversaAberta | null>(null)
   const [modo, setModo] = useState<ModoResposta>('medio')
-  const [aguardandoId, setAguardandoId] = useState<string | null>(null)
-  const [digitandoMensagemId, setDigitandoMensagemId] = useState<string | null>(null)
+  const [pendente, setPendente] = useState<Pendente | null>(null)
+  // Em que conversa (`null`: uma nova) o tutor está respondendo agora.
+  const [aguardando, setAguardando] = useState<{ conversaId: number | null } | null>(null)
   const [parcial, setParcial] = useState('')
+  const [painelAberto, setPainelAberto] = useState(false)
   // Para a resposta em curso: pelo WebSocket ou cortando o SSE.
   const pararRef = useRef<(() => void) | null>(null)
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(CHAVE_HISTORICO_CHAT, JSON.stringify(estado))
-    } catch {
-      // Sem armazenamento: o chat funciona, só não persiste.
-    }
-  }, [estado])
+  const conversasQuery = useConversas()
+  const gruposQuery = useGrupos()
+  const mensagensQuery = useMensagens(ativa?.id ?? null)
 
-  const conversaAtiva = estado.conversas.find((c) => c.id === ativaId) ?? null
-  const grupoAtivo = estado.grupos.find((g) => g.id === conversaAtiva?.grupoId)
+  const ativaId = ativa?.id ?? null
+  const conversas = conversasQuery.data?.pages.flatMap((pagina) => pagina.itens) ?? []
+  const grupos = gruposQuery.data ?? []
+  const temHistorico = (conversasQuery.data?.pages[0]?.total ?? 0) > 0
+  const tituloAtivo =
+    conversas.find((c) => c.id === ativaId)?.titulo ??
+    grupos.flatMap((g) => g.conversas).find((c) => c.id === ativaId)?.titulo ??
+    ativa?.titulo ??
+    ''
+  const grupoAtivo = grupos.find((g) => g.conversas.some((c) => c.id === ativaId))
   const primeiroNome = usuario?.nome.split(' ')[0] ?? 'estudante'
 
-  function adicionarMensagem(conversaId: string, mensagem: Mensagem) {
-    setEstado((atual) => ({
-      ...atual,
-      conversas: atual.conversas.map((c) =>
-        c.id === conversaId
-          ? { ...c, mensagens: [...c.mensagens, mensagem], atualizadaEm: mensagem.criadaEm }
-          : c,
-      ),
+  const doServidor = (mensagensQuery.data ?? []).map(daApi)
+  const pendenteAqui = pendente !== null && pendente.conversaId === ativaId ? pendente : null
+  const mensagens = [
+    ...doServidor,
+    // A pergunta só aparece daqui até a API devolver o histórico com ela.
+    ...(pendenteAqui?.pergunta && doServidor.length <= pendenteAqui.base
+      ? [pendenteAqui.pergunta]
+      : []),
+    ...(pendenteAqui?.erro ? [pendenteAqui.erro] : []),
+  ]
+  // Uma conversa nova ainda sem id também já é a tela de conversa.
+  const emConversa = ativa !== null || pendente?.conversaId === null
+  const ocupado = aguardando !== null
+  const aguardandoAqui = aguardando !== null && aguardando.conversaId === ativaId
+
+  /**
+   * `reenvio`: repete a última pergunta sem duplicá-la na tela; o erro da
+   * resposta anterior sai para o novo resultado ocupar o fim da conversa.
+   */
+  async function enviar(texto: string, anexos: AnexoDoChat[] = [], reenvio = false) {
+    const conversaId = ativaId
+    const pergunta = reenvio
+      ? undefined
+      : mensagemLocal({ autor: 'usuario', conteudo: texto, anexos })
+    setPendente((atual) => ({
+      conversaId,
+      pergunta: reenvio ? atual?.pergunta : pergunta,
+      base: reenvio ? (atual?.base ?? doServidor.length) : doServidor.length,
     }))
-  }
+    setAguardando({ conversaId })
+    setParcial('')
 
-  async function enviar(texto: string, anexo?: string) {
-    const mensagem = novaMensagem({ autor: 'usuario', conteudo: texto, anexo })
-    let conversaId = ativaId
-    // O histórico vai pela API, que já tem a conversa: aqui basta o id dela.
-    const servidorId = conversaAtiva?.servidorId
-
-    if (conversaAtiva && conversaId) {
-      adicionarMensagem(conversaId, mensagem)
-    } else {
-      conversaId = crypto.randomUUID()
-      const nova: Conversa = {
-        id: conversaId,
-        titulo: tituloDe(texto),
-        mensagens: [mensagem],
-        atualizadaEm: mensagem.criadaEm,
+    // Depois de a resposta chegar a API tem a conversa inteira: o que estava só
+    // na tela sai, e a tela passa a mostrar o histórico de lá.
+    const recarregar = async (id: number) => {
+      try {
+        await atualizarDepoisDaResposta(queryClient, id)
+      } catch {
+        // Sem rede para recarregar: a pergunta local continua na tela.
       }
-      setEstado((atual) => ({ ...atual, conversas: [nova, ...atual.conversas] }))
-      setAtivaId(conversaId)
     }
 
-    setAguardandoId(conversaId)
-    setParcial('')
     try {
-      const pergunta = perguntar(
+      const aoVivo = perguntar(
         tempoReal,
-        { conversaId: servidorId, conteudo: texto, modo },
+        {
+          conversaId: conversaId ?? undefined,
+          conteudo: texto,
+          modo,
+          anexoIds: anexos.map((a) => a.id),
+        },
         setParcial,
       )
-      pararRef.current = pergunta.parar
-      const doTutor = await pergunta.resposta
-      const local = conversaId
-      setEstado((atual) => ({
-        ...atual,
-        conversas: atual.conversas.map((c) =>
-          c.id === local ? { ...c, servidorId: doTutor.conversaId } : c,
-        ),
-      }))
-      const doAssistente = novaMensagem({
-        autor: 'assistente',
-        conteudo: doTutor.incompleta
-          ? `${doTutor.resposta}
-
-_A resposta foi interrompida. Tente perguntar de novo._`
-          : doTutor.resposta,
-        erro: doTutor.incompleta && !doTutor.resposta,
-      })
-      adicionarMensagem(conversaId, doAssistente)
-      // Já veio aparecendo em pedaços: não repete a animação de digitação.
-      if (!doTutor.resposta) setDigitandoMensagemId(doAssistente.id)
-    } catch (erro) {
-      adicionarMensagem(
-        conversaId,
-        novaMensagem({
-          autor: 'assistente',
-          // A API diz o motivo (limite de mensagens, tutor fora do ar) em
-          // português; o texto genérico fica para quando nem houve resposta.
-          conteudo:
-            erro instanceof ApiError && erro.status !== 0
-              ? erro.message
-              : 'Não consegui responder agora. Tente de novo em instantes.',
-          erro: true,
-        }),
+      pararRef.current = aoVivo.parar
+      const doTutor = await aoVivo.resposta
+      await recarregar(doTutor.conversaId)
+      // Conversa nova: abre a que o servidor criou, se a pessoa ainda estiver na tela de nova.
+      setAtiva((atual) =>
+        atual === null && conversaId === null
+          ? { id: doTutor.conversaId, titulo: doTutor.titulo }
+          : atual,
       )
+      setPendente(
+        doTutor.resposta
+          ? null
+          : {
+              conversaId: doTutor.conversaId,
+              base: 0,
+              erro: mensagemLocal({ autor: 'assistente', conteudo: SEM_RESPOSTA, erro: true }),
+            },
+      )
+    } catch (erro) {
+      if (conversaId !== null) await recarregar(conversaId)
+      setPendente((atual) => ({
+        conversaId,
+        pergunta: atual?.pergunta,
+        base: atual?.base ?? doServidor.length,
+        erro: mensagemLocal({
+          autor: 'assistente',
+          conteudo: mensagemDeErro(erro),
+          erro: true,
+          semRetentativa: !podeTentarDeNovo(erro),
+        }),
+      }))
     } finally {
       pararRef.current = null
       setParcial('')
-      setAguardandoId(null)
+      setAguardando(null)
     }
   }
 
-  // Trocar de conversa não deve repetir a animação de digitação da última resposta.
-  function abrirConversa(id: string | null) {
-    setDigitandoMensagemId(null)
-    setAtivaId(id)
+  function tentarDeNovo() {
+    const ultimaPergunta = mensagens.filter((m) => m.autor === 'usuario').pop()
+    if (ultimaPergunta && !ocupado) void enviar(ultimaPergunta.conteudo, [], true)
   }
 
-  function excluirConversa(id: string) {
-    setEstado((atual) => ({ ...atual, conversas: atual.conversas.filter((c) => c.id !== id) }))
-    if (id === ativaId) setAtivaId(null)
+  function abrirConversa(conversa: ConversaResumo | null) {
+    // Sai o erro da conversa anterior; a pergunta em curso fica, para a
+    // resposta cair no lugar certo quando chegar.
+    setPendente((atual) => (aguardando ? atual : null))
+    setAtiva(conversa && { id: conversa.id, titulo: conversa.titulo })
   }
 
-  function criarGrupo(nome: string, conversaIds: string[]) {
-    const grupo: GrupoConversas = { id: crypto.randomUUID(), nome }
-    setEstado((atual) => ({
-      grupos: [...atual.grupos, grupo],
-      conversas: atual.conversas.map((c) =>
-        conversaIds.includes(c.id) ? { ...c, grupoId: grupo.id } : c,
-      ),
-    }))
+  function conversaApagada(id: number) {
+    if (id !== ativaId) return
+    setPendente(null)
+    setAtiva(null)
   }
 
-  function desfazerGrupo(grupoId: string) {
-    setEstado((atual) => ({
-      grupos: atual.grupos.filter((g) => g.id !== grupoId),
-      conversas: atual.conversas.map((c) =>
-        c.grupoId === grupoId ? { ...c, grupoId: undefined } : c,
-      ),
-    }))
-  }
+  const painel = (aoEscolher?: () => void) => (
+    <PainelConversas
+      ativaId={ativaId}
+      onSelecionar={(conversa) => {
+        abrirConversa(conversa)
+        aoEscolher?.()
+      }}
+      onNova={() => {
+        abrirConversa(null)
+        aoEscolher?.()
+      }}
+      onExcluida={conversaApagada}
+    />
+  )
 
-  const ocupado = aguardandoId !== null
+  // Abaixo do `lg` o painel não cabe ao lado: vira gaveta, aberta pelo botão
+  // "Conversas". Sem ela, no celular não havia como voltar a uma conversa antiga.
+  const botaoConversas = (
+    <Button
+      variant="secondary"
+      size="sm"
+      className="lg:hidden"
+      onClick={() => setPainelAberto(true)}
+      aria-label="Abrir conversas"
+    >
+      <MessagesSquare />
+      Conversas
+    </Button>
+  )
 
   return (
     <>
+      <AnimatePresence>
+        {painelAberto && (
+          <motion.div
+            className="fixed inset-0 z-50 lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <button
+              type="button"
+              aria-label="Fechar conversas"
+              className="absolute inset-0 bg-foreground/30"
+              onClick={() => setPainelAberto(false)}
+            />
+            <motion.div
+              role="dialog"
+              aria-label="Conversas"
+              className="absolute inset-y-0 left-0 flex w-[min(20rem,88vw)] bg-background p-3 shadow-xl [&>aside]:w-full"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', stiffness: 380, damping: 36 }}
+            >
+              {painel(() => setPainelAberto(false))}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex h-full gap-6">
-        <div className="hidden lg:flex">
-          <PainelConversas
-            conversas={estado.conversas}
-            grupos={estado.grupos}
-            ativaId={ativaId}
-            onSelecionar={abrirConversa}
-            onNova={() => abrirConversa(null)}
-            onExcluir={excluirConversa}
-            onCriarGrupo={criarGrupo}
-            onDesfazerGrupo={desfazerGrupo}
-          />
-        </div>
+        <div className="hidden lg:flex">{painel()}</div>
 
         <section className="flex min-w-0 flex-1 flex-col">
           <AnimatePresence mode="wait" initial={false}>
-            {conversaAtiva ? (
+            {emConversa ? (
               <motion.div
-                key={conversaAtiva.id}
+                key={ativaId ?? 'nova'}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
                 className="flex min-h-0 flex-1 flex-col"
               >
-                <header className="flex items-center gap-3 border-b border-border pb-4">
+                <header className="flex items-center gap-2 border-b border-border pb-4 sm:gap-3">
+                  {botaoConversas}
                   <div className="min-w-0 flex-1">
                     <h1 className="truncate font-display text-xl font-bold text-foreground">
-                      {conversaAtiva.titulo}
+                      {ativa ? tituloAtivo : 'Nova conversa'}
                     </h1>
                     {grupoAtivo && (
                       <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">
                         <Layers className="size-3.5" aria-hidden />
-                        {grupoAtivo.nome}
+                        <span className="truncate">{grupoAtivo.nome}</span>
                       </span>
                     )}
                   </div>
-                  <Button variant="secondary" size="sm" onClick={() => abrirConversa(null)}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => abrirConversa(null)}
+                    aria-label="Novo bate-papo"
+                  >
                     <SquarePen />
-                    Novo bate-papo
+                    {/* No celular, só o ícone: o título da conversa precisa do espaço. */}
+                    <span className="hidden sm:inline">Novo bate-papo</span>
                   </Button>
                 </header>
 
-                <ListaMensagens
-                  mensagens={conversaAtiva.mensagens}
-                  aguardando={aguardandoId === conversaAtiva.id}
-                  parcial={parcial}
-                  digitandoMensagemId={digitandoMensagemId}
-                />
+                {mensagensQuery.isPending && ativa ? (
+                  <p
+                    role="status"
+                    className="flex-1 py-10 text-center text-sm text-muted-foreground"
+                  >
+                    Carregando a conversa…
+                  </p>
+                ) : mensagensQuery.isError ? (
+                  <p
+                    role="alert"
+                    className="flex-1 px-4 py-10 text-center text-sm text-muted-foreground"
+                  >
+                    Não foi possível carregar esta conversa.{' '}
+                    <button
+                      type="button"
+                      className="font-semibold text-primary underline"
+                      onClick={() => void mensagensQuery.refetch()}
+                    >
+                      Tentar de novo
+                    </button>
+                  </p>
+                ) : (
+                  <ListaMensagens
+                    mensagens={mensagens}
+                    aguardando={aguardandoAqui}
+                    parcial={parcial}
+                    aoTentarDeNovo={tentarDeNovo}
+                  />
+                )}
 
-                {aguardandoId === conversaAtiva.id && (
+                {aguardandoAqui && (
                   <div className="flex justify-center pt-2">
                     <Button variant="secondary" size="sm" onClick={() => pararRef.current?.()}>
                       <Square />
@@ -329,8 +437,9 @@ _A resposta foi interrompida. Tente perguntar de novo._`
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
                 transition={{ duration: 0.25 }}
-                className="flex flex-1 flex-col items-center justify-center gap-6 px-4"
+                className="relative flex flex-1 flex-col items-center justify-center gap-6 px-4"
               >
+                {temHistorico && <div className="absolute left-0 top-0">{botaoConversas}</div>}
                 <motion.img
                   src={mascotePolvo}
                   alt=""

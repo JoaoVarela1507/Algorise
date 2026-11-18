@@ -35,7 +35,7 @@ import { useThemeStore, type PreferenciaTema } from '@/stores/useThemeStore'
 import { appVersion } from '@/lib/version'
 import { cn } from '@/lib/utils'
 import { solicitarRedefinicao } from '@/services/auth'
-import { limparHistoricoChat } from '@/services/chat'
+import { useApagarHistorico } from '@/hooks/useChat'
 import type { Usuario } from '@/types/usuario'
 
 const container: Variants = {
@@ -170,18 +170,21 @@ function SecaoAparencia() {
 function SecaoDados() {
   const [aberto, setAberto] = useState(false)
 
+  const apagar = useApagarHistorico()
+
   function limpar() {
-    limparHistoricoChat()
-    setAberto(false)
-    toast.success('Histórico do chat apagado')
+    apagar.mutate(undefined, {
+      onSuccess: () => {
+        setAberto(false)
+        toast.success('Histórico do chat apagado')
+      },
+      onError: () => toast.error('Não foi possível apagar o histórico. Tente de novo.'),
+    })
   }
 
   return (
     <Secao icone={MessagesSquare} titulo="Chat">
-      <Opcao
-        titulo="Histórico de conversas"
-        descricao="As conversas ficam salvas só neste navegador."
-      >
+      <Opcao titulo="Histórico de conversas" descricao="As conversas ficam salvas na sua conta.">
         <Dialog open={aberto} onOpenChange={setAberto}>
           <DialogTrigger asChild>
             <Button
@@ -197,15 +200,15 @@ function SecaoDados() {
             <DialogHeader className="text-left">
               <DialogTitle>Apagar todo o histórico?</DialogTitle>
               <DialogDescription>
-                Todas as conversas e grupos do chat serão apagados deste navegador. Não dá para
-                desfazer.
+                Todas as conversas do chat serão apagadas da sua conta, e os grupos ficarão vazios.
+                Não dá para desfazer.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <DialogClose asChild>
                 <Button variant="ghost">Cancelar</Button>
               </DialogClose>
-              <Button variant="destructive" onClick={limpar}>
+              <Button variant="destructive" onClick={limpar} disabled={apagar.isPending}>
                 Apagar tudo
               </Button>
             </DialogFooter>
@@ -271,7 +274,7 @@ export function ConfiguracoesPage() {
         Três colunas no desktop para caber sem rolar:
         conta + chat | aparência + sobre | acessibilidade + seus dados.
       */}
-      <div className="grid items-start gap-6 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-2 xl:grid-cols-3">
         <div className="flex flex-col gap-6">
           <motion.div variants={item}>
             <SecaoConta usuario={usuario} />
