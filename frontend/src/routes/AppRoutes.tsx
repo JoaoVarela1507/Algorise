@@ -15,6 +15,7 @@ import { TrilhaPage } from '@/pages/Trilha/TrilhaPage'
 import { RevisaoEmentaPage } from '@/pages/TrilhaGuiada/RevisaoEmentaPage'
 import { TrilhaGuiadaPage } from '@/pages/TrilhaGuiada/TrilhaGuiadaPage'
 import { QuestaoPage } from '@/pages/Questao/QuestaoPage'
+import { DesafioPage } from '@/pages/Desafio/DesafioPage'
 import { ChatPage } from '@/pages/Chat/ChatPage'
 import { PerfilPage } from '@/pages/Perfil/PerfilPage'
 import { CertificadosPage } from '@/pages/Certificados/CertificadosPage'
@@ -49,6 +50,7 @@ export function AppRoutes() {
           <Route path="/trilha-guiada/revisao" element={<RevisaoEmentaPage />} />
           <Route path="/trilhas/:trilhaId" element={<TrilhaPage />} />
           <Route path="/trilhas/:trilhaId/questao/:questaoId" element={<QuestaoPage />} />
+          <Route path="/trilhas/:trilhaId/desafio" element={<DesafioPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/perfil" element={<PerfilPage />} />
           <Route path="/configuracoes" element={<ConfiguracoesPage />} />

@@ -25,13 +25,16 @@ precisa falar com o Docker: veja o README sobre o socket.
 """
 
 import logging
+import os
 import re
 import subprocess
+import sys
+import tempfile
 import threading
 import time
 import uuid
 from dataclasses import dataclass
-from typing import IO
+from typing import IO, Any
 
 from app.core.config import settings
 
@@ -124,6 +127,8 @@ def comando(nome: str, codigo: str) -> list[str]:
 
 def executar(codigo: str, entrada: str = "") -> Resultado:
     """Roda `codigo` com `entrada` no stdin, num container descartável."""
+    if settings.sandbox_modo == "processo":
+        return executar_em_processo(codigo, entrada)
     if settings.sandbox_modo != "docker":
         raise SandboxIndisponivel("A sandbox está desligada (SANDBOX_MODO)")
     nome = f"algorise-exec-{uuid.uuid4().hex[:16]}"
@@ -230,3 +235,117 @@ def _morto_por_memoria(nome: str) -> bool:
 
 def _remover(nome: str) -> None:
     subprocess.run([DOCKER, "rm", "--force", nome], capture_output=True, timeout=30, check=False)
+
+
+# --------------------------------------------------------------------------
+# Modo `processo`: sem Docker, para rodar local e apresentar
+# --------------------------------------------------------------------------
+
+
+def executar_em_processo(codigo: str, entrada: str = "") -> Resultado:
+    """Roda o código num processo Python à parte, sem container.
+
+    É o modo leve: sobe em milissegundos e não pede nada instalado além do
+    próprio Python. Limita o tempo (o processo é morto no prazo) e a saída (morto
+    ao passar do teto), roda numa pasta temporária vazia e com o ambiente
+    zerado. No Linux e no macOS limita também memória, CPU, processos e tamanho
+    de arquivo pelo `setrlimit`.
+
+    **Não isola** rede nem disco: o código roda com o usuário da API. Por isso
+    a configuração recusa este modo em produção.
+    """
+    limite = settings.sandbox_saida_maxima
+    with tempfile.TemporaryDirectory(prefix="algorise-exec-") as pasta:
+        processo = subprocess.Popen(
+            # `-I` ignora variáveis de ambiente e a pasta do usuário; `-S` não
+            # carrega o `site`, então nada instalado no venv fica importável.
+            [sys.executable, "-I", "-S", "-c", codigo],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=pasta,
+            env=_ambiente_minimo(),
+            **_limites_do_sistema(),
+        )
+        saidas: dict[str, bytes] = {}
+        cortada = threading.Event()
+
+        def ler(nome_do_fluxo: str, fluxo: IO[bytes]) -> None:
+            lido = bytearray()
+            try:
+                while chunk := fluxo.read(4096):
+                    if len(lido) <= limite:
+                        lido += chunk
+                    elif not cortada.is_set():
+                        cortada.set()
+                        processo.kill()
+            except (ValueError, OSError):
+                pass
+            saidas[nome_do_fluxo] = bytes(lido[: limite + 1])
+
+        leitores = [
+            threading.Thread(target=ler, args=("stdout", processo.stdout), daemon=True),
+            threading.Thread(target=ler, args=("stderr", processo.stderr), daemon=True),
+        ]
+        for leitor in leitores:
+            leitor.start()
+
+        esgotou = False
+        try:
+            if processo.stdin is not None:
+                try:
+                    processo.stdin.write(entrada.encode("utf-8"))
+                    processo.stdin.close()
+                except (BrokenPipeError, OSError):
+                    pass
+            processo.wait(timeout=settings.sandbox_tempo_segundos)
+        except subprocess.TimeoutExpired:
+            esgotou = True
+            processo.kill()
+            processo.wait(timeout=10)
+        finally:
+            for leitor in leitores:
+                leitor.join(timeout=5)
+            for fluxo in (processo.stdin, processo.stdout, processo.stderr):
+                if fluxo is not None:
+                    fluxo.close()
+
+    stderr = sanitizar(saidas.get("stderr", b""), limite)
+    return Resultado(
+        stdout=sanitizar(saidas.get("stdout", b""), limite),
+        stderr=stderr,
+        codigo_saida=processo.returncode,
+        tempo_esgotado=esgotou,
+        memoria_estourada=not esgotou and "MemoryError" in stderr,
+        saida_cortada=cortada.is_set(),
+    )
+
+
+def _ambiente_minimo() -> dict[str, str]:
+    """Nenhuma variável da API (nem as chaves do `.env`) chega ao código do aluno."""
+    ambiente = {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONIOENCODING": "utf-8"}
+    # No Windows o Python não sobe sem estas duas.
+    for nome in ("SYSTEMROOT", "WINDIR"):
+        if nome in os.environ:
+            ambiente[nome] = os.environ[nome]
+    return ambiente
+
+
+def _limites_do_sistema() -> dict[str, Any]:
+    """Os limites que o sistema operacional oferece para um processo filho."""
+    if sys.platform == "win32":
+        # Grupo próprio: um Ctrl+C no terminal da API não chega ao do aluno.
+        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+
+    def aplicar() -> None:  # pragma: no cover - roda no processo filho
+        import resource
+
+        memoria = settings.sandbox_memoria_mb * 1024 * 1024
+        tempo = settings.sandbox_tempo_segundos + 1
+        resource.setrlimit(resource.RLIMIT_AS, (memoria * 4, memoria * 4))
+        resource.setrlimit(resource.RLIMIT_CPU, (tempo, tempo))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (1_048_576, 1_048_576))
+        resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
+        os.setsid()
+
+    return {"preexec_fn": aplicar}
