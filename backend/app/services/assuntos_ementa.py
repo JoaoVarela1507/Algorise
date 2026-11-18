@@ -29,6 +29,7 @@ novo no vault. E confirma (`confirmar`), o que faz da ementa a base da trilha
 guiada dele.
 """
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 
@@ -38,7 +39,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.fila import fila_das_tarefas
-from app.ia import IAIndisponivel, ProvedorIA
+from app.ia import IAIndisponivel, ProvedorIA, para
 from app.ia.skills import ler_ementa
 from app.ia.vault import buscar_por_vetor, registrar_modulos
 from app.ia.vault.ingestao import LOTE_DE_EMBEDDING
@@ -270,27 +271,70 @@ async def mapear(db: Session, provedor: ProvedorIA, assuntos: list[AssuntoEmenta
 
 
 def _partes(ementa: Ementa) -> list[str]:
-    return ler_ementa.dividir_texto(ler_ementa.sem_bibliografia(ementa.texto_extraido or ""))
+    return ler_ementa.dividir_texto(
+        ler_ementa.sem_bibliografia(ementa.texto_extraido or ""), tamanho=tamanho_da_parte()
+    )
+
+
+def tamanho_da_parte() -> int:
+    """Caracteres por chamada à IA (`EMENTA_TAMANHO_DA_PARTE`; 0 escolhe pelo provedor).
+
+    O Ollama tem contexto de 4096 tokens e cabe a parte da skill. O Gemini lê
+    um texto bem maior de uma vez: com 12 mil caracteres, o PPC da UFRPE (36 mil
+    no ementário) saiu em 3 chamadas em vez de 9, com as mesmas disciplinas.
+    """
+    if settings.ementa_tamanho_da_parte:
+        return settings.ementa_tamanho_da_parte
+    return 12_000 if settings.ia_provedor == "gemini" else ler_ementa.TAMANHO_DA_PARTE
+
+
+def leituras_simultaneas() -> int:
+    """Partes lidas ao mesmo tempo (`EMENTA_LEITURAS_SIMULTANEAS`; 0 escolhe pelo provedor).
+
+    O Ollama roda na CPU desta máquina, e duas leituras juntas só dividiriam o
+    processador. O Gemini roda no Google: três de uma vez cabem no limite de
+    pedidos por minuto da camada gratuita e cortam o tempo da leitura.
+    """
+    if settings.ementa_leituras_simultaneas:
+        return settings.ementa_leituras_simultaneas
+    return 3 if settings.ia_provedor == "gemini" else 1
 
 
 async def _ler(provedor: ProvedorIA, partes: list[str]) -> list[ler_ementa.Leitura]:
-    """Uma leitura por parte. A parte com resposta inválida é pulada.
+    """Uma leitura por parte, até `leituras_simultaneas()` ao mesmo tempo. A parte
+    com resposta inválida é pulada.
 
     Levanta `SaidaInvalida` só se todas forem inválidas: uma resposta quebrada
-    (o modelo que se repete até o teto de tokens) não derruba as outras.
+    (o modelo que se repete até o teto de tokens) não derruba as outras. As
+    leituras saem na ordem das partes, simultâneas ou não.
     """
+    # O teto de tokens da skill é para a parte dela; uma parte maior, maior a resposta.
+    max_tokens = -(-ler_ementa.MAXIMO_DE_TOKENS * tamanho_da_parte() // ler_ementa.TAMANHO_DA_PARTE)
+    vagas = asyncio.Semaphore(leituras_simultaneas())
+
+    async def ler_uma(parte: str) -> str:
+        async with vagas:
+            pedacos = [
+                pedaco
+                async for pedaco in para(provedor, "ementa").gerar(
+                    ler_ementa.mensagens(parte), max_tokens=max_tokens, formato=ler_ementa.FORMATO
+                )
+            ]
+        return "".join(pedacos)
+
+    tarefas = [asyncio.ensure_future(ler_uma(parte)) for parte in partes]
+    try:
+        respostas = await asyncio.gather(*tarefas)
+    except BaseException:
+        # Uma parte sem IA derruba a leitura: as que ainda rodam não servem mais.
+        for tarefa in tarefas:
+            tarefa.cancel()
+        raise
+
     leituras: list[ler_ementa.Leitura] = []
-    for indice, parte in enumerate(partes):
-        pedacos = [
-            pedaco
-            async for pedaco in provedor.gerar(
-                ler_ementa.mensagens(parte),
-                max_tokens=ler_ementa.MAXIMO_DE_TOKENS,
-                formato=ler_ementa.FORMATO,
-            )
-        ]
+    for indice, resposta in enumerate(respostas):
         try:
-            leituras.append(ler_ementa.ler_resposta("".join(pedacos)))
+            leituras.append(ler_ementa.ler_resposta(resposta))
         except ler_ementa.SaidaInvalida:
             logger.warning("Parte %s de %s com resposta inválida, pulada", indice + 1, len(partes))
     if partes and not leituras:

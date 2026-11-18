@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.ia import IAIndisponivel, ProvedorIA
+from app.ia import IAIndisponivel, ProvedorIA, para
 from app.ia.skills import exercicios as skill
 from app.models import (
     DocumentoVault,
@@ -72,7 +72,7 @@ async def gerar(db: Session, provedor: ProvedorIA, geracao: ExerciciosGerados) -
     try:
         pedacos = [
             pedaco
-            async for pedaco in provedor.gerar(
+            async for pedaco in para(provedor, "exercicios").gerar(
                 skill.mensagens(modulo.titulo, geracao.nivel, conteudo),
                 max_tokens=skill.MAXIMO_DE_TOKENS,
                 formato=skill.FORMATO,

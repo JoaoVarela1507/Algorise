@@ -1,0 +1,37 @@
+# IA pela API do Gemini, sem o Ollama no stack. Suba junto com os outros dois:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.gemini.yml up
+#
+# ou ponha no .env da raiz (no Windows o separador é `;`, no Linux/macOS `:`):
+#
+#   COMPOSE_FILE=docker-compose.yml;docker-compose.override.yml;docker-compose.gemini.yml
+#
+# e use só `docker compose up`. A chave vem de GEMINI_API_KEY, no .env da raiz.
+# Sem o Ollama, não há os ~4 GB de modelos para baixar nem a CPU ocupada.
+
+services:
+  # Só sobem com `--profile ollama`: com o Gemini, ninguém fala com eles.
+  ollama:
+    profiles: ['ollama']
+  ollama-modelo:
+    profiles: ['ollama']
+
+  backend:
+    environment:
+      IA_PROVEDOR: ${IA_PROVEDOR:-gemini}
+    depends_on: !override
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    environment:
+      IA_PROVEDOR: ${IA_PROVEDOR:-gemini}
+    depends_on: !override
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy

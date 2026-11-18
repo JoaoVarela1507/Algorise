@@ -91,6 +91,19 @@ services:
       # ela (ex.: o Supabase), o backend usa esse banco e o `db` fica ocioso.
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-algorise}:${POSTGRES_PASSWORD:-algorise}@db:5432/${POSTGRES_DB:-algorise}}
       REDIS_URL: redis://redis:6379/0
+      # `ollama` (padrão) ou `gemini`. Com o Gemini, suba com o
+      # docker-compose.gemini.yml junto, que deixa o Ollama de fora.
+      IA_PROVEDOR: ${IA_PROVEDOR:-ollama}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODELO: ${GEMINI_MODELO:-gemini-flash-lite-latest}
+      GEMINI_MODELO_TAREFAS: ${GEMINI_MODELO_TAREFAS:-}
+      GEMINI_MODELO_EMBEDDING: ${GEMINI_MODELO_EMBEDDING:-gemini-embedding-001}
+      # Um modelo do Gemini por uso (JSON), embeddings e reserva no Ollama:
+      # ver backend/.env.example.
+      GEMINI_MODELOS: ${GEMINI_MODELOS:-}
+      IA_PROVEDOR_EMBEDDINGS: ${IA_PROVEDOR_EMBEDDINGS:-}
+      IA_RESERVA: ${IA_RESERVA:-}
+      OLLAMA_MANTER_CARREGADO: ${OLLAMA_MANTER_CARREGADO:-}
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODELO: ${OLLAMA_MODELO:-llama3.2}
       # Modelo das tarefas do worker (leitura da ementa, vídeos, exercícios).

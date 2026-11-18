@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
-from app.ia import IAIndisponivel, ProvedorIA
+from app.ia import IAIndisponivel, ProvedorIA, para
 from app.ia.skills import resumir_conversa
 from app.models import Conversa, MensagemChat, PapelMensagem
 
@@ -28,7 +28,7 @@ async def atualizar(fabrica: sessionmaker[Session], provedor: ProvedorIA, conver
     try:
         partes = [
             pedaco
-            async for pedaco in provedor.gerar(
+            async for pedaco in para(provedor, "resumo").gerar(
                 resumir_conversa.mensagens(resumo_anterior, falas),
                 max_tokens=resumir_conversa.MAXIMO_DE_TOKENS,
             )

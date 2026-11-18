@@ -14,6 +14,7 @@ from app.ia.vault import (
     registrar_modulos,
     registrar_prompts,
 )
+from app.ia.vault.ingestao import reembeddar
 
 
 def main(argumentos: list[str] | None = None) -> int:
@@ -26,6 +27,9 @@ def main(argumentos: list[str] | None = None) -> int:
 
     comandos.add_parser("registrar-modulos", help="grava o texto dos módulos do catálogo")
     comandos.add_parser("registrar-prompts", help="grava os prompts das skills")
+    comandos.add_parser(
+        "reembeddar", help="refaz os vetores de todo o vault com o provedor de embedding atual"
+    )
 
     args = parser.parse_args(argumentos)
     try:
@@ -47,6 +51,8 @@ async def _executar(args: argparse.Namespace) -> int:
                 nome_arquivo=args.arquivo.name,
             )
             _relatar(ingestao)
+        elif args.comando == "reembeddar":
+            print(f"{await reembeddar(sessao, provedor)} trechos com vetor novo")
         else:
             registrar = (
                 registrar_modulos if args.comando == "registrar-modulos" else registrar_prompts
