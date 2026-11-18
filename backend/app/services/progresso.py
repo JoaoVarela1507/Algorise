@@ -105,18 +105,26 @@ def abertos_pela_trilha_guiada(db: Session, usuario: Usuario) -> set[int]:
 
 
 def conteudo_do_passo(
-    db: Session, *, usuario: Usuario | None, trilha: Trilha, ordem: int
+    db: Session,
+    *,
+    usuario: Usuario | None,
+    trilha: Trilha,
+    ordem: int,
+    estados: dict[int, StatusProgresso] | None = None,
 ) -> Modulo:
     """O passo pedido, se ele estiver liberado. Levanta `PassoBloqueado` se não.
 
     A checagem é a mesma de `estados_dos_passos`: uma regra só, para a tela e a
-    API nunca discordarem sobre o que está aberto.
+    API nunca discordarem sobre o que está aberto. Quem já calculou os estados
+    (a rota do passo usa os dois) passa `estados` para não calcular de novo.
     """
     modulo = next((m for m in trilha.modulos if m.ordem == ordem), None)
     if modulo is None:
         raise LookupError(ordem)
 
-    estado = estados_dos_passos(db, usuario=usuario, trilha=trilha)[modulo.id]
+    if estados is None:
+        estados = estados_dos_passos(db, usuario=usuario, trilha=trilha)
+    estado = estados[modulo.id]
     if estado is StatusProgresso.bloqueado:
         raise PassoBloqueado(ordem)
 
@@ -174,6 +182,47 @@ def concluir_passo(db: Session, *, usuario_id: int, trilha: Trilha, modulo: Modu
     registro.status = StatusProgresso.concluido
     registro.concluido_em = registro.concluido_em or datetime.now(UTC)
     db.commit()
+
+
+def marcar_video_assistido(
+    db: Session, *, usuario_id: int, trilha: Trilha, modulo: Modulo
+) -> datetime:
+    """Grava que o aluno assistiu o vídeo do passo (#21). Repetir não muda a data.
+
+    Na trilha livre o aluno abre um passo sem nunca ter tido registro dele: aí
+    o registro nasce em andamento, como faria a primeira atividade.
+    """
+    registro = db.execute(
+        select(ProgressoUsuario).where(
+            ProgressoUsuario.usuario_id == usuario_id,
+            ProgressoUsuario.modulo_id == modulo.id,
+        )
+    ).scalar_one_or_none()
+    if registro is None:
+        registro = ProgressoUsuario(
+            usuario_id=usuario_id,
+            trilha_id=trilha.id,
+            modulo_id=modulo.id,
+            status=StatusProgresso.em_andamento,
+        )
+        db.add(registro)
+    registro.video_assistido_em = registro.video_assistido_em or datetime.now(UTC)
+    db.commit()
+    quando = registro.video_assistido_em
+    # O SQLite (testes, E2E) devolve sem fuso o que foi gravado em UTC.
+    return quando if quando.tzinfo else quando.replace(tzinfo=UTC)
+
+
+def video_assistido(db: Session, *, usuario_id: int, modulo_id: int) -> bool:
+    return (
+        db.execute(
+            select(ProgressoUsuario.video_assistido_em).where(
+                ProgressoUsuario.usuario_id == usuario_id,
+                ProgressoUsuario.modulo_id == modulo_id,
+            )
+        ).scalar_one_or_none()
+        is not None
+    )
 
 
 def esta_concluido(db: Session, *, usuario_id: int, modulo_id: int) -> bool:

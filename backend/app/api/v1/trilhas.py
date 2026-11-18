@@ -19,16 +19,19 @@ from app.schemas.submissao import PassoConcluido
 from app.schemas.trilha import (
     ExercicioDePratica,
     ExerciciosDoPasso,
+    FalaDaTranscricao,
     ModuloDetalhe,
     PassoDetalhe,
     ReporteDoModulo,
+    TranscricaoDoPasso,
     Trilha,
     TrilhaAtual,
     TrilhaDetalhe,
     TrilhaRecomendada,
+    VideoAssistido,
 )
 from app.services import exercicios as servico_exercicios
-from app.services import modulos_de_videos, submissoes
+from app.services import modulos_de_videos, submissoes, transcricao_do_passo
 from app.services import progresso as servico_progresso
 from app.services import trilhas as servico
 
@@ -170,10 +173,12 @@ def obter_passo(
     slug: str, ordem: int, usuario: UsuarioOpcional, db: Session = Depends(get_db)
 ) -> PassoDetalhe:
     trilha = _buscar(db, slug)
+    # Uma vez só: a mesma conta decide o 403 e o estado que vai na resposta.
+    estados = servico_progresso.estados_dos_passos(db, usuario=usuario, trilha=trilha)
 
     try:
         modulo = servico_progresso.conteudo_do_passo(
-            db, usuario=usuario, trilha=trilha, ordem=ordem
+            db, usuario=usuario, trilha=trilha, ordem=ordem, estados=estados
         )
     except LookupError as erro:
         raise ErroDeNegocio(
@@ -190,7 +195,6 @@ def obter_passo(
             details={"trilha": slug, "ordem": ordem},
         ) from erro
 
-    estados = servico_progresso.estados_dos_passos(db, usuario=usuario, trilha=trilha)
     ordens = sorted(m.ordem for m in trilha.modulos)
 
     # `model_validate` direto não serve: `PassoDetalhe` pede campos que não
@@ -202,6 +206,8 @@ def obter_passo(
         trilha_nome=trilha.nome,
         total_passos=len(ordens),
         proximo=ordem + 1 if ordem < max(ordens) else None,
+        video_assistido=bool(usuario)
+        and servico_progresso.video_assistido(db, usuario_id=usuario.id, modulo_id=modulo.id),
     )
     acertadas = _acertadas(db, usuario, [passo])
     return _com_feitas(_com_estado(passo, estados[modulo.id]), acertadas)
@@ -420,4 +426,68 @@ def exercicios_do_passo(
     return ExerciciosDoPasso(
         status=geracao.status,
         exercicios=[ExercicioDePratica(**exercicio) for exercicio in geracao.exercicios or []],
+    )
+
+
+def _passo_liberado(db: Session, slug: str, ordem: int, usuario: Usuario | None):
+    """A trilha e o módulo do passo, com o mesmo 404/403 do `obter_passo`."""
+    trilha = _buscar(db, slug)
+    try:
+        modulo = servico_progresso.conteudo_do_passo(
+            db, usuario=usuario, trilha=trilha, ordem=ordem
+        )
+    except LookupError as erro:
+        raise ErroDeNegocio(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="passo_nao_encontrado",
+            message="Esse passo não existe nesta trilha",
+            details={"trilha": slug, "ordem": ordem},
+        ) from erro
+    except servico_progresso.PassoBloqueado as erro:
+        raise ErroDeNegocio(
+            status_code=status.HTTP_403_FORBIDDEN,
+            code="passo_bloqueado",
+            message="Conclua o passo anterior para abrir este",
+            details={"trilha": slug, "ordem": ordem},
+        ) from erro
+    return trilha, modulo
+
+
+@router.post(
+    "/{slug}/passos/{ordem}/video-assistido",
+    response_model=VideoAssistido,
+    summary="Marca o vídeo do passo como assistido",
+    description=(
+        "Chamado quando o player chega ao fim do vídeo (ou do trecho do módulo). "
+        "Idempotente: repetir mantém a data da primeira vez."
+    ),
+)
+def marcar_video_assistido(
+    slug: str, ordem: int, usuario: UsuarioAtual, db: Session = Depends(get_db)
+) -> VideoAssistido:
+    trilha, modulo = _passo_liberado(db, slug, ordem, usuario)
+    quando = servico_progresso.marcar_video_assistido(
+        db, usuario_id=usuario.id, trilha=trilha, modulo=modulo
+    )
+    return VideoAssistido(video_assistido_em=quando)
+
+
+@router.get(
+    "/{slug}/passos/{ordem}/transcricao",
+    response_model=TranscricaoDoPasso,
+    summary="Transcrição do vídeo do passo",
+    description=(
+        "As falas do vídeo, com o segundo em que cada uma começa (acessibilidade, #21). "
+        "Lista vazia quando o vídeo ainda não foi transcrito."
+    ),
+)
+def obter_transcricao(
+    slug: str, ordem: int, usuario: UsuarioOpcional, db: Session = Depends(get_db)
+) -> TranscricaoDoPasso:
+    _, modulo = _passo_liberado(db, slug, ordem, usuario)
+    return TranscricaoDoPasso(
+        falas=[
+            FalaDaTranscricao(inicio=f.inicio, fim=f.fim, texto=f.texto)
+            for f in transcricao_do_passo.falas_do_passo(db, modulo)
+        ]
     )

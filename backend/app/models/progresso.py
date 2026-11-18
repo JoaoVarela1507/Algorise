@@ -22,6 +22,9 @@ class ProgressoUsuario(Base, TimestampMixin):
     modulo_id: Mapped[int] = mapped_column(ForeignKey("modulos.id", ondelete="CASCADE"))
     status: Mapped[StatusProgresso] = mapped_column(default=StatusProgresso.bloqueado)
     concluido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Quando o aluno assistiu o vídeo do passo até o fim (#21). Separado da
+    # conclusão: o passo fecha pelas atividades, e o vídeo pode ser revisto.
+    video_assistido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class RespostaUsuario(Base, TimestampMixin):

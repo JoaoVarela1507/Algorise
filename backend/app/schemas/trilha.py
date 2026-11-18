@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict
 
 from app.models.enums import OrigemModulo, StatusGeracao, StatusProgresso, TipoAtividade
@@ -100,6 +102,26 @@ class PassoDetalhe(ModuloDetalhe):
     total_passos: int
     # Ordem do próximo passo, ou None quando este é o último.
     proximo: int | None = None
+    # O aluno já assistiu o vídeo do passo até o fim (#21). Falso para anônimo.
+    video_assistido: bool = False
+
+
+class VideoAssistido(BaseModel):
+    video_assistido_em: datetime
+
+
+class FalaDaTranscricao(BaseModel):
+    """Um trecho da transcrição, com o segundo do vídeo em que começa."""
+
+    inicio: float | None = None
+    fim: float | None = None
+    texto: str
+
+
+class TranscricaoDoPasso(BaseModel):
+    """A transcrição do vídeo do passo. Vazia quando o vídeo ainda não foi transcrito."""
+
+    falas: list[FalaDaTranscricao] = []
 
 
 class ReporteDoModulo(BaseModel):

@@ -63,6 +63,7 @@ export const chaves = {
     // progresso da trilha guiada muda junto.
     guiada: () => ['trilhas', 'guiada'] as const,
     exercicios: (slug: string, ordem: number) => ['trilhas', 'exercicios', slug, ordem] as const,
+    transcricao: (slug: string, ordem: number) => ['trilhas', 'transcricao', slug, ordem] as const,
   },
   certificados: {
     todas: ['certificados'] as const,
@@ -77,6 +78,10 @@ export const chaves = {
   atividades: {
     todas: ['atividades'] as const,
     tentativas: (atividadeId: number) => ['atividades', atividadeId, 'tentativas'] as const,
+  },
+  desafios: {
+    detalhe: (id: number) => ['desafios', id] as const,
+    execucao: (id: string) => ['desafios', 'execucao', id] as const,
   },
   gamificacao: {
     todas: ['gamificacao'] as const,
@@ -96,6 +101,14 @@ export const chaves = {
   academico: {
     instituicoes: (busca: string) => ['academico', 'instituicoes', busca] as const,
     cursos: (instituicaoId: number) => ['academico', 'cursos', instituicaoId] as const,
+  },
+  chat: {
+    todas: ['chat'] as const,
+    todasConversas: ['chat', 'conversas'] as const,
+    conversas: (busca: string) => ['chat', 'conversas', busca] as const,
+    // Tudo debaixo de `chat`: `chat.todas` invalida lista, mensagens e grupos de uma vez.
+    mensagens: (conversaId: number) => ['chat', 'mensagens', conversaId] as const,
+    grupos: () => ['chat', 'grupos'] as const,
   },
   perfil: {
     todas: ['perfil'] as const,
