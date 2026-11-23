@@ -9,4 +9,4 @@ yt-dlp==2026.10.21
 faster-whisper==1.2.1
 # O faster-whisper 1.2.1 abre o áudio com `metadata_errors`, que o PyAV 16 tirou:
 # sem fixar, o pip traz o mais novo e a transcrição quebra ao abrir o arquivo.
-av==15.1.0
+av==19.0.2
